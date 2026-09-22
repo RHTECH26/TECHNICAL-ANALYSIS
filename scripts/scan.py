@@ -1,19 +1,27 @@
 """
 NSE Trend-Reversal Scanner
 ---------------------------
-Strategy: after a downtrend of consecutive LOWER LOWS, flag a stock the first
-time price closes back above the most recent LOWER HIGH (the swing high formed
-during the pullback between the last two lower lows). That break of structure
-is the reversal signal.
+Strategy: standard swing-structure labeling (HH / HL / LH / LL) — each swing
+high is compared only to the *previous* swing high (HH if higher, LH if
+lower), each swing low only to the previous swing low (HL if higher, LL if
+lower). No requirement for consecutive lower lows.
+
+Signal: the stock's most recently confirmed swing high is a LH (lower high),
+and price has since closed back above that LH level — a break of structure
+back to the upside, i.e. crossing the LH.
 
 Run daily by .github/workflows/daily_scan.yml. Writes data/scan_results.json,
 which index.html reads client-side. No synthetic data: if a symbol can't be
 fetched or doesn't have enough history, it's skipped and logged, never faked.
+Any unexpected error is caught, logged with a full traceback to stderr, and
+whatever results were gathered so far are still written out rather than the
+whole run dying with nothing to show for it.
 """
 
 import json
 import sys
 import time
+import traceback
 from datetime import datetime
 
 import numpy as np
@@ -22,7 +30,7 @@ import yfinance as yf
 
 UNIVERSE_PATH = "data/nse_universe.csv"
 OUTPUT_PATH = "data/scan_results.json"
-BATCH_SIZE = 100
+BATCH_SIZE = 75
 HISTORY_PERIOD = "2y"
 SWING_LEFT = 3          # bars either side of a candidate swing point
 SWING_RIGHT = 3
@@ -55,7 +63,7 @@ def detect_swings(df, left=SWING_LEFT, right=SWING_RIGHT):
 
 
 def build_swing_sequence(df, is_high, is_low):
-    """Ordered list of (bar_index, 'H'|'L', price), forced to alternate
+    """Ordered list of [bar_index, 'H'|'L', price], forced to alternate
     (keeps the more extreme point when two of the same type occur in a row
     before the opposite type shows up)."""
     points = []
@@ -79,33 +87,43 @@ def build_swing_sequence(df, is_high, is_low):
     return cleaned
 
 
-def find_reversal_signal(df, swings, min_lower_lows=2):
+def label_swings(swings):
+    """HH/HL/LH/LL labeling: each swing compared only to the *previous*
+    swing of the same type — not a run of consecutive lower lows."""
+    labeled = []
+    last_high = None
+    last_low = None
+    for idx, kind, price in swings:
+        label = None
+        if kind == "H":
+            if last_high is not None:
+                label = "HH" if price > last_high else "LH"
+            last_high = price
+        else:
+            if last_low is not None:
+                label = "HL" if price > last_low else "LL"
+            last_low = price
+        labeled.append({"index": idx, "kind": kind, "price": price, "label": label})
+    return labeled
+
+
+def find_lh_cross_signal(df, labeled_swings):
     """
-    Looks at the most recent `min_lower_lows` confirmed swing lows. If they
-    are strictly decreasing (a clean lower-low downtrend leg), take the swing
-    high between the last two of them (the most recent 'lower high') as the
-    resistance level, then check whether price has since closed above it.
-    Returns None if no valid signal, else a dict describing it.
+    If the most recently confirmed swing high is a LH (lower high), and
+    price has since closed above that LH's level, return the signal.
+    Returns None if the last swing high isn't a LH, or price hasn't
+    crossed it yet.
     """
-    lows = [p for p in swings if p[1] == "L"]
-    highs = [p for p in swings if p[1] == "H"]
-    if len(lows) < min_lower_lows:
+    highs = [s for s in labeled_swings if s["kind"] == "H" and s["label"] is not None]
+    if not highs:
         return None
 
-    recent_lows = lows[-min_lower_lows:]
-    prices = [p[2] for p in recent_lows]
-    if not all(prices[i] > prices[i + 1] for i in range(len(prices) - 1)):
-        return None  # not a clean sequence of lower lows
-
-    prev_low, last_low = recent_lows[-2], recent_lows[-1]
-    between_highs = [h for h in highs if prev_low[0] < h[0] < last_low[0]]
-    if not between_highs:
+    last_high = highs[-1]
+    if last_high["label"] != "LH":
         return None
 
-    lower_high = max(between_highs, key=lambda h: h[2])
-    breakout_level = lower_high[2]
-
-    after = df.iloc[last_low[0] + 1 :]
+    breakout_level = last_high["price"]
+    after = df.iloc[last_high["index"] + 1 :]
     closes_above = after[after["Close"] > breakout_level]
     if closes_above.empty:
         return None
@@ -114,15 +132,23 @@ def find_reversal_signal(df, swings, min_lower_lows=2):
     breakout_date = closes_above.index[0]
     days_since = (len(df) - 1) - breakout_pos
 
+    # context only, not a condition: the swing low right before this LH
+    lows_before = [
+        s for s in labeled_swings if s["kind"] == "L" and s["index"] < last_high["index"]
+    ]
+    prior_low = lows_before[-1] if lows_before else None
+
     return {
         "is_signal": True,
-        "breakout_level": round(breakout_level, 2),
+        "lh_level": round(breakout_level, 2),
+        "lh_date": df.index[last_high["index"]].strftime("%Y-%m-%d"),
         "breakout_date": breakout_date.strftime("%Y-%m-%d"),
         "days_since_breakout": int(days_since),
-        "last_low_price": round(last_low[2], 2),
-        "last_low_date": df.index[last_low[0]].strftime("%Y-%m-%d"),
-        "prev_low_price": round(prev_low[2], 2),
-        "prev_low_date": df.index[prev_low[0]].strftime("%Y-%m-%d"),
+        "prior_low_level": round(prior_low["price"], 2) if prior_low else None,
+        "prior_low_label": prior_low["label"] if prior_low else None,
+        "prior_low_date": (
+            df.index[prior_low["index"]].strftime("%Y-%m-%d") if prior_low else None
+        ),
     }
 
 
@@ -173,8 +199,8 @@ def process_one(sym, name, df):
 
     is_h, is_l = detect_swings(df)
     swings = build_swing_sequence(df, is_h, is_l)
-    sig_2 = find_reversal_signal(df, swings, min_lower_lows=2)
-    sig_3 = find_reversal_signal(df, swings, min_lower_lows=3)
+    labeled = label_swings(swings)
+    signal = find_lh_cross_signal(df, labeled)
     ctx = compute_context(df)
 
     last_close = float(df["Close"].iloc[-1])
@@ -186,13 +212,25 @@ def process_one(sym, name, df):
         "company": name,
         "ltp": round(last_close, 2),
         "chg_pct": chg_pct,
-        "signal_2ll": sig_2,
-        "signal_3ll": sig_3,
+        "signal_lh_cross": signal,
         **ctx,
     }
 
 
-def main():
+def extract_symbol_df(data, tk, single_ticker):
+    """Pull one ticker's OHLCV out of a (possibly multi-ticker) yf.download result."""
+    if single_ticker:
+        return data
+    cols = data.columns
+    if hasattr(cols, "levels"):
+        top_level = cols.get_level_values(0)
+        if tk not in top_level:
+            return None
+        return data[tk]
+    return None
+
+
+def run_scan():
     universe = load_universe()
     names = dict(zip(universe["Symbol"], universe["Description"]))
     symbols = universe["Symbol"].tolist()
@@ -203,6 +241,7 @@ def main():
 
     for batch in chunked(symbols, BATCH_SIZE):
         batch_tickers = [ticker_map[s] for s in batch]
+        single_ticker = len(batch_tickers) == 1
         try:
             data = yf.download(
                 tickers=" ".join(batch_tickers),
@@ -214,20 +253,18 @@ def main():
                 progress=False,
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"batch download failed: {exc}", file=sys.stderr)
+            print(f"batch download failed ({batch[0]}..{batch[-1]}): {exc}", file=sys.stderr)
+            skipped.extend(batch)
+            continue
+
+        if data is None or (hasattr(data, "empty") and data.empty):
             skipped.extend(batch)
             continue
 
         for sym in batch:
             tk = ticker_map[sym]
             try:
-                if len(batch_tickers) == 1:
-                    df = data
-                elif tk in getattr(data.columns, "levels", [[]])[0]:
-                    df = data[tk]
-                else:
-                    df = None
-
+                df = extract_symbol_df(data, tk, single_ticker)
                 if df is None or df.empty:
                     skipped.append(sym)
                     continue
@@ -243,19 +280,40 @@ def main():
 
         time.sleep(2)  # be gentle with the free Yahoo endpoint
 
+    return results, skipped, len(symbols)
+
+
+def write_output(results, skipped, universe_count, error=None):
     output = {
         "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-        "universe_count": len(symbols),
+        "universe_count": universe_count,
         "scanned_count": len(results),
         "skipped_count": len(skipped),
         "skipped_symbols": skipped,
         "results": results,
     }
+    if error:
+        output["last_run_error"] = error
 
     with open(OUTPUT_PATH, "w") as f:
         json.dump(output, f, separators=(",", ":"))
 
-    print(f"Done. scanned={len(results)} skipped={len(skipped)}")
+
+def main():
+    results, skipped, universe_count = [], [], 0
+    try:
+        results, skipped, universe_count = run_scan()
+        write_output(results, skipped, universe_count)
+        print(f"Done. scanned={len(results)} skipped={len(skipped)}")
+    except Exception as exc:  # noqa: BLE001
+        # Never die with nothing written and nothing logged: capture the full
+        # traceback, save whatever partial results exist, then exit non-zero
+        # so the Action still shows failed - but the log and the JSON both
+        # say why.
+        tb = traceback.format_exc()
+        print("FATAL: scan crashed:\n" + tb, file=sys.stderr)
+        write_output(results, skipped, universe_count, error=str(exc))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
