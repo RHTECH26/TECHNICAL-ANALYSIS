@@ -1,18 +1,17 @@
 """
-NSE Trend-Reversal Scanner
+NSE Range Breakout Scanner
 ---------------------------
-Strategy: standard swing-structure labeling (HH / HL / LH / LL) — each swing
-high is compared only to the *previous* swing high (HH if higher, LH if
-lower), each swing low only to the previous swing low (HL if higher, LL if
-lower). No requirement for consecutive lower lows.
-
-Signal: the stock's most recently confirmed swing high is a LH (lower high),
-and price has since closed back above that LH level — a break of structure
-back to the upside, i.e. crossing the LH.
+Strategy: flag a stock when today's close is a new N-day high — i.e. above
+the highest High of the preceding N trading days. Computed for N = 20, 50,
+100 and 200 in one pass; the page lets you switch which range you're
+scanning by picking from a dropdown, same as the reference screener's
+lookback selector.
 
 Run daily by .github/workflows/daily_scan.yml. Writes data/scan_results.json,
 which index.html reads client-side. No synthetic data: if a symbol can't be
-fetched or doesn't have enough history, it's skipped and logged, never faked.
+fetched or doesn't have enough history for a given N, that N's flag is left
+null for that symbol rather than guessed at.
+
 Any unexpected error is caught, logged with a full traceback to stderr, and
 whatever results were gathered so far are still written out rather than the
 whole run dying with nothing to show for it.
@@ -24,7 +23,6 @@ import time
 import traceback
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import yfinance as yf
 
@@ -32,124 +30,39 @@ UNIVERSE_PATH = "data/nse_universe.csv"
 OUTPUT_PATH = "data/scan_results.json"
 BATCH_SIZE = 75
 HISTORY_PERIOD = "2y"
-SWING_LEFT = 3          # bars either side of a candidate swing point
-SWING_RIGHT = 3
-MIN_BARS_REQUIRED = 60  # skip symbols with less history than this
+RANGES = (20, 50, 100, 200)
+MIN_BARS_REQUIRED = 25  # need at least this much history to be worth scanning at all
 
 
 # ---------------------------------------------------------------------------
-# Swing / structure detection
+# Breakout detection
 # ---------------------------------------------------------------------------
 
-def detect_swings(df, left=SWING_LEFT, right=SWING_RIGHT):
-    """Fractal swing high/low detection. Returns two boolean arrays."""
-    highs = df["High"].to_numpy()
-    lows = df["Low"].to_numpy()
-    n = len(df)
-    is_swing_high = np.zeros(n, dtype=bool)
-    is_swing_low = np.zeros(n, dtype=bool)
-
-    for i in range(left, n - right):
-        h_win = highs[i - left : i + right + 1]
-        l_win = lows[i - left : i + right + 1]
-        h_max = h_win.max()
-        l_min = l_win.min()
-        if highs[i] == h_max and np.sum(h_win == h_max) == 1:
-            is_swing_high[i] = True
-        if lows[i] == l_min and np.sum(l_win == l_min) == 1:
-            is_swing_low[i] = True
-
-    return is_swing_high, is_swing_low
-
-
-def build_swing_sequence(df, is_high, is_low):
-    """Ordered list of [bar_index, 'H'|'L', price], forced to alternate
-    (keeps the more extreme point when two of the same type occur in a row
-    before the opposite type shows up)."""
-    points = []
-    for i in range(len(df)):
-        if is_high[i]:
-            points.append([i, "H", float(df["High"].iat[i])])
-        if is_low[i]:
-            points.append([i, "L", float(df["Low"].iat[i])])
-    points.sort(key=lambda p: p[0])
-
-    cleaned = []
-    for p in points:
-        if cleaned and cleaned[-1][1] == p[1]:
-            if p[1] == "H" and p[2] > cleaned[-1][2]:
-                cleaned[-1] = p
-            elif p[1] == "L" and p[2] < cleaned[-1][2]:
-                cleaned[-1] = p
-            # else: discard, existing point is more extreme
-        else:
-            cleaned.append(p)
-    return cleaned
-
-
-def label_swings(swings):
-    """HH/HL/LH/LL labeling: each swing compared only to the *previous*
-    swing of the same type — not a run of consecutive lower lows."""
-    labeled = []
-    last_high = None
-    last_low = None
-    for idx, kind, price in swings:
-        label = None
-        if kind == "H":
-            if last_high is not None:
-                label = "HH" if price > last_high else "LH"
-            last_high = price
-        else:
-            if last_low is not None:
-                label = "HL" if price > last_low else "LL"
-            last_low = price
-        labeled.append({"index": idx, "kind": kind, "price": price, "label": label})
-    return labeled
-
-
-def find_lh_cross_signal(df, labeled_swings):
+def compute_breakout_flags(df, ranges=RANGES):
     """
-    If the most recently confirmed swing high is a LH (lower high), and
-    price has since closed above that LH's level, return the signal.
-    Returns None if the last swing high isn't a LH, or price hasn't
-    crossed it yet.
+    For each N in `ranges`: is today's close above the highest High of the
+    preceding N trading days (today excluded)? Returns None for a given N
+    if there isn't enough history to evaluate it honestly.
     """
-    highs = [s for s in labeled_swings if s["kind"] == "H" and s["label"] is not None]
-    if not highs:
-        return None
+    close = df["Close"]
+    high = df["High"]
+    last_close = float(close.iloc[-1])
 
-    last_high = highs[-1]
-    if last_high["label"] != "LH":
-        return None
-
-    breakout_level = last_high["price"]
-    after = df.iloc[last_high["index"] + 1 :]
-    closes_above = after[after["Close"] > breakout_level]
-    if closes_above.empty:
-        return None
-
-    breakout_pos = df.index.get_loc(closes_above.index[0])
-    breakout_date = closes_above.index[0]
-    days_since = (len(df) - 1) - breakout_pos
-
-    # context only, not a condition: the swing low right before this LH
-    lows_before = [
-        s for s in labeled_swings if s["kind"] == "L" and s["index"] < last_high["index"]
-    ]
-    prior_low = lows_before[-1] if lows_before else None
-
-    return {
-        "is_signal": True,
-        "lh_level": round(breakout_level, 2),
-        "lh_date": df.index[last_high["index"]].strftime("%Y-%m-%d"),
-        "breakout_date": breakout_date.strftime("%Y-%m-%d"),
-        "days_since_breakout": int(days_since),
-        "prior_low_level": round(prior_low["price"], 2) if prior_low else None,
-        "prior_low_label": prior_low["label"] if prior_low else None,
-        "prior_low_date": (
-            df.index[prior_low["index"]].strftime("%Y-%m-%d") if prior_low else None
-        ),
-    }
+    out = {}
+    for n in ranges:
+        key = f"high_{n}"
+        if len(df) < n + 1:
+            out[key] = None
+            continue
+        prior_high = float(high.iloc[-(n + 1) : -1].max())
+        is_breakout = last_close > prior_high
+        pct_above = round((last_close - prior_high) / prior_high * 100, 2) if prior_high else None
+        out[key] = {
+            "is_breakout": bool(is_breakout),
+            "level": round(prior_high, 2),
+            "pct_above": pct_above,
+        }
+    return out
 
 
 def compute_context(df):
@@ -197,10 +110,7 @@ def process_one(sym, name, df):
     if len(df) < MIN_BARS_REQUIRED:
         return None
 
-    is_h, is_l = detect_swings(df)
-    swings = build_swing_sequence(df, is_h, is_l)
-    labeled = label_swings(swings)
-    signal = find_lh_cross_signal(df, labeled)
+    breakouts = compute_breakout_flags(df)
     ctx = compute_context(df)
 
     last_close = float(df["Close"].iloc[-1])
@@ -212,7 +122,7 @@ def process_one(sym, name, df):
         "company": name,
         "ltp": round(last_close, 2),
         "chg_pct": chg_pct,
-        "signal_lh_cross": signal,
+        **breakouts,
         **ctx,
     }
 
@@ -290,6 +200,7 @@ def write_output(results, skipped, universe_count, error=None):
         "scanned_count": len(results),
         "skipped_count": len(skipped),
         "skipped_symbols": skipped,
+        "ranges": list(RANGES),
         "results": results,
     }
     if error:
