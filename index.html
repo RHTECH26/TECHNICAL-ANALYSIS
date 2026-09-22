@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NSE Trend Reversal Scanner — Right Horizons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold-400:#F8AC19; --gold-300:#FAC55D; --gold-100:#FEF3DD;
+    --green-400:#1A803D; --green-100:#DDECE2;
+    --burgundy-400:#842924; --burgundy-100:#EDDFDE;
+    --brown-400:#9D662D; --brown-100:#F0E8E0;
+    --grey-400:#383B3D; --grey-300:#7D7F81; --grey-200:#CDCECE; --grey-100:#F5F5F5;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--brown-100); color:var(--grey-400);
+    font-family:'Poppins',Arial,sans-serif; font-size:14px; line-height:1.5;
+  }
+  header{
+    background:var(--white); border-bottom:3px solid var(--gold-400);
+    padding:28px 32px 22px;
+  }
+  header .eyebrow{
+    color:var(--brown-400); font-weight:600; font-size:12.5px; margin:0 0 6px;
+  }
+  h1{
+    font-family:'DM Serif Display',Georgia,serif; font-weight:400;
+    font-size:30px; letter-spacing:-0.3px; color:var(--burgundy-400); margin:0 0 6px;
+  }
+  header p.desc{ margin:0; color:var(--grey-300); max-width:640px; font-size:13.5px;}
+  .statbar{
+    display:flex; gap:28px; margin-top:16px; flex-wrap:wrap;
+  }
+  .statbar div{ font-size:12.5px; color:var(--grey-300); }
+  .statbar strong{ display:block; font-size:17px; color:var(--grey-400); font-weight:600; }
+
+  main{ max-width:1400px; margin:0 auto; padding:22px 32px 60px; }
+
+  .panel{
+    background:var(--white); border:1px solid var(--grey-200); border-radius:8px;
+    padding:18px 20px; margin-bottom:18px;
+  }
+  .panel h2{
+    font-family:'DM Serif Display',Georgia,serif; font-weight:400; font-size:17px;
+    color:var(--burgundy-400); margin:0 0 4px;
+  }
+  .panel .sub{ color:var(--grey-300); font-size:12.5px; margin:0 0 14px; max-width:760px;}
+
+  .controls{
+    display:flex; gap:18px; flex-wrap:wrap; align-items:flex-end;
+  }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; font-weight:600; color:var(--grey-400); }
+  .field select, .field input{
+    font-family:'Poppins',sans-serif; font-size:13px; padding:8px 10px;
+    border:1px solid var(--grey-200); border-radius:6px; background:var(--white);
+    color:var(--grey-400); min-width:150px;
+  }
+  .field.search input{ min-width:220px; }
+  .field small{ color:var(--grey-300); font-size:11px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{
+    position:sticky; top:0; background:var(--burgundy-400); color:var(--white);
+    text-align:left; padding:10px 12px; font-weight:600; font-size:11.5px;
+    white-space:nowrap; cursor:pointer; user-select:none;
+  }
+  thead th:hover{ background:#6f211d; }
+  thead th.sorted::after{ content:" \2193"; opacity:.85; }
+  thead th.sorted-asc::after{ content:" \2191"; opacity:.85; }
+  tbody tr{ border-bottom:1px solid var(--grey-100); }
+  tbody tr:nth-child(even){ background:var(--grey-100); }
+  tbody tr.is-signal{ background:var(--green-100); }
+  tbody tr.is-signal:nth-child(even){ background:#d3e6da; }
+  td{ padding:9px 12px; white-space:nowrap; }
+  td.company{ white-space:normal; max-width:220px; color:var(--grey-300); font-size:12px; }
+  td.sym{ font-weight:700; color:var(--grey-400); }
+  .up{ color:var(--green-400); font-weight:600; }
+  .down{ color:var(--burgundy-400); font-weight:600; }
+  .badge{
+    display:inline-block; background:var(--gold-100); color:var(--brown-400);
+    border:1px solid var(--gold-300); border-radius:20px; padding:2px 9px;
+    font-size:11px; font-weight:600;
+  }
+  .table-wrap{ max-height:70vh; overflow:auto; border:1px solid var(--grey-200); border-radius:8px; }
+
+  .empty{ padding:40px 20px; text-align:center; color:var(--grey-300); }
+  .empty strong{ display:block; color:var(--grey-400); font-size:15px; margin-bottom:6px; font-weight:600; }
+
+  footer{ text-align:center; color:var(--grey-300); font-size:11.5px; padding:20px; }
+  a{ color:var(--brown-400); }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">RIGHT HORIZONS &middot; RESEARCH DESK</p>
+  <h1>NSE Trend Reversal Scanner</h1>
+  <p class="desc">Flags NSE stocks that formed consecutive lower lows and have since closed back above the most recent lower high — an early break-of-structure reversal signal. Rules-based, not a recommendation.</p>
+  <div class="statbar" id="statbar">
+    <div><strong id="statGenerated">—</strong>last run</div>
+    <div><strong id="statUniverse">—</strong>universe scanned</div>
+    <div><strong id="statSignals">—</strong>signals live</div>
+    <div><strong id="statSkipped">—</strong>skipped (no data)</div>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>Filters</h2>
+    <p class="sub">Confirmation strength and level are computed server-side daily; recency, volume and search filter the results already found.</p>
+    <div class="controls">
+      <div class="field">
+        <label for="confirmSel">Lower-low confirmation</label>
+        <select id="confirmSel">
+          <option value="signal_2ll">2 consecutive lower lows</option>
+          <option value="signal_3ll">3 consecutive lower lows</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="recencySel">Breakout recency</label>
+        <select id="recencySel">
+          <option value="1">Today only</option>
+          <option value="3" selected>Last 3 trading days</option>
+          <option value="5">Last 5 trading days</option>
+          <option value="10">Last 10 trading days</option>
+          <option value="999999">All history</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="volInput">Min. volume vs 20D avg</label>
+        <input type="number" id="volInput" min="0" step="0.1" value="0" placeholder="0 = off">
+        <small>e.g. 1.5 = breakout day volume ≥ 1.5x average</small>
+      </div>
+      <div class="field search">
+        <label for="searchInput">Search symbol / name</label>
+        <input type="text" id="searchInput" placeholder="e.g. RELIANCE">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:0; overflow:hidden;">
+    <div class="table-wrap">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th data-key="symbol">Symbol</th>
+            <th data-key="company">Company</th>
+            <th data-key="ltp">LTP</th>
+            <th data-key="chg_pct">1D %</th>
+            <th data-key="prev_low_price">Prior Low</th>
+            <th data-key="last_low_price">Last Low</th>
+            <th data-key="breakout_level">Lower High Broken</th>
+            <th data-key="breakout_date">Breakout Date</th>
+            <th data-key="days_since_breakout">Days Since</th>
+            <th data-key="vol_ratio_20d">Vol x 20D Avg</th>
+            <th data-key="rsi14">RSI(14)</th>
+            <th data-key="above_200sma">vs 200 SMA</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;">
+        <strong>No matching signals</strong>
+        <span id="emptyMsg">Loosen the recency or volume filter, or wait for the next daily run.</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  NSE Trend Reversal Scanner — rules-based structure scan, not investment advice. Data via <a href="https://github.com/ranaroussi/yfinance" target="_blank" rel="noopener">yfinance</a> / Yahoo Finance, refreshed daily by GitHub Actions.
+</footer>
+
+<script>
+let RAW = { results: [] };
+let sortKey = "days_since_breakout";
+let sortAsc = true;
+
+function fmtNum(v, d = 2) {
+  return (v === null || v === undefined || Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
+}
+
+async function loadData() {
+  try {
+    const res = await fetch("data/scan_results.json", { cache: "no-store" });
+    RAW = await res.json();
+  } catch (e) {
+    RAW = { results: [], generated_at: null, universe_count: 0, scanned_count: 0, skipped_count: 0 };
+  }
+  document.getElementById("statGenerated").textContent = RAW.generated_at || "not yet run";
+  document.getElementById("statUniverse").textContent = RAW.scanned_count ?? 0;
+  document.getElementById("statSkipped").textContent = RAW.skipped_count ?? 0;
+  render();
+}
+
+function getSignalRows() {
+  const confirmKey = document.getElementById("confirmSel").value;
+  const maxDays = Number(document.getElementById("recencySel").value);
+  const minVol = Number(document.getElementById("volInput").value) || 0;
+  const search = document.getElementById("searchInput").value.trim().toUpperCase();
+
+  const rows = [];
+  for (const r of RAW.results) {
+    const sig = r[confirmKey];
+    if (!sig || !sig.is_signal) continue;
+    if (sig.days_since_breakout > maxDays) continue;
+    if (minVol > 0 && (r.vol_ratio_20d === null || r.vol_ratio_20d < minVol)) continue;
+    if (search && !(r.symbol.toUpperCase().includes(search) || (r.company || "").toUpperCase().includes(search))) continue;
+
+    rows.push({
+      symbol: r.symbol,
+      company: r.company,
+      ltp: r.ltp,
+      chg_pct: r.chg_pct,
+      prev_low_price: sig.prev_low_price,
+      last_low_price: sig.last_low_price,
+      breakout_level: sig.breakout_level,
+      breakout_date: sig.breakout_date,
+      days_since_breakout: sig.days_since_breakout,
+      vol_ratio_20d: r.vol_ratio_20d,
+      rsi14: r.rsi14,
+      above_200sma: r.above_200sma,
+    });
+  }
+
+  rows.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (typeof av === "string") { av = av || ""; bv = bv || ""; }
+    else { av = av ?? -Infinity; bv = bv ?? -Infinity; }
+    if (av < bv) return sortAsc ? -1 : 1;
+    if (av > bv) return sortAsc ? 1 : -1;
+    return 0;
+  });
+  return rows;
+}
+
+function render() {
+  const rows = getSignalRows();
+  document.getElementById("statSignals").textContent = rows.length;
+
+  const tbody = document.getElementById("resultsBody");
+  const empty = document.getElementById("emptyState");
+  tbody.innerHTML = "";
+
+  if (rows.length === 0) {
+    empty.style.display = "block";
+    document.getElementById("emptyMsg").textContent =
+      RAW.results.length === 0
+        ? "No scan has completed yet — the GitHub Action fills this in after its first run."
+        : "Loosen the recency or volume filter, or wait for the next daily run.";
+    return;
+  }
+  empty.style.display = "none";
+
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.className = "is-signal";
+    const chgClass = r.chg_pct >= 0 ? "up" : "down";
+    const trendLabel = r.above_200sma === null ? "—" : (r.above_200sma ? "Above" : "Below");
+    tr.innerHTML = `
+      <td class="sym">${r.symbol}</td>
+      <td class="company">${r.company || ""}</td>
+      <td>${fmtNum(r.ltp)}</td>
+      <td class="${chgClass}">${r.chg_pct >= 0 ? "+" : ""}${fmtNum(r.chg_pct)}%</td>
+      <td>${fmtNum(r.prev_low_price)}</td>
+      <td>${fmtNum(r.last_low_price)}</td>
+      <td>${fmtNum(r.breakout_level)}</td>
+      <td>${r.breakout_date || "—"}</td>
+      <td><span class="badge">${r.days_since_breakout}d</span></td>
+      <td>${fmtNum(r.vol_ratio_20d)}x</td>
+      <td>${fmtNum(r.rsi14, 1)}</td>
+      <td>${trendLabel}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+document.querySelectorAll("thead th").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (sortKey === key) { sortAsc = !sortAsc; } else { sortKey = key; sortAsc = true; }
+    document.querySelectorAll("thead th").forEach((t) => t.classList.remove("sorted", "sorted-asc"));
+    th.classList.add(sortAsc ? "sorted-asc" : "sorted");
+    render();
+  });
+});
+
+["confirmSel", "recencySel", "volInput", "searchInput"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", render);
+});
+
+loadData();
+</script>
+
+</body>
+</html>
