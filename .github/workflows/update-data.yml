@@ -1,0 +1,171 @@
+name: Update ETF data
+
+on:
+  schedule:
+    # 11:35 UTC = 5:05pm IST, shortly after NSE close (3:30pm IST). Adjust as you like.
+    - cron: "35 11 * * 1-5"
+    # 23:30 UTC = 5:00am IST (the next calendar day in UTC terms, since IST is UTC+5:30) —
+    # well after US markets have closed for the day, so the global ETF universe (mostly
+    # US/London-listed) has a fresh close to fetch before the Indian market day starts.
+    - cron: "30 23 * * *"
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+
+permissions:
+  contents: write
+
+# If you click "Run workflow" manually while a scheduled run (or another manual run) is
+# still going, both would eventually try to push a commit — whichever finishes first wins,
+# and the second one fails with "! [rejected] ... (fetch first)" because its copy of the
+# repo went stale the moment the first one pushed. This makes a second run WAIT for the
+# first to finish completely instead of running alongside it, so that can't happen.
+concurrency:
+  group: update-etf-data
+  cancel-in-progress: false
+
+# The four fetch scripts don't depend on each other, so they run as separate parallel
+# jobs instead of one after another — this is the single biggest speedup: total run time
+# drops from the SUM of all four scripts to roughly the LONGEST one (the global ETF
+# fetch, since it's by far the biggest ticker list). A final job waits for all four and
+# commits everything together in one push.
+jobs:
+  fetch-etf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: pip install yfinance pandas
+      - name: Fetch Indian ETF price history
+        run: python3 scripts/fetch_etf_data.py
+      - name: Upload data file
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-etf
+          path: data/etf-history.json
+          retention-days: 1
+
+  fetch-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: pip install yfinance pandas
+      - name: Fetch sectors, macro, flows, all 4 index prices & breadth (SMA/highs/lows)
+        run: python3 scripts/fetch_live_data.py
+      - name: Upload data files
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-live
+          path: |
+            data/live.json
+            data/nifty50-price.json
+            data/breadth-history-nifty50.json
+            data/nifty500-price.json
+            data/breadth-history.json
+            data/niftymidcap150-price.json
+            data/breadth-history-midcap150.json
+            data/niftysc250-price.json
+            data/breadth-history-sc250.json
+            data/breadth-extra.json
+          retention-days: 1
+
+  fetch-global-etf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: pip install yfinance pandas curl_cffi
+      - name: Fetch global ETF universe (966 tickers)
+        run: python3 scripts/fetch_global_etf_data.py
+      - name: Upload data file
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-global-etf
+          path: data/global-etf-history.json
+          retention-days: 1
+
+  fetch-sp500:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: pip install yfinance pandas lxml pyarrow requests
+      - name: Fetch S&P 500 constituents & breadth (SMA/highs/lows)
+        run: python3 scripts/fetch_sp500_breadth.py
+      - name: Upload data files
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-sp500
+          path: |
+            data/sp500-price.json
+            data/breadth-history-sp500.json
+            data/breadth-extra-sp500.json
+          retention-days: 1
+
+  fetch-breakout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: pip install yfinance pandas curl_cffi
+      - name: Scan the global ETF universe for today's breakouts (new 20-day high + volume confirmation)
+        run: python3 scripts/fetch_breakout_scanner.py
+      - name: Upload data file
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-breakout
+          path: data/breakout-scanner.json
+          retention-days: 1
+
+  commit:
+    needs: [fetch-etf, fetch-live, fetch-global-etf, fetch-breakout, fetch-sp500]
+    if: always() && (needs.fetch-etf.result == 'success' || needs.fetch-live.result == 'success' || needs.fetch-global-etf.result == 'success' || needs.fetch-breakout.result == 'success' || needs.fetch-sp500.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Download all data files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: data-*
+          path: data
+          merge-multiple: true
+      - name: Merge S&P 500 breadth into breadth-extra.json
+        # fetch-live and fetch-sp500 run in parallel, isolated checkouts, and each
+        # produces its own breadth data -- fetch-live writes the 4 Nifty indices'
+        # breadth-extra.json, fetch-sp500 writes its "sp500" entry to a SEPARATE
+        # file (breadth-extra-sp500.json) precisely so the two artifacts can't
+        # clobber each other. This step combines them into the one file the site
+        # actually reads.
+        run: python3 scripts/merge_breadth_extra.py
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/etf-history.json data/live.json data/nifty50-price.json data/breadth-history-nifty50.json data/nifty500-price.json data/breadth-history.json data/niftymidcap150-price.json data/breadth-history-midcap150.json data/niftysc250-price.json data/breadth-history-sc250.json data/breadth-extra.json data/global-etf-history.json data/breakout-scanner.json data/sp500-price.json data/breadth-history-sp500.json
+          git diff --quiet --cached || git commit -m "Update live data ($(date -u +%Y-%m-%d))"
+          # Belt-and-braces: if something else (a manual edit on GitHub, an overlapping run
+          # the concurrency guard above didn't catch) pushed to main in the meantime, rebase
+          # this commit on top of it and retry, instead of just failing outright.
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              pushed=true
+              break
+            fi
+            echo "Push rejected (attempt $attempt/5) — pulling latest and retrying..."
+            git fetch origin main
+            git rebase origin/main
+            sleep 5
+          done
+          $pushed || { echo "Still couldn't push after 5 attempts — giving up."; exit 1; }
