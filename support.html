@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NSE Stocks at Support</title>
+<style>
+:root{--gold:#F8AC19;--burg:#842924;--bg:#F0E8E0;--txt:#383B3D;--mut:#7D7F81;--line:#CDCECE;--green:#1A803D}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+header{background:var(--burg);color:#fff;padding:18px 24px;border-bottom:4px solid var(--gold)}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;font-size:13px;opacity:.85}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.bar{display:flex;flex-wrap:wrap;gap:14px;background:#fff;padding:12px 16px;border-radius:8px;border:1px solid var(--line);align-items:end}
+.bar label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:4px}
+.bar input,.bar select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+.stats{margin:10px 2px;font-size:13px;color:var(--mut)}
+.tbl{background:#fff;border-radius:8px;border:1px solid var(--line);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:var(--burg);color:#fff;text-align:right;padding:10px;cursor:pointer;white-space:nowrap;font-weight:600;position:sticky;top:0}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+td{padding:9px 10px;text-align:right;border-top:1px solid #eee}
+tr:nth-child(even) td{background:#F5F5F5}
+.pill{padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.at{background:#DDECE2;color:var(--green)}.near{background:#FEF3DD;color:#9D662D}
+a{color:var(--burg);text-decoration:none;font-weight:600}
+</style></head><body>
+<header><h1>NSE Stocks at Support</h1><a href="index.html" style="color:#FAC55D;font-size:13px">← Back to Markets Screener</a><p id="sub">Loading…</p></header>
+<div class="wrap">
+ <div class="bar">
+  <label>Max distance above support (%)<input id="dist" type="number" value="3" step="0.5" min="0"></label>
+  <label>Min swing size (%)<input id="swing" type="number" value="5" step="1" min="5"></label>
+  <label>Min retests<input id="ret" type="number" value="0" min="0"></label>
+  <label>Support age (days, max)<input id="age" type="number" value="500" min="1"></label>
+  <label>Search<input id="q" placeholder="Symbol / name"></label>
+ </div>
+ <div class="stats" id="stats"></div>
+ <div class="tbl"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
+</div>
+<script>
+const cols=[["symbol","Symbol"],["name","Company"],["cmp","CMP"],["support","Support"],["dist_pct","% Above"],
+ ["swing_up_pct","Swing Up %"],["swing_down_pct","Prior Fall %"],["retests","Retests"],["support_date","Low Date"],["days_since","Days Ago"]];
+let data=[],sortK="dist_pct",asc=true;
+const $=id=>document.getElementById(id);
+$("head").innerHTML=cols.map(c=>`<th data-k="${c[0]}">${c[1]}</th>`).join("");
+$("head").onclick=e=>{const k=e.target.dataset.k;if(!k)return;asc=(sortK===k)?!asc:true;sortK=k;render()};
+["dist","swing","ret","age","q"].forEach(i=>$(i).oninput=render);
+function render(){
+ const d=+$("dist").value,s=+$("swing").value,r=+$("ret").value,a=+$("age").value,q=$("q").value.toLowerCase();
+ let rows=data.filter(x=>x.dist_pct<=d&&x.swing_up_pct>=s&&x.retests>=r&&x.days_since<=a&&(x.symbol+x.name).toLowerCase().includes(q));
+ rows.sort((x,y)=>{const A=x[sortK],B=y[sortK];const c=(typeof A==="string")?A.localeCompare(B):((A??-1e9)-(B??-1e9));return asc?c:-c});
+ $("stats").textContent=`${rows.length} stocks match`;
+ $("body").innerHTML=rows.map(x=>`<tr>
+  <td><a target="_blank" href="https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(x.symbol.replace('&','_'))}">${x.symbol}</a></td>
+  <td>${x.name}</td><td>${x.cmp.toFixed(2)}</td><td>${x.support.toFixed(2)}</td>
+  <td><span class="pill ${x.dist_pct<=1.5?'at':'near'}">${x.dist_pct.toFixed(2)}%</span></td>
+  <td>${x.swing_up_pct}</td><td>${x.swing_down_pct??"–"}</td><td>${x.retests}</td><td>${x.support_date}</td><td>${x.days_since}</td></tr>`).join("");
+}
+fetch("data/support.json?"+Date.now()).then(r=>r.json()).then(j=>{
+ data=j.results;$("sub").textContent=`Swing ≥ ${j.params.swing_pct}% · scanned ${j.scanned} stocks · updated ${j.updated}`;render();
+}).catch(()=>$("sub").textContent="data/support.json not found — run the GitHub Action first");
+</script></body></html>
