@@ -227,6 +227,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="global-etfs">Global ETF Heatmap</button>
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
   <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
+  <button role="tab" aria-selected="false" data-panel="support">Support Scanner</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -263,6 +264,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <h3>ETF Screener</h3>
       <p>Rules-based daily scan of the global ETF universe: range breakout, MA crossover, volume confirmation, or narrow-range breakout mode.</p>
       <span class="go">Open ETF screener →</span>
+    </button>
+    <button class="tile" data-goto="support">
+      <span class="num">06</span>
+      <h3>Support Scanner</h3>
+      <p>NSE stocks sitting at an intact previous swing-low support, where the swing was 5% or more. Daily scan on Yahoo Finance data.</p>
+      <span class="go">Open support scanner →</span>
     </button>
   </div>
 </section>
@@ -497,6 +504,47 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       </table>
     </div>
     <div class="note" id="brk-note">Rules-based scan (not the ML breakout-probability model) — flags an ETF when today's close is a new 20-day high AND today's volume is at least 1.5x its trailing 20-day average. 52-week-high, RSI and 50/200-day-SMA trend are shown for context and aren't part of the flag itself. Live-updated daily by the site's GitHub Action; a ticker needs enough price history for a given check (e.g. 252 trading days for the 52-week-high and 200-day-SMA columns) or it shows "—" for that column instead of being dropped from the table.</div>
+  </div>
+</section>
+
+<!-- ================= SUPPORT SCANNER ================= -->
+<section class="panel" id="panel-support">
+  <div class="card">
+    <h4>Support Scanner<span class="asof" id="sup-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="sup-dot"></span>
+      <span id="sup-source-label">Loading scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max distance above support (%)
+        <input type="number" id="sup-dist" value="3" min="0" max="3" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min. swing size (%)
+        <input type="number" id="sup-swing" value="5" min="5" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min. retests
+        <input type="number" id="sup-ret" value="0" min="0" max="20" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max support age (days)
+        <input type="number" id="sup-age" value="500" min="1" max="1000" step="10" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="sup-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="sup-count" class="note" style="margin:0;"></span>
+      <button type="button" id="sup-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="sup-head">
+          <tr>
+            <th class="sortable" data-key="symbol">Symbol</th><th class="sortable" data-key="name">Company</th>
+            <th class="num sortable" data-key="cmp">CMP</th><th class="num sortable" data-key="support">Support</th>
+            <th class="num sortable" data-key="dist_pct">% Above</th><th class="num sortable" data-key="swing_up_pct">Swing Up %</th>
+            <th class="num sortable" data-key="swing_down_pct">Prior Fall %</th><th class="num sortable" data-key="retests">Retests</th>
+            <th class="sortable" data-key="support_date">Low Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
+          </tr>
+        </thead>
+        <tbody id="sup-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="sup-note">A swing low is confirmed only after price rallies at least 5% from it (zig-zag on daily High/Low). A stock is listed when its latest close is within the chosen distance above that low. A support is dropped for good once any close falls more than 1% below it.</div>
   </div>
 </section>
 
@@ -2149,5 +2197,68 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       if(window.__breakoutDrawn){ renderBreakoutScanner(); }
     }
   }).catch(function(){ /* keep the "connect live data" empty state showing */ });
+})();
+</script>
+
+<script>
+(function(){
+  var SUP=null, sortKey='dist_pct', asc=true, loaded=false;
+  function $(i){return document.getElementById(i);}
+  function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function rows(){
+    if(!SUP) return [];
+    var d=+$('sup-dist').value, sw=+$('sup-swing').value, rt=+$('sup-ret').value, ag=+$('sup-age').value, q=$('sup-search').value.toLowerCase();
+    var r=SUP.results.filter(function(x){
+      return x.dist_pct<=d && x.swing_up_pct>=sw && x.retests>=rt && x.days_since<=ag && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
+    });
+    r.sort(function(a,b){
+      var A=a[sortKey], B=b[sortKey], c;
+      if(typeof A==='string' || typeof B==='string') c=String(A==null?'':A).localeCompare(String(B==null?'':B));
+      else c=(A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc?c:-c;
+    });
+    return r;
+  }
+  function render(){
+    var r=rows();
+    $('sup-count').textContent=r.length+' stocks';
+    $('sup-body').innerHTML=r.map(function(x){
+      var cls=x.dist_pct<=1.5?'up':'';
+      var tv='https://www.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(String(x.symbol).replace('&','_'));
+      return '<tr><td class="name"><a href="'+tv+'" target="_blank" rel="noopener">'+esc(x.symbol)+'</a></td><td>'+esc(x.name)+'</td>'+
+        '<td class="num mono">'+x.cmp.toFixed(2)+'</td><td class="num mono">'+x.support.toFixed(2)+'</td>'+
+        '<td class="num mono '+cls+'">'+x.dist_pct.toFixed(2)+'%</td><td class="num mono">'+x.swing_up_pct+'</td>'+
+        '<td class="num mono">'+(x.swing_down_pct==null?'–':x.swing_down_pct)+'</td><td class="num mono">'+x.retests+'</td>'+
+        '<td class="mono">'+esc(x.support_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
+    }).join('');
+  }
+  function load(){
+    if(loaded) return; loaded=true;
+    fetch('data/support.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      SUP=j;
+      $('sup-asof').textContent='updated '+j.updated;
+      $('sup-source-label').textContent='Live scan — '+j.scanned+' stocks scanned (swing ≥ '+j.params.swing_pct+'%)'+(j.failed?' · '+j.failed+' skipped':'');
+      $('sup-dot').className='tm-dot live';
+      render();
+    }).catch(function(){
+      $('sup-asof').textContent='no data yet';
+      $('sup-source-label').textContent='data/support.json not found — run the Support Scan action first';
+    });
+  }
+  ['sup-dist','sup-swing','sup-ret','sup-age','sup-search'].forEach(function(id){ $(id).addEventListener('input',render); });
+  $('sup-head').addEventListener('click',function(e){
+    var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
+    asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
+  });
+  $('sup-export-csv').addEventListener('click',function(){
+    var r=rows(), h=['Symbol','Company','CMP','Support','% Above','Swing Up %','Prior Fall %','Retests','Low Date','Days Ago'];
+    var lines=[h.join(',')].concat(r.map(function(x){
+      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"',x.cmp,x.support,x.dist_pct,x.swing_up_pct,x.swing_down_pct==null?'':x.swing_down_pct,x.retests,x.support_date,x.days_since].join(',');
+    }));
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
+    a.download='support-scan.csv'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="support"],[data-goto="support"]').forEach(function(b){ b.addEventListener('click',load); });
 })();
 </script>
