@@ -19,9 +19,12 @@ import pandas as pd
 import yfinance as yf
 
 SWING_PCT      = float(os.getenv("SWING_PCT", 5.0))      # min swing size (%)
-PROXIMITY_PCT  = float(os.getenv("PROXIMITY_PCT", 5.0))  # max distance above support kept in output (%)
+PROXIMITY_PCT  = float(os.getenv("PROXIMITY_PCT", 3.0))  # only stocks within this % above support are kept
 BREAK_TOL_PCT  = float(os.getenv("BREAK_TOL_PCT", 1.0))  # close below support by > this = support broken
 LOOKBACK       = os.getenv("LOOKBACK", "2y")
+TREND_SWING_PCT = float(os.getenv("TREND_SWING_PCT", 5.0))  # a swing high/low is a turning point followed by a move of at least this %
+TREND_MAX_DAYS  = int(os.getenv("TREND_MAX_DAYS", 30))      # keep signals up to this many days old
+TREND_OUT_FILE  = os.getenv("TREND_OUT_FILE", "data/trend_change.json")
 CHUNK          = int(os.getenv("CHUNK", 100))
 TICKER_FILE    = os.getenv("TICKER_FILE", "data/support_tickers.csv")  # needs a 'Symbol' column
 OUT_FILE       = os.getenv("OUT_FILE", "data/support.json")
@@ -107,6 +110,71 @@ def analyse(df):
     return best
 
 
+def analyse_trend(df):
+    """Change of trend on the DAILY chart, same swing definition as the support scanner.
+    Swings are the turning points of the price (a swing only counts once price has moved
+    TREND_SWING_PCT away from it).   Uptrend = HH & HL.   Downtrend = LL & LH.
+    BULLISH change: downtrend (LL and LH), then price closes ABOVE the last lower high.
+    BEARISH change: uptrend (HH and HL), then price closes BELOW the last higher low.
+    Cancelled if price later closes back through the swing that preceded the break."""
+    df = df.dropna(subset=["High", "Low", "Close"])
+    if len(df) < 60:
+        return None
+    high, low, close = df["High"].values, df["Low"].values, df["Close"].values
+    dates = df.index
+    piv = zigzag(high, low, TREND_SWING_PCT)
+    n = len(close)
+    best = None
+    for k in range(3, len(piv)):
+        a, b, c, d = piv[k - 3:k + 1]
+        types = a[2] + b[2] + c[2] + d[2]
+        if types == "LHLH":                      # L1 H1 L2 H2
+            L1, H1, L2, H2 = a[1], b[1], c[1], d[1]
+            if not (L2 < L1 and H2 < H1):        # need lower low AND lower high
+                continue
+            hit = np.where(close[d[0] + 1:] > H2)[0]
+            if not len(hit):
+                continue
+            j = d[0] + 1 + int(hit[0])
+            ref = float(low[d[0]:j + 1].min())   # the swing low that preceded the break
+            if (close[j:] < ref).any():
+                continue
+            sig = dict(direction="Bullish", level=H2, ref=ref)
+        elif types == "HLHL":                    # H1 L1 H2 L2
+            H1, L1, H2, L2 = a[1], b[1], c[1], d[1]
+            if not (H2 > H1 and L2 > L1):        # need higher high AND higher low
+                continue
+            hit = np.where(close[d[0] + 1:] < L2)[0]
+            if not len(hit):
+                continue
+            j = d[0] + 1 + int(hit[0])
+            ref = float(high[d[0]:j + 1].max())  # the swing high that preceded the break
+            if (close[j:] > ref).any():
+                continue
+            sig = dict(direction="Bearish", level=L2, ref=ref)
+        else:
+            continue
+        if n - 1 - j > TREND_MAX_DAYS:
+            continue
+        if best is None or j > best[0]:
+            best = (j, sig)
+    if not best:
+        return None
+    j, sig = best
+    cmp_ = float(close[-1])
+    return dict(
+        direction=sig["direction"],
+        cmp=round(cmp_, 2),
+        level=round(float(sig["level"]), 2),
+        pct_from_level=round((cmp_ / sig["level"] - 1) * 100, 2),
+        ref=round(float(sig["ref"]), 2),
+        pct_to_ref=round((cmp_ / sig["ref"] - 1) * 100, 2),
+        trigger_date=str(dates[j].date()),
+        days_since=int(n - 1 - j),
+        date=str(dates[-1].date()),
+    )
+
+
 def load_universe():
     t = pd.read_csv(TICKER_FILE)
     sym_col = next(c for c in t.columns if c.lower() in ("symbol", "ticker"))
@@ -120,7 +188,7 @@ def main():
     uni = load_universe()
     syms = uni["sym"].tolist()
     names = dict(zip(uni["sym"], uni["name"]))
-    results, failed = [], 0
+    results, trend, failed = [], [], 0
     for s in range(0, len(syms), CHUNK):
         batch = syms[s:s + CHUNK]
         yf_syms = [x + ".NS" for x in batch]
@@ -136,9 +204,13 @@ def main():
                 if r:
                     r.update(symbol=sym, name=names.get(sym, sym))
                     results.append(r)
+                t = analyse_trend(df)
+                if t:
+                    t.update(symbol=sym, name=names.get(sym, sym))
+                    trend.append(t)
             except Exception:
                 failed += 1
-        print(f"{min(s + CHUNK, len(syms))}/{len(syms)} scanned, {len(results)} at support", flush=True)
+        print(f"{min(s + CHUNK, len(syms))}/{len(syms)} scanned, {len(results)} at support, {len(trend)} trend changes", flush=True)
         time.sleep(1)
     results.sort(key=lambda r: abs(r["dist_pct"]))
     os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
@@ -147,7 +219,13 @@ def main():
             updated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             params=dict(swing_pct=SWING_PCT, proximity_pct=PROXIMITY_PCT, break_tol_pct=BREAK_TOL_PCT),
             scanned=len(syms), failed=failed, results=results), f)
-    print(f"Done. {len(results)} stocks at support. Failed: {failed}")
+    trend.sort(key=lambda r: r["days_since"])
+    with open(TREND_OUT_FILE, "w") as f:
+        json.dump(dict(
+            updated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            params=dict(swing_pct=TREND_SWING_PCT, max_days=TREND_MAX_DAYS),
+            scanned=len(syms), failed=failed, results=trend), f)
+    print(f"Done. {len(results)} at support, {len(trend)} trend changes. Failed: {failed}")
 
 
 if __name__ == "__main__":
