@@ -228,6 +228,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
   <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
   <button role="tab" aria-selected="false" data-panel="support">Support Scanner</button>
+  <button role="tab" aria-selected="false" data-panel="trend">Trend Change</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -270,6 +271,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <h3>Support Scanner</h3>
       <p>NSE stocks sitting at an intact previous swing-low support, where the swing was 5% or more. Daily scan on Yahoo Finance data.</p>
       <span class="go">Open support scanner →</span>
+    </button>
+    <button class="tile" data-goto="trend">
+      <span class="num">07</span>
+      <h3>Primary Trend Change</h3>
+      <p>Daily Dow structure: price closes above the last lower high after a downtrend (bullish), or below the last higher low after an uptrend (bearish).</p>
+      <span class="go">Open trend change →</span>
     </button>
   </div>
 </section>
@@ -545,6 +552,45 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       </table>
     </div>
     <div class="note" id="sup-note">A swing low is confirmed only after price rallies at least 5% from it (zig-zag on daily High/Low). A stock is listed when its latest close is within the chosen distance above that low. A support is dropped for good once any close falls more than 1% below it.</div>
+  </div>
+</section>
+
+<!-- ================= PRIMARY TREND CHANGE ================= -->
+<section class="panel" id="panel-trend">
+  <div class="card">
+    <h4>Primary Trend Change<span class="asof" id="trd-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="trd-dot"></span>
+      <span id="trd-source-label">Loading scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
+        <select id="trd-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (days)
+        <input type="number" id="trd-days" value="10" min="0" max="60" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
+        <input type="number" id="trd-ext" value="10" min="0" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="trd-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="trd-count" class="note" style="margin:0;"></span>
+      <button type="button" id="trd-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="trd-head">
+          <tr>
+            <th class="sortable" data-key="symbol">Symbol</th><th class="sortable" data-key="name">Company</th>
+            <th class="sortable" data-key="direction">Signal</th><th class="num sortable" data-key="cmp">CMP</th>
+            <th class="num sortable" data-key="level">Level Broken</th><th class="num sortable" data-key="pct_from_level">% From Level</th>
+            <th class="num sortable" data-key="ref">Stop Reference</th><th class="num sortable" data-key="pct_to_ref">% From It</th>
+            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
+          </tr>
+        </thead>
+        <tbody id="trd-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="trd-note">Daily chart. Swing highs and lows are the real turning points of the price (same swing definition as the Support Scanner: price must move at least 5% away from a turning point for it to count). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it.</div>
   </div>
 </section>
 
@@ -2260,5 +2306,68 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.download='support-scan.csv'; document.body.appendChild(a); a.click(); a.remove();
   });
   document.querySelectorAll('[data-panel="support"],[data-goto="support"]').forEach(function(b){ b.addEventListener('click',load); });
+})();
+</script>
+
+<script>
+(function(){
+  var TRD=null, sortKey='days_since', asc=true, loaded=false;
+  function $(i){return document.getElementById(i);}
+  function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function rows(){
+    if(!TRD) return [];
+    var dir=$('trd-dir').value, dy=+$('trd-days').value, ex=+$('trd-ext').value, q=$('trd-search').value.toLowerCase();
+    var r=TRD.results.filter(function(x){
+      return (!dir||x.direction===dir) && x.days_since<=dy && Math.abs(x.pct_from_level)<=ex && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
+    });
+    r.sort(function(a,b){
+      var A=a[sortKey], B=b[sortKey], c;
+      if(typeof A==='string' || typeof B==='string') c=String(A==null?'':A).localeCompare(String(B==null?'':B));
+      else c=(A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc?c:-c;
+    });
+    return r;
+  }
+  function render(){
+    var r=rows();
+    $('trd-count').textContent=r.length+' stocks';
+    $('trd-body').innerHTML=r.map(function(x){
+      var cls=x.direction==='Bullish'?'up':'down';
+      var tv='https://www.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(String(x.symbol).replace('&','_'));
+      return '<tr><td class="name"><a href="'+tv+'" target="_blank" rel="noopener">'+esc(x.symbol)+'</a></td><td>'+esc(x.name)+'</td>'+
+        '<td class="'+cls+'"><b>'+esc(x.direction)+'</b></td><td class="num mono">'+x.cmp.toFixed(2)+'</td>'+
+        '<td class="num mono">'+x.level.toFixed(2)+'</td><td class="num mono '+cls+'">'+(x.pct_from_level>=0?'+':'')+x.pct_from_level.toFixed(2)+'%</td>'+
+        '<td class="num mono">'+x.ref.toFixed(2)+'</td><td class="num mono">'+(x.pct_to_ref>=0?'+':'')+x.pct_to_ref.toFixed(2)+'%</td>'+
+        '<td class="mono">'+esc(x.trigger_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
+    }).join('');
+  }
+  function load(){
+    if(loaded) return; loaded=true;
+    fetch('data/trend_change.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      TRD=j;
+      $('trd-asof').textContent='updated '+j.updated;
+      $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the daily chart (swings ≥ '+j.params.swing_pct+'%)'+(j.failed?' · '+j.failed+' skipped':'');
+      $('trd-dot').className='tm-dot live';
+      render();
+    }).catch(function(){
+      $('trd-asof').textContent='no data yet';
+      $('trd-source-label').textContent='data/trend_change.json not found — run the Support Scan action first';
+    });
+  }
+  ['trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
+  $('trd-head').addEventListener('click',function(e){
+    var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
+    asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
+  });
+  $('trd-export-csv').addEventListener('click',function(){
+    var r=rows(), h=['Symbol','Company','Signal','CMP','Level Broken','% From Level','Stop Reference','% From It','Break Date','Days Ago'];
+    var lines=[h.join(',')].concat(r.map(function(x){
+      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"',x.direction,x.cmp,x.level,x.pct_from_level,x.ref,x.pct_to_ref,x.trigger_date,x.days_since].join(',');
+    }));
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
+    a.download='trend-change-scan.csv'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="trend"],[data-goto="trend"]').forEach(function(b){ b.addEventListener('click',load); });
 })();
 </script>
