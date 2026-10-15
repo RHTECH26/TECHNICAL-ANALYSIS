@@ -564,6 +564,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <span id="trd-source-label">Loading scan…</span>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
+        <select id="trd-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
         <select id="trd-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (days)
@@ -590,7 +592,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="trd-body"></tbody>
       </table>
     </div>
-    <div class="note" id="trd-note">Daily chart. Swing highs and lows are the real turning points of the price (same swing definition as the Support Scanner: price must move at least 5% away from a turning point for it to count). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it.</div>
+    <div class="note" id="trd-note">Daily chart. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Days Ago counts trading days. Signals use closing prices only.</div>
   </div>
 </section>
 
@@ -2317,7 +2319,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   function rows(){
     if(!TRD) return [];
     var dir=$('trd-dir').value, dy=+$('trd-days').value, ex=+$('trd-ext').value, q=$('trd-search').value.toLowerCase();
-    var r=TRD.results.filter(function(x){
+    var src=(TRD.variants&&TRD.variants[$('trd-swing').value])||TRD.results;
+    var r=src.filter(function(x){
       return (!dir||x.direction===dir) && x.days_since<=dy && Math.abs(x.pct_from_level)<=ex && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
     });
     r.sort(function(a,b){
@@ -2343,18 +2346,18 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   }
   function load(){
     if(loaded) return; loaded=true;
-    fetch('data/trend_change.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+    fetch('data/dow_trend.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
       TRD=j;
       $('trd-asof').textContent='updated '+j.updated;
-      $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the daily chart (swings ≥ '+j.params.swing_pct+'%)'+(j.failed?' · '+j.failed+' skipped':'');
+      $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the daily chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped':'');
       $('trd-dot').className='tm-dot live';
       render();
     }).catch(function(){
       $('trd-asof').textContent='no data yet';
-      $('trd-source-label').textContent='data/trend_change.json not found — run the Support Scan action first';
+      $('trd-source-label').textContent='data/dow_trend.json not found — run the Update Dow Trend Change Scan action first';
     });
   }
-  ['trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
+  ['trd-swing','trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
   $('trd-head').addEventListener('click',function(e){
     var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
     asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
