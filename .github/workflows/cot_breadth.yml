@@ -1,0 +1,29 @@
+name: Update COT Breadth
+
+on:
+  schedule:
+    - cron: "45 11 * * 1-5"     # 5:15 PM IST, Mon-Fri (after market close)
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy
+      - run: python scan_cot_breadth.py
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add data/cot_breadth.json index_lists
+          git diff --staged --quiet || git commit -m "Update COT breadth"
+          git pull --rebase
+          git push
