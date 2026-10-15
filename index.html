@@ -229,6 +229,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
   <button role="tab" aria-selected="false" data-panel="support">Support Scanner</button>
   <button role="tab" aria-selected="false" data-panel="trend">Trend Change</button>
+  <button role="tab" aria-selected="false" data-panel="global-cot">Global ETF CoT</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -277,6 +278,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <h3>Primary Trend Change</h3>
       <p>Daily Dow structure: price closes above the last lower high after a downtrend (bullish), or below the last higher low after an uptrend (bearish).</p>
       <span class="go">Open trend change →</span>
+    </button>
+    <button class="tile" data-goto="global-cot">
+      <span class="num">08</span>
+      <h3>Global ETF CoT</h3>
+      <p>Dow Theory change of trend across the global ETF universe: daily close breaking the last lower high (bullish) or last higher low (bearish).</p>
+      <span class="go">Open Global ETF CoT →</span>
     </button>
   </div>
 </section>
@@ -593,6 +600,53 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       </table>
     </div>
     <div class="note" id="trd-note">Daily chart. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Days Ago counts trading days. Signals use closing prices only.</div>
+  </div>
+</section>
+
+<!-- ================= GLOBAL ETF CoT ================= -->
+<section class="panel" id="panel-global-cot">
+  <div class="card">
+    <h4>Global ETF CoT — Change of Trend<span class="asof" id="gcot-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="gcot-dot"></span>
+      <span id="gcot-source-label">Loading scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Market
+        <select id="gcot-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Category
+        <select id="gcot-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min avg volume
+        <input type="number" id="gcot-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
+        <select id="gcot-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
+        <select id="gcot-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (days)
+        <input type="number" id="gcot-days" value="10" min="0" max="30" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
+        <input type="number" id="gcot-ext" value="10" min="0" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="gcot-search" class="gtm-search-input" placeholder="Search by ticker or fund name…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="gcot-count" class="note" style="margin:0;"></span>
+      <button type="button" id="gcot-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="gcot-head">
+          <tr>
+            <th class="sortable" data-key="symbol">Ticker</th><th class="sortable" data-key="name">ETF</th><th class="sortable" data-key="cat">Category</th>
+            <th class="sortable" data-key="direction">Signal</th><th class="num sortable" data-key="cmp">CMP</th>
+            <th class="num sortable" data-key="level">Level Broken</th><th class="num sortable" data-key="pct_from_level">% From Level</th>
+            <th class="num sortable" data-key="ref">Stop Reference</th><th class="num sortable" data-key="pct_to_ref">% From It</th>
+            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
+          </tr>
+        </thead>
+        <tbody id="gcot-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="gcot-note">Daily chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Days Ago counts trading days. Min avg volume uses the volume figure from the Global ETF Heatmap list; set it to 0 to see illiquid ETFs too.</div>
   </div>
 </section>
 
@@ -2374,3 +2428,73 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   document.querySelectorAll('[data-panel="trend"],[data-goto="trend"]').forEach(function(b){ b.addEventListener('click',load); });
 })();
 </script>
+
+<script>
+(function(){
+  var G=null, sortKey='days_since', asc=true, loaded=false;
+  function $(i){return document.getElementById(i);}
+  function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  var MKT={TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
+  function market(sym){ var i=sym.lastIndexOf('.'); if(i<0) return 'US'; var s=sym.slice(i+1); return MKT[s]||'Other'; }
+  function rows(){
+    if(!G) return [];
+    var src=(G.variants&&G.variants[$('gcot-swing').value])||G.results;
+    var dir=$('gcot-dir').value, dy=+$('gcot-days').value, ex=+$('gcot-ext').value, q=$('gcot-search').value.toLowerCase();
+    var mk=$('gcot-mkt').value, cat=$('gcot-cat').value, mv=+$('gcot-vol').value||0;
+    var r=src.filter(function(x){
+      return (!dir||x.direction===dir) && x.days_since<=dy && Math.abs(x.pct_from_level)<=ex &&
+             (!mk||market(x.symbol)===mk) && (!cat||x.cat===cat) && (x.vol||0)>=mv &&
+             (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
+    });
+    r.sort(function(a,b){
+      var A=a[sortKey], B=b[sortKey], c;
+      if(typeof A==='string' || typeof B==='string') c=String(A==null?'':A).localeCompare(String(B==null?'':B));
+      else c=(A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc?c:-c;
+    });
+    return r;
+  }
+  function render(){
+    var r=rows();
+    $('gcot-count').textContent=r.length+' ETFs';
+    $('gcot-body').innerHTML=r.map(function(x){
+      var cls=x.direction==='Bullish'?'up':'down';
+      var yf='https://finance.yahoo.com/quote/'+encodeURIComponent(x.symbol)+'/chart';
+      return '<tr><td class="name"><a href="'+yf+'" target="_blank" rel="noopener">'+esc(x.symbol)+'</a></td><td>'+esc(x.name)+'</td><td>'+esc(x.cat)+'</td>'+
+        '<td class="'+cls+'"><b>'+esc(x.direction)+'</b></td><td class="num mono">'+x.cmp.toFixed(2)+'</td>'+
+        '<td class="num mono">'+x.level.toFixed(2)+'</td><td class="num mono '+cls+'">'+(x.pct_from_level>=0?'+':'')+x.pct_from_level.toFixed(2)+'%</td>'+
+        '<td class="num mono">'+x.ref.toFixed(2)+'</td><td class="num mono">'+(x.pct_to_ref>=0?'+':'')+x.pct_to_ref.toFixed(2)+'%</td>'+
+        '<td class="mono">'+esc(x.trigger_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
+    }).join('');
+  }
+  function load(){
+    if(loaded) return; loaded=true;
+    fetch('data/global_etf_cot.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      G=j;
+      $('gcot-asof').textContent='updated '+j.updated;
+      $('gcot-source-label').textContent='Live scan — '+j.scanned+' ETFs scanned on the daily chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped (no data / stale)':'');
+      $('gcot-dot').className='tm-dot live';
+      render();
+    }).catch(function(){
+      $('gcot-asof').textContent='no data yet';
+      $('gcot-source-label').textContent='data/global_etf_cot.json not found — run the Update Global ETF CoT Scan action first';
+    });
+  }
+  ['gcot-swing','gcot-mkt','gcot-cat','gcot-vol','gcot-dir','gcot-days','gcot-ext','gcot-search'].forEach(function(id){ $(id).addEventListener('input',render); });
+  $('gcot-head').addEventListener('click',function(e){
+    var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
+    asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
+  });
+  $('gcot-export-csv').addEventListener('click',function(){
+    var r=rows(), h=['Ticker','ETF','Category','Signal','CMP','Level Broken','% From Level','Stop Reference','% From It','Break Date','Days Ago'];
+    var lines=[h.join(',')].concat(r.map(function(x){
+      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"','"'+String(x.cat).replace(/"/g,'""')+'"',x.direction,x.cmp,x.level,x.pct_from_level,x.ref,x.pct_to_ref,x.trigger_date,x.days_since].join(',');
+    }));
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
+    a.download='global-etf-cot.csv'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="global-cot"],[data-goto="global-cot"]').forEach(function(b){ b.addEventListener('click',load); });
+})();
+</script>
+
