@@ -230,6 +230,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="support">Support Scanner</button>
   <button role="tab" aria-selected="false" data-panel="trend">IND Stock COT</button>
   <button role="tab" aria-selected="false" data-panel="global-cot">Global ETF CoT</button>
+  <button role="tab" aria-selected="false" data-panel="sr">S&amp;R</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -284,6 +285,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <h3>Global ETF CoT</h3>
       <p>Dow Theory change of trend across the global ETF universe: daily close breaking the last lower high (bullish) or last higher low (bearish).</p>
       <span class="go">Open Global ETF CoT →</span>
+    </button>
+    <button class="tile" data-goto="sr">
+      <span class="num">09</span>
+      <h3>S&amp;R</h3>
+      <p>Indian stocks or global ETFs sitting right at a swing high (near resistance) or a swing low (near support).</p>
+      <span class="go">Open S&amp;R →</span>
     </button>
   </div>
 </section>
@@ -402,7 +409,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div class="tm-controls" style="margin-bottom:2px;">
       <div class="etf-chiprow" id="breadth-indicator-toggle">
         <button class="echip" aria-pressed="true" data-indicator="cotNet">COT Net (Bull−Bear)</button>
-        <button class="echip" aria-pressed="false" data-indicator="adLine">AD LINE</button>
         <button class="echip" aria-pressed="false" data-indicator="netHL">Net Highs (H-L)</button>
         <button class="echip" aria-pressed="false" data-indicator="pctSma">Stocks &gt; 200 SMA (%)</button>
         <button class="echip" aria-pressed="false" data-indicator="newHighs">52-Week Highs</button>
@@ -672,6 +678,60 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div class="note" id="gcot-note">Daily chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Days Ago counts trading days. Min avg volume uses the volume figure from the Global ETF Heatmap list; set it to 0 to see illiquid ETFs too.</div>
   </div>
 </section>
+
+<!-- ================= S&R SCREENER ================= -->
+<section class="panel" id="panel-sr">
+  <div class="card">
+    <h4>S&amp;R — stocks / ETFs at a swing high or swing low<span class="asof" id="sr-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="sr-dot"></span>
+      <span id="sr-source-label">Pick a universe to load the scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="sr-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks">Indian Stocks</option><option value="etf">Global ETFs</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
+        <select id="sr-mode" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="res">Near Resistance (at swing high)</option><option value="sup">Near Support (at swing low)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Within (% of the level)
+        <input type="number" id="sr-within" value="2" min="0.2" max="10" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min touches at the level
+        <input type="number" id="sr-touch" value="1" min="1" max="10" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
+        <select id="sr-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Dow trend
+        <select id="sr-trend" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="1">Uptrend</option><option value="-1">Downtrend</option></select></label>
+      <span id="sr-etf-only" style="display:none; gap:18px 28px; flex-wrap:wrap; align-items:flex-end;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Market
+          <select id="sr-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Category
+          <select id="sr-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min avg volume
+          <input type="number" id="sr-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      </span>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="sr-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="sr-count" class="note" style="margin:0;"></span>
+      <button type="button" id="sr-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="sr-head">
+          <tr>
+            <th class="sortable" data-key="s">Symbol</th><th class="sortable" data-key="n">Name</th><th class="sortable" data-key="c">Category</th>
+            <th class="num sortable" data-key="p">Close</th>
+            <th class="num sortable" data-key="sh">Resistance (swing high)</th><th class="num sortable" data-key="dr">Dist to R %</th><th class="num sortable" data-key="sht">R touches</th><th class="num sortable" data-key="shn">R age (days)</th>
+            <th class="num sortable" data-key="sl">Support (swing low)</th><th class="num sortable" data-key="ds">Dist to S %</th><th class="num sortable" data-key="slt">S touches</th><th class="num sortable" data-key="sln">S age (days)</th>
+            <th class="sortable" data-key="tr">Dow trend</th>
+          </tr>
+        </thead>
+        <tbody id="sr-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="sr-note">Daily chart, Yahoo Finance data, refreshed each morning. Resistance = the latest confirmed swing high and Support = the latest confirmed swing low (a high or low that is the highest or lowest of the chosen number of bars on each side of it; the same swings as the Dow Theory COT indicator). Dist to R % = how far the swing high is above the close; Dist to S % = how far the close is above the swing low. A small negative value means price has just pushed through the level. "Within" sets how close counts as near, and the tag AT marks a stock sitting within 0.5% of the level. Touches = how many swings in the last 250 bars sit at the same level (within half an ATR), so more touches means a stronger level. Age = trading days since the swing formed. Dow trend is the trend state at the last close. ETF prices are in each fund's own trading currency.</div>
+  </div>
+</section>
+
 
 <footer>
   <span>Right Horizons Markets Screener — a concept research desk, compiled from public NSE-linked market data</span>
@@ -1888,8 +1948,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       desc:'how many constituents are in a Dow uptrend each day (daily chart, Dow Theory change-of-trend rule).'},
     cotBear: {label:'COT Bearish Stocks (#)', short:'stocks in Dow downtrend (COT)', color:'--bad', unit:'count', fill:false, cot:true,
       desc:'how many constituents are in a Dow downtrend each day (daily chart, Dow Theory change-of-trend rule).'},
-    adLine: {label:'AD LINE', short:'net advances − declines (AD LINE)', color:'--saffron', unit:'count', fill:false, adline:true,
-      desc:'net advance-decline each day = stocks that closed above their previous close minus stocks that closed below it — above zero means more constituents rose than fell.'},
     cotNet: {label:'COT Net (Bull − Bear)', short:'net bullish − bearish stocks (COT)', color:'--saffron', unit:'count', fill:false, cot:true,
       desc:'bullish stocks minus bearish stocks each day — above zero means more constituents are in uptrends than downtrends.'}
   };
@@ -1899,7 +1957,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   // Whichever indicator is selected, return it as the same [["YYYY-MM-DD", value], ...] shape
   // that pctSma already uses, so the range-slicing and charting code below stays generic.
   function curIndicatorSeries(){
-    if(breadthActiveIndicator==='adLine') return adSeries();
     if(breadthActiveIndicator.indexOf('cot')===0) return cotSeries();
     if(breadthActiveIndicator==='pctSma') return curPct();
     var extra = curExtra();
@@ -2114,7 +2171,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
           borderColor: color, borderWidth:1.25,
           pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor: color,
           fill: ind.fill, backgroundColor: color + '26', tension:0
-        }].concat((ind.cot && (ind.unit==='pct' || breadthActiveIndicator==='cotNet')) || breadthActiveIndicator==='adLine'
+        }].concat(ind.cot && (ind.unit==='pct' || breadthActiveIndicator==='cotNet')
           ? [{data: data.map(function(){ return ind.unit==='pct' ? 50 : 0; }), borderColor: tok('--ink-soft'), borderWidth:1, borderDash:[4,3], pointRadius:0, pointHoverRadius:0, fill:false}]
           : [])
       },
@@ -2135,10 +2192,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
               title:function(items){ return data[items[0].dataIndex][0]; },
               label:function(item){
                 var v = data[item.dataIndex][1];
-                if(ind.adline){
-                  var ad = adDay(breadthActiveIndex, data[item.dataIndex][0]);
-                  if(ad) return ['Advancing: '+ad.adv, 'Declining: '+ad.dec, 'Net AD: '+(ad.net>0?'+':'')+ad.net];
-                }
                 if(ind.cot){
                   var c = cotDay(breadthActiveIndex, data[item.dataIndex][0]);
                   if(c) return ['Bullish (uptrend): '+c.up+' ('+c.pctUp.toFixed(1)+'%)', 'Bearish (downtrend): '+c.dn, 'Net: '+(c.up-c.dn>0?'+':'')+(c.up-c.dn), 'Fresh CoT: '+c.bu+' ↑ / '+c.be+' ↓'];
@@ -2185,7 +2238,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     } else {
       tiles.push(['Stocks &gt; 200 SMA', '—', 'connect live data', null]);
     }
-    tiles = tiles.concat(cotTiles()).concat(adTiles());
+    tiles = tiles.concat(cotTiles());
     document.getElementById('breadth-tiles').innerHTML = tiles.map(function(t){
       var dcls = t[3]===null ? '' : (t[3]>=0?'up':'down');
       return '<div class="mtile"><div class="k">'+t[0]+'</div><div class="v">'+t[1]+'</div><div class="d '+dcls+'">'+t[2]+'</div></div>';
@@ -2273,27 +2326,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       out.push([COT.dates[i], mode==='cotPct' ? up/tot*100 : mode==='cotBull' ? up : mode==='cotBear' ? dn : up-dn]);
     }
     return out;
-  }
-  // ---- AD LINE: net advances - declines per day, from data/cot_breadth.json -> indices.<key>.ad ----
-  function adIdx(key){ return COT && COT.indices && COT.indices[key] && COT.indices[key].ad ? COT.indices[key].ad : null; }
-  function adSeries(){
-    var a = adIdx(breadthActiveIndex); if(!a) return null;
-    var out = [], i;
-    for(i=0;i<COT.dates.length;i++){
-      if(!(a.adv[i]+a.dec[i])) continue;
-      out.push([COT.dates[i], a.net[i]]);
-    }
-    return out;
-  }
-  function adDay(key, date){
-    var a = adIdx(key); if(!a) return null;
-    var i = COT.dates.indexOf(date);
-    return i<0 ? null : {adv:a.adv[i], dec:a.dec[i], net:a.net[i]};
-  }
-  function adTiles(){
-    var a = adIdx(breadthActiveIndex); if(!a) return [];
-    var i = COT.dates.length-1;
-    return [['AD LINE — Net (Adv − Dec)', (a.net[i]>0?'+':'')+a.net[i], a.adv[i]+' advancing / '+a.dec[i]+' declining · '+COT.dates[i], a.net[i]]];
   }
   function cotTiles(){
     if(!COT) return [];
@@ -2640,4 +2672,116 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   document.querySelectorAll('[data-panel="global-cot"],[data-goto="global-cot"]').forEach(function(b){ b.addEventListener('click',load); });
 })();
 </script>
+
+<script>
+(function(){
+  var D = {stocks:null, etf:null}, loading = {}, sortKey = null, asc = true;
+  var AT = 0.5, ABOVE = 0.5;     // "AT" tag within 0.5%; price may be up to 0.5% through the level
+  function $(i){ return document.getElementById(i); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var MKT = {TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
+  function market(sym){ var i=sym.lastIndexOf('.'); if(i<0) return 'US'; return MKT[sym.slice(i+1)] || 'Other'; }
+  function uni(){ return $('sr-uni').value; }
+  function mode(){ return $('sr-mode').value; }
+  function dist(r){ return mode()==='res' ? r.dr : r.ds; }
+  function rows(){
+    var d = D[uni()]; if(!d) return null;
+    var src = d.variants[$('sr-swing').value] || [];
+    var m = mode(), w = +$('sr-within').value || 2, minT = +$('sr-touch').value || 1, tr = $('sr-trend').value;
+    var q = $('sr-search').value.toLowerCase(), isEtf = uni()==='etf';
+    var mk = $('sr-mkt').value, cat = $('sr-cat').value, mv = +$('sr-vol').value || 0;
+    var out = src.filter(function(r){
+      var x = dist(r);
+      if(x > w || x < -ABOVE) return false;
+      if((m==='res' ? r.sht : r.slt) < minT) return false;
+      if(tr !== '' && String(r.tr) !== tr) return false;
+      if(q && (r.s+' '+r.n).toLowerCase().indexOf(q) < 0) return false;
+      if(isEtf){
+        if(mk && market(r.s) !== mk) return false;
+        if(cat && r.c !== cat) return false;
+        if((r.v||0) < mv) return false;
+      }
+      return true;
+    });
+    out.sort(function(a,b){
+      var A, B;
+      if(sortKey){ A = a[sortKey]; B = b[sortKey]; }
+      else { A = Math.abs(dist(a)); B = Math.abs(dist(b)); }
+      var c = (typeof A==='string' || typeof B==='string') ? String(A==null?'':A).localeCompare(String(B==null?'':B)) : (A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc ? c : -c;
+    });
+    return out;
+  }
+  function pct(x){ return (x>0?'+':'')+x.toFixed(2)+'%'; }
+  function link(r){
+    return uni()==='stocks'
+      ? 'https://in.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(r.s.replace(/[&-]/g,'_'))
+      : 'https://finance.yahoo.com/quote/'+encodeURIComponent(r.s)+'/chart';
+  }
+  function render(){
+    var r = rows(), body = $('sr-body');
+    if(r === null){ body.innerHTML = '<tr><td colspan="13" style="padding:18px;color:var(--muted)">Loading the scan…</td></tr>'; $('sr-count').textContent=''; return; }
+    var m = mode();
+    var tot = (D[uni()].variants[$('sr-swing').value]||[]).length;
+    $('sr-count').textContent = r.length + ' match' + (r.length===1?'':'es');
+    body.innerHTML = r.map(function(x){
+      var rb = m==='res' ? 'font-weight:700;' : '', sb = m==='sup' ? 'font-weight:700;' : '';
+      var atR = m==='res' && x.dr <= AT, atS = m==='sup' && x.ds <= AT;
+      var tag = (atR||atS) ? ' <span style="font-size:10px; padding:1px 6px; border-radius:8px; background:var(--saffron); color:#000; font-weight:700;">AT</span>' : '';
+      var trTxt = x.tr===1 ? '<span class="up">▲ Up</span>' : x.tr===-1 ? '<span class="down">▼ Down</span>' : '-';
+      return '<tr><td class="name"><a href="'+link(x)+'" target="_blank" rel="noopener">'+esc(x.s)+'</a>'+tag+'</td><td>'+esc(x.n)+'</td><td>'+esc(x.c||'-')+'</td>'+
+        '<td class="num mono">'+x.p.toFixed(2)+'</td>'+
+        '<td class="num mono down" style="'+rb+'">'+x.sh.toFixed(2)+'</td><td class="num mono" style="'+rb+'">'+pct(x.dr)+'</td><td class="num mono" style="'+rb+'">'+x.sht+'</td><td class="num mono">'+x.shn+'</td>'+
+        '<td class="num mono up" style="'+sb+'">'+x.sl.toFixed(2)+'</td><td class="num mono" style="'+sb+'">'+pct(x.ds)+'</td><td class="num mono" style="'+sb+'">'+x.slt+'</td><td class="num mono">'+x.sln+'</td>'+
+        '<td>'+trTxt+'</td></tr>';
+    }).join('') || '<tr><td colspan="13" style="padding:18px;color:var(--muted)">No '+(uni()==='stocks'?'stocks':'ETFs')+' match — try a larger "Within" value or fewer touches.</td></tr>';
+  }
+  function setUni(){
+    var u = uni();
+    $('sr-etf-only').style.display = u==='etf' ? 'flex' : 'none';
+    $('sr-search').placeholder = u==='etf' ? 'Search by ticker or fund name…' : 'Search by symbol or company…';
+    if(D[u]){ status(u); render(); } else { $('sr-asof').textContent = 'loading…'; $('sr-source-label').textContent = 'Loading scan…'; $('sr-dot').className = 'tm-dot'; render(); load(u); }
+  }
+  function status(u){
+    var j = D[u];
+    $('sr-asof').textContent = 'updated ' + j.updated;
+    $('sr-source-label').textContent = 'Live scan — ' + j.scanned + (u==='stocks' ? ' Indian stocks' : ' ETFs') + ' scanned on the daily chart' + (j.data_date ? ' · prices as of ' + j.data_date : '') + (j.failed ? ' · ' + j.failed + ' skipped (no data / stale)' : '');
+    $('sr-dot').className = 'tm-dot live';
+  }
+  function load(u){
+    if(D[u] || loading[u]) return;
+    loading[u] = true;
+    fetch('data/sr_'+u+'.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      D[u] = j; loading[u] = false;
+      if(uni()===u){ status(u); render(); }
+    }).catch(function(){
+      loading[u] = false;
+      if(uni()===u){
+        $('sr-asof').textContent = 'no data yet';
+        $('sr-source-label').textContent = 'data/sr_'+u+'.json not found — run the "Update S&R Screener" action first';
+        $('sr-body').innerHTML = '<tr><td colspan="13" style="padding:18px;color:var(--muted)">No scan data yet.</td></tr>';
+      }
+    });
+  }
+  $('sr-uni').addEventListener('change', setUni);
+  ['sr-mode','sr-within','sr-touch','sr-swing','sr-trend','sr-mkt','sr-cat','sr-vol','sr-search'].forEach(function(id){ $(id).addEventListener('input', function(){ if(id==='sr-mode') sortKey=null; render(); }); });
+  $('sr-head').addEventListener('click', function(e){
+    var th = e.target.closest('th'); if(!th || !th.dataset.key) return;
+    asc = (sortKey===th.dataset.key) ? !asc : true; sortKey = th.dataset.key; render();
+  });
+  $('sr-export-csv').addEventListener('click', function(){
+    var r = rows() || [], h = ['Symbol','Name','Category','Close','Resistance (swing high)','Dist to R %','R touches','R age days','Support (swing low)','Dist to S %','S touches','S age days','Dow trend'];
+    var q = function(t){ return '"'+String(t==null?'':t).replace(/"/g,'""')+'"'; };
+    var lines = [h.join(',')].concat(r.map(function(x){
+      return [q(x.s),q(x.n),q(x.c),x.p,x.sh,x.dr,x.sht,x.shn,x.sl,x.ds,x.slt,x.sln,x.tr===1?'Up':x.tr===-1?'Down':''].join(',');
+    }));
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'}));
+    a.download = 'sr-' + uni() + '-' + (mode()==='res' ? 'near-resistance' : 'near-support') + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="sr"],[data-goto="sr"]').forEach(function(b){ b.addEventListener('click', setUni); });
+})();
+</script>
+
 
