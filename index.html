@@ -712,7 +712,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
       <input type="text" id="sr-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
       <span id="sr-count" class="note" style="margin:0;"></span>
-      <button type="button" id="sr-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+      <button type="button" id="sr-export-csv" class="echip" style="white-space:nowrap;" title="Downloads the matching symbols as a TradingView watchlist file (.txt)">⬇ TradingView watchlist (.txt)</button>
     </div>
     <div class="gtm-scroll">
       <table>
@@ -728,7 +728,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="sr-body"></tbody>
       </table>
     </div>
-    <div class="note" id="sr-note">Daily chart, Yahoo Finance data, refreshed each morning. Resistance = the latest confirmed swing high and Support = the latest confirmed swing low (a high or low that is the highest or lowest of the chosen number of bars on each side of it; the same swings as the Dow Theory COT indicator). Dist to R % = how far the swing high is above the close; Dist to S % = how far the close is above the swing low. A small negative value means price has just pushed through the level. "Within" sets how close counts as near, and the tag AT marks a stock sitting within 0.5% of the level. Touches = how many swings in the last 250 bars sit at the same level (within half an ATR), so more touches means a stronger level. Age = trading days since the swing formed. Dow trend is the trend state at the last close. ETF prices are in each fund's own trading currency.</div>
+    <div class="note" id="sr-note">Daily chart, Yahoo Finance data, refreshed each morning. Resistance = the latest confirmed swing high and Support = the latest confirmed swing low (a high or low that is the highest or lowest of the chosen number of bars on each side of it; the same swings as the Dow Theory COT indicator). Dist to R % = how far the swing high is above the close; Dist to S % = how far the close is above the swing low. A small negative value means price has just pushed through the level. "Within" sets how close counts as near, and the tag AT marks a stock sitting within 0.5% of the level. Touches = how many swings in the last 250 bars sit at the same level (within half an ATR), so more touches means a stronger level. Age = trading days since the swing formed. Dow trend is the trend state at the last close. ETF prices are in each fund's own trading currency. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list; US ETFs are exported without an exchange prefix so TradingView picks the primary listing).</div>
   </div>
 </section>
 
@@ -2769,15 +2769,26 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var th = e.target.closest('th'); if(!th || !th.dataset.key) return;
     asc = (sortKey===th.dataset.key) ? !asc : true; sortKey = th.dataset.key; render();
   });
+  // TradingView watchlist: one text file, symbols separated by commas, exchange-prefixed
+  var TVX = {TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
+  function tvSym(r){
+    if(uni()==='stocks') return 'NSE:' + r.s.replace(/[&-]/g,'_');
+    var i = r.s.lastIndexOf('.'); if(i < 0) return r.s;           // US ETFs: no prefix, TradingView picks the primary listing
+    var base = r.s.slice(0,i), suf = r.s.slice(i+1), ex = TVX[suf];
+    if(!ex) return base;
+    if(suf==='HK') base = base.replace(/^0+/,'') || '0';
+    return ex + ':' + base;
+  }
   $('sr-export-csv').addEventListener('click', function(){
-    var r = rows() || [], h = ['Symbol','Name','Category','Close','Resistance (swing high)','Dist to R %','R touches','R age days','Support (swing low)','Dist to S %','S touches','S age days','Dow trend'];
-    var q = function(t){ return '"'+String(t==null?'':t).replace(/"/g,'""')+'"'; };
-    var lines = [h.join(',')].concat(r.map(function(x){
-      return [q(x.s),q(x.n),q(x.c),x.p,x.sh,x.dr,x.sht,x.shn,x.sl,x.ds,x.slt,x.sln,x.tr===1?'Up':x.tr===-1?'Down':''].join(',');
-    }));
+    var r = rows() || [];
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen = {}, list = [];
+    r.forEach(function(x){ var t = tvSym(x); if(!seen[t]){ seen[t] = 1; list.push(t); } });
+    var capped = list.length > 1000;
+    if(capped){ list = list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the 1,000 nearest to the level were exported. Tighten the filters to get the rest.'); }
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'}));
-    a.download = 'sr-' + uni() + '-' + (mode()==='res' ? 'near-resistance' : 'near-support') + '.csv';
+    a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'}));
+    a.download = 'sr-' + uni() + '-' + (mode()==='res' ? 'near-resistance' : 'near-support') + '.txt';
     document.body.appendChild(a); a.click(); a.remove();
   });
   document.querySelectorAll('[data-panel="sr"],[data-goto="sr"]').forEach(function(b){ b.addEventListener('click', setUni); });
