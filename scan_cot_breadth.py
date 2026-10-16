@@ -10,6 +10,10 @@ Then, per index and per day, we count how many member stocks are in an uptrend (
 how many in a downtrend (bearish), and how many fresh bullish / bearish changes of trend
 happened that day.
 
+AD LINE: per index and per day, advances = members that closed above their own previous
+close, declines = members that closed below it; net = advances - declines (stored under
+indices.<key>.ad = {adv, dec, net}, aligned to the same "dates" array).
+
 Output: data/cot_breadth.json  (read by the Market Breadth tab of index.html)
 NOTE: uses TODAY's index members for the whole history (no point-in-time membership).
 """
@@ -166,8 +170,15 @@ def main():
     NODATA = np.int8(-9)
     S = {L: np.full((len(syms), nd), NODATA, np.int8) for L in SWING_OPTIONS}
     E = {L: np.zeros((len(syms), nd), np.int8) for L in SWING_OPTIONS}
+    ADV = np.zeros((len(syms), nd), np.int8)   # 1 = stock closed UP vs its own previous close
+    DEC = np.zeros((len(syms), nd), np.int8)   # 1 = stock closed DOWN vs its own previous close
     for s, df in frames.items():
         h, l, c = (df[k].to_numpy(float) for k in ("High", "Low", "Close"))
+        # Advance / Decline: compare each close with that stock's own previous close, so
+        # holidays and suspended days never create fake advances or declines.
+        chg = df["Close"].diff()
+        ADV[row[s]] = (chg > 0).reindex(dates).fillna(False).to_numpy().astype(np.int8)
+        DEC[row[s]] = (chg < 0).reindex(dates).fillna(False).to_numpy().astype(np.int8)
         for L in SWING_OPTIONS:
             st, ev = dow_states(h, l, c, L)
             ser = pd.Series(st.astype(float), index=df.index).reindex(dates).ffill(limit=5)
@@ -183,6 +194,13 @@ def main():
     for key, (name, _) in INDICES.items():
         rows_ = [row[s] for s in members[key] if s in row]
         entry = {"name": name, "members": len(members[key]), "with_data": len(rows_)}
+        adv = ADV[rows_][:, start:].sum(axis=0)
+        dec = DEC[rows_][:, start:].sum(axis=0)
+        entry["ad"] = {                      # AD LINE: net = advances - declines (per day)
+            "adv": adv.tolist(),
+            "dec": dec.tolist(),
+            "net": (adv.astype(int) - dec.astype(int)).tolist(),
+        }
         for L in SWING_OPTIONS:
             st = S[L][rows_][:, start:]
             ev = E[L][rows_][:, start:]
