@@ -231,6 +231,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="trend">IND Stock COT</button>
   <button role="tab" aria-selected="false" data-panel="global-cot">Global ETF CoT</button>
   <button role="tab" aria-selected="false" data-panel="sr">S&amp;R</button>
+  <button role="tab" aria-selected="false" data-panel="bo">Breakout / Reversal</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -291,6 +292,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <h3>S&amp;R</h3>
       <p>Indian stocks or global ETFs sitting right at a swing high (near resistance) or a swing low (near support).</p>
       <span class="go">Open S&amp;R →</span>
+    </button>
+    <button class="tile" data-goto="bo">
+      <span class="num">10</span>
+      <h3>Breakout / Reversal</h3>
+      <p>Pick a setup for Indian stocks or global ETFs: a fresh close above a swing high (breakout) or a bounce from a support level (reversal), with level strength, volume and reward-to-risk.</p>
+      <span class="go">Open Breakout / Reversal →</span>
     </button>
   </div>
 </section>
@@ -731,6 +738,136 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div class="note" id="sr-note">Daily chart, Yahoo Finance data, refreshed each morning. Resistance = the latest confirmed swing high and Support = the latest confirmed swing low (a high or low that is the highest or lowest of the chosen number of bars on each side of it; the same swings as the Dow Theory COT indicator). Dist to R % = how far the swing high is above the close; Dist to S % = how far the close is above the swing low. A small negative value means price has just pushed through the level. "Within" sets how close counts as near, and the tag AT marks a stock sitting within 0.5% of the level. Touches = how many swings in the last 250 bars sit at the same level (within half an ATR), so more touches means a stronger level. Age = trading days since the swing formed. Dow trend is the trend state at the last close. ETF prices are in each fund's own trading currency. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list; US ETFs are exported without an exchange prefix so TradingView picks the primary listing).</div>
   </div>
 </section>
+
+<!-- ================= BREAKOUT / REVERSAL (one tab, two setups) ================= -->
+<section class="panel" id="panel-bo">
+  <div class="card">
+    <div style="display:flex; flex-wrap:wrap; gap:14px 28px; align-items:flex-end;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Setup
+        <select id="br-setup" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; font-weight:600;"><option value="bo">Breakout above a swing high</option><option value="rv">Reversal from support</option></select></label>
+      <span class="note" id="br-hint" style="margin:0; flex:1; min-width:260px;">Breakout: stocks / ETFs that have just closed above their latest swing high.</span>
+    </div>
+  </div>
+  <div id="br-bo">
+  <div class="card">
+    <h4>Breakout — fresh closes above a swing high<span class="asof" id="bo-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="bo-dot"></span>
+      <span id="bo-source-label">Pick a universe to load the scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="bo-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks">Indian Stocks</option><option value="etf">Global ETFs</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Broke within (days)
+        <input type="number" id="bo-days" value="5" min="0" max="20" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
+        <input type="number" id="bo-ext" value="5" min="0" max="50" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Level significance
+        <select id="bo-sig" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="0">Any swing level</option><option value="1">Range high or better</option><option value="2">52-week high only</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Type
+        <select id="bo-type" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="r">Reversal (trend change)</option><option value="c">Continuation</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min volume (x 20-day avg)
+        <input type="number" id="bo-vmin" value="0" min="0" max="20" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
+        <select id="bo-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
+      <span id="bo-etf-only" style="display:none; gap:18px 28px; flex-wrap:wrap; align-items:flex-end;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Market
+          <select id="bo-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Category
+          <select id="bo-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min avg volume
+          <input type="number" id="bo-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      </span>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="bo-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="bo-count" class="note" style="margin:0;"></span>
+      <button type="button" id="bo-export" class="echip" style="white-space:nowrap;" title="Downloads the matching symbols as a TradingView watchlist file (.txt)">⬇ TradingView watchlist (.txt)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="bo-head">
+          <tr>
+            <th class="sortable" data-key="s">Symbol</th><th class="sortable" data-key="n">Name</th><th class="sortable" data-key="c">Category</th>
+            <th class="num sortable" data-key="p">Close</th>
+            <th class="num sortable" data-key="level">Level broken</th><th class="num sortable" data-key="beyond">% beyond level</th>
+            <th class="sortable" data-key="date">Break date</th><th class="num sortable" data-key="days">Days ago</th>
+            <th class="num sortable" data-key="vol">Volume x avg</th><th class="num sortable" data-key="touch">Touches</th>
+            <th class="sortable" data-key="sig">Level</th><th class="sortable" data-key="kind">Type</th>
+          </tr>
+        </thead>
+        <tbody id="bo-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="bo-note">Daily chart, Yahoo Finance data, refreshed each morning. A breakout is the first daily close above the latest confirmed swing high, using only the swing that was known before that bar. The swings are the same pivots as the Dow Theory COT indicator. Only moves that are still holding beyond the level today are listed. Level: "52-week high" = the break also made a new 250-day high; "Range high" = the level was the highest high of the previous 120 days; "Swing high" = any other swing level. Type: "Reversal" = the break flipped the Dow trend (a change of trend), "Continuation" = the break went with the existing trend. Volume x avg = volume on the break day versus the previous 20-day average (blank when the symbol has no volume data). Touches = other swings at the same level in the last 250 bars (within half an ATR), so more touches means a stronger level. Days ago counts trading days. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list).</div>
+  </div>
+</div>
+  <div id="br-rv" style="display:none;">
+  <div class="card">
+    <h4>Reversal — bounce from support (long side)<span class="asof" id="rv-asof">loading…</span></h4>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="rv-dot"></span>
+      <span id="rv-source-label">Pick a universe to load the scan…</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="rv-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks">Indian Stocks</option><option value="etf">Global ETFs</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Tested support within (days)
+        <input type="number" id="rv-days" value="5" min="0" max="15" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Confirmation
+        <select id="rv-conf" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="1" selected>Confirmed (closed above the test bar's high)</option><option value="0">Confirmed or rejection candle</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Context
+        <select id="rv-ctx" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="p">Pullback in an uptrend</option><option value="b">Bounce in a downtrend</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Support type
+        <select id="rv-hl" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="0">Any support</option><option value="1">Higher low only</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max distance above support (%)
+        <input type="number" id="rv-dist" value="5" min="0.5" max="30" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min touches at the level
+        <input type="number" id="rv-touch" value="1" min="1" max="10" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min reward : risk (0 = off)
+        <input type="number" id="rv-rr" value="1.5" min="0" max="10" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
+        <select id="rv-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
+      <span id="rv-etf-only" style="display:none; gap:18px 28px; flex-wrap:wrap; align-items:flex-end;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Market
+          <select id="rv-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Category
+          <select id="rv-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min avg volume
+          <input type="number" id="rv-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:110px;"></label>
+      </span>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <input type="text" id="rv-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="rv-count" class="note" style="margin:0;"></span>
+      <button type="button" id="rv-export" class="echip" style="white-space:nowrap;" title="Downloads the matching symbols as a TradingView watchlist file (.txt)">⬇ TradingView watchlist (.txt)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="rv-head">
+          <tr>
+            <th class="sortable" data-key="s">Symbol</th><th class="sortable" data-key="n">Name</th><th class="sortable" data-key="c">Category</th>
+            <th class="num sortable" data-key="p">Close</th>
+            <th class="num sortable" data-key="lv">Support</th><th class="num sortable" data-key="ds">Above support %</th>
+            <th class="sortable" data-key="td">Tested on</th><th class="num sortable" data-key="ty">Days ago</th>
+            <th class="num sortable" data-key="ll">Low since test</th><th class="num sortable" data-key="bn">Bounce %</th>
+            <th class="num sortable" data-key="tc">Touches</th><th class="sortable" data-key="hl">Higher low</th>
+            <th class="sortable" data-key="cx">Context</th><th class="sortable" data-key="cf">Confirmed</th>
+            <th class="num sortable" data-key="up">To resistance %</th><th class="num sortable" data-key="rr">Reward : risk</th>
+            <th class="num sortable" data-key="tv">Volume at test</th>
+          </tr>
+        </thead>
+        <tbody id="rv-body"></tbody>
+      </table>
+    </div>
+    <div class="note" id="rv-note">Daily chart, Yahoo Finance data, refreshed each morning. Support = the latest confirmed swing low, or any swing-low level that has been touched at least twice (the swings are the same pivots as the Dow Theory COT indicator). A reversal needs: (1) a real retest, meaning price had moved at least 2 ATR above the level before coming back to it; (2) a test bar whose low came within 0.4 ATR of the level (a wick up to 0.75 ATR below is allowed) and which closed at or above it; (3) a turn, meaning either a later close above the high of the test bar (Confirmed) or a test bar that closed in the upper 40% of its range (rejection candle); (4) price has lifted at least 1 ATR off the low and has not closed below the level since. SPRING = the wick went below the level and the bar still closed above it. Higher low = the support is above the previous swing low (an intact uptrend structure). Context: Pullback = the Dow trend was up before the test, Bounce = it was down. Reward : risk = distance to the next swing high above, divided by the distance down to just below support (support minus half an ATR); blank when there is no swing high above. Touches = swings at the same level in the last 250 bars. Volume at test = volume on the test bar versus the previous 20-day average. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list).</div>
+  </div>
+</div>
+</section>
+
+
+
+
 
 
 <footer>
@@ -2794,5 +2931,278 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   document.querySelectorAll('[data-panel="sr"],[data-goto="sr"]').forEach(function(b){ b.addEventListener('click', setUni); });
 })();
 </script>
+
+<script>
+(function(){
+  var D = {stocks:null, etf:null}, loading = {}, sortKey = null, asc = true;
+  function $(i){ return document.getElementById(i); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var MKT = {TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
+  function market(sym){ var i=sym.lastIndexOf('.'); if(i<0) return 'US'; return MKT[sym.slice(i+1)] || 'Other'; }
+  function uni(){ return $('bo-uni').value; }
+  function dir(){ return 'up'; }
+  // one flat view of a row for the chosen direction (null when that direction has no event)
+  function norm(r){
+    var p = dir()==='up' ? 'u' : 'd';
+    if(r[p+'l'] == null) return null;
+    return {s:r.s, n:r.n, c:r.c, v:r.v, p:r.p, level:r[p+'l'], beyond:r[p+'b'], date:r[p+'d'], days:r[p+'y'], vol:r[p+'v'], touch:r[p+'t'], sig:r[p+'h'], kind:r[p+'k']};
+  }
+  function rows(){
+    var d = D[uni()]; if(!d) return null;
+    var src = d.variants[$('bo-swing').value] || [];
+    var days = +$('bo-days').value, ext = +$('bo-ext').value, minSig = +$('bo-sig').value, kind = $('bo-type').value, vmin = +$('bo-vmin').value || 0;
+    var q = $('bo-search').value.toLowerCase(), isEtf = uni()==='etf';
+    var mk = $('bo-mkt').value, cat = $('bo-cat').value, mv = +$('bo-vol').value || 0;
+    var out = [];
+    src.forEach(function(r){
+      var x = norm(r); if(!x) return;
+      if(x.days > days) return;
+      if(Math.abs(x.beyond) > ext) return;
+      if(x.sig < minSig) return;
+      if(kind && x.kind !== kind) return;
+      if(vmin > 0 && (x.vol == null || x.vol < vmin)) return;
+      if(q && (x.s+' '+x.n).toLowerCase().indexOf(q) < 0) return;
+      if(isEtf){
+        if(mk && market(x.s) !== mk) return;
+        if(cat && x.c !== cat) return;
+        if((x.v||0) < mv) return;
+      }
+      out.push(x);
+    });
+    out.sort(function(a,b){
+      if(!sortKey){ return (a.days - b.days) || ((b.vol||0) - (a.vol||0)); }
+      var A = a[sortKey], B = b[sortKey];
+      var c = (typeof A==='string' || typeof B==='string') ? String(A==null?'':A).localeCompare(String(B==null?'':B)) : (A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc ? c : -c;
+    });
+    return out;
+  }
+  function pct(x){ return (x>0?'+':'')+x.toFixed(2)+'%'; }
+  function link(x){
+    return uni()==='stocks'
+      ? 'https://in.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(x.s.replace(/[&-]/g,'_'))
+      : 'https://finance.yahoo.com/quote/'+encodeURIComponent(x.s)+'/chart';
+  }
+  function sigTxt(x){
+    var up = dir()==='up';
+    return x.sig===2 ? (up?'52-week high':'52-week low') : x.sig===1 ? (up?'Range high':'Range low') : (up?'Swing high':'Swing low');
+  }
+  function render(){
+    var r = rows(), body = $('bo-body');
+    if(r === null){ body.innerHTML = '<tr><td colspan="12" style="padding:18px;color:var(--muted)">Loading the scan…</td></tr>'; $('bo-count').textContent=''; return; }
+    var up = dir()==='up', cls = up ? 'up' : 'down';
+    $('bo-count').textContent = r.length + ' match' + (r.length===1?'':'es');
+    body.innerHTML = r.map(function(x){
+      var hot = x.sig===2 ? ' <span style="font-size:10px; padding:1px 6px; border-radius:8px; background:var(--saffron); color:#000; font-weight:700;">52W</span>' : '';
+      var kindTxt = x.kind==='r' ? 'Reversal' : x.kind==='c' ? 'Continuation' : '-';
+      return '<tr><td class="name"><a href="'+link(x)+'" target="_blank" rel="noopener">'+esc(x.s)+'</a>'+hot+'</td><td>'+esc(x.n)+'</td><td>'+esc(x.c||'-')+'</td>'+
+        '<td class="num mono">'+x.p.toFixed(2)+'</td>'+
+        '<td class="num mono">'+x.level.toFixed(2)+'</td><td class="num mono '+cls+'">'+pct(x.beyond)+'</td>'+
+        '<td class="mono">'+esc(x.date)+'</td><td class="num mono">'+x.days+'</td>'+
+        '<td class="num mono">'+(x.vol==null?'-':x.vol.toFixed(1)+'x')+'</td><td class="num mono">'+x.touch+'</td>'+
+        '<td class="'+cls+'">'+sigTxt(x)+'</td><td>'+kindTxt+'</td></tr>';
+    }).join('') || '<tr><td colspan="12" style="padding:18px;color:var(--muted)">No '+(uni()==='stocks'?'stocks':'ETFs')+' match — try more days, a larger max move, or a lower significance.</td></tr>';
+  }
+  function status(u){
+    var j = D[u];
+    $('bo-asof').textContent = 'updated ' + j.updated;
+    $('bo-source-label').textContent = 'Live scan — ' + j.scanned + (u==='stocks' ? ' Indian stocks' : ' ETFs') + ' scanned on the daily chart' + (j.data_date ? ' · prices as of ' + j.data_date : '') + (j.failed ? ' · ' + j.failed + ' skipped (no data / stale)' : '');
+    $('bo-dot').className = 'tm-dot live';
+  }
+  function load(u){
+    if(D[u] || loading[u]) return;
+    loading[u] = true;
+    fetch('data/bo_'+u+'.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      D[u] = j; loading[u] = false;
+      if(uni()===u){ status(u); render(); }
+    }).catch(function(){
+      loading[u] = false;
+      if(uni()===u){
+        $('bo-asof').textContent = 'no data yet';
+        $('bo-source-label').textContent = 'data/bo_'+u+'.json not found — run the "Update S&R + Breakout Screener" action first';
+        $('bo-body').innerHTML = '<tr><td colspan="12" style="padding:18px;color:var(--muted)">No scan data yet.</td></tr>';
+      }
+    });
+  }
+  function setUni(){
+    var u = uni();
+    $('bo-etf-only').style.display = u==='etf' ? 'flex' : 'none';
+    $('bo-search').placeholder = u==='etf' ? 'Search by ticker or fund name…' : 'Search by symbol or company…';
+    if(D[u]){ status(u); render(); } else { $('bo-asof').textContent = 'loading…'; $('bo-source-label').textContent = 'Loading scan…'; $('bo-dot').className = 'tm-dot'; render(); load(u); }
+  }
+  $('bo-uni').addEventListener('change', setUni);
+  ['bo-days','bo-ext','bo-sig','bo-type','bo-vmin','bo-swing','bo-mkt','bo-cat','bo-vol','bo-search'].forEach(function(id){ $(id).addEventListener('input', render); });
+  $('bo-head').addEventListener('click', function(e){
+    var th = e.target.closest('th'); if(!th || !th.dataset.key) return;
+    asc = (sortKey===th.dataset.key) ? !asc : true; sortKey = th.dataset.key; render();
+  });
+  // TradingView watchlist
+  var TVX = {TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
+  function tvSym(x){
+    if(uni()==='stocks') return 'NSE:' + x.s.replace(/[&-]/g,'_');
+    var i = x.s.lastIndexOf('.'); if(i < 0) return x.s;
+    var base = x.s.slice(0,i), suf = x.s.slice(i+1), ex = TVX[suf];
+    if(!ex) return base;
+    if(suf==='HK') base = base.replace(/^0+/,'') || '0';
+    return ex + ':' + base;
+  }
+  $('bo-export').addEventListener('click', function(){
+    var r = rows() || [];
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen = {}, list = [];
+    r.forEach(function(x){ var t = tvSym(x); if(!seen[t]){ seen[t] = 1; list.push(t); } });
+    if(list.length > 1000){ list = list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'}));
+    a.download = 'breakout-' + uni() + '-' + (dir()==='up' ? 'above-swing-high' : 'below-swing-low') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="bo"],[data-goto="bo"]').forEach(function(b){ b.addEventListener('click', setUni); });
+})();
+</script>
+
+<script>
+(function(){
+  var D = {stocks:null, etf:null}, loading = {}, sortKey = null, asc = true;
+  function $(i){ return document.getElementById(i); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var MKT = {TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
+  function market(sym){ var i=sym.lastIndexOf('.'); if(i<0) return 'US'; return MKT[sym.slice(i+1)] || 'Other'; }
+  function uni(){ return $('rv-uni').value; }
+  function rows(){
+    var d = D[uni()]; if(!d) return null;
+    var src = d.variants[$('rv-swing').value] || [];
+    var days = +$('rv-days').value, conf = +$('rv-conf').value, ctx = $('rv-ctx').value, hlOnly = +$('rv-hl').value;
+    var dist = +$('rv-dist').value, minT = +$('rv-touch').value || 1, minRR = +$('rv-rr').value || 0;
+    var q = $('rv-search').value.toLowerCase(), isEtf = uni()==='etf';
+    var mk = $('rv-mkt').value, cat = $('rv-cat').value, mv = +$('rv-vol').value || 0;
+    var out = src.filter(function(r){
+      if(r.ty > days) return false;
+      if(conf === 1 && r.cf !== 1) return false;
+      if(ctx && r.cx !== ctx) return false;
+      if(hlOnly === 1 && r.hl !== 1) return false;
+      if(r.ds > dist) return false;
+      if(r.tc < minT) return false;
+      if(minRR > 0 && (r.rr == null || r.rr < minRR)) return false;
+      if(q && (r.s+' '+r.n).toLowerCase().indexOf(q) < 0) return false;
+      if(isEtf){
+        if(mk && market(r.s) !== mk) return false;
+        if(cat && r.c !== cat) return false;
+        if((r.v||0) < mv) return false;
+      }
+      return true;
+    });
+    out.sort(function(a,b){
+      if(!sortKey){ return ((b.rr==null?-1:b.rr) - (a.rr==null?-1:a.rr)) || (a.ty - b.ty); }
+      var A = a[sortKey], B = b[sortKey];
+      var c = (typeof A==='string' || typeof B==='string') ? String(A==null?'':A).localeCompare(String(B==null?'':B)) : (A==null?-1e9:A)-(B==null?-1e9:B);
+      return asc ? c : -c;
+    });
+    return out;
+  }
+  function pct(x){ return (x>0?'+':'')+x.toFixed(2)+'%'; }
+  function link(x){
+    return uni()==='stocks'
+      ? 'https://in.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(x.s.replace(/[&-]/g,'_'))
+      : 'https://finance.yahoo.com/quote/'+encodeURIComponent(x.s)+'/chart';
+  }
+  function render(){
+    var r = rows(), body = $('rv-body');
+    if(r === null){ body.innerHTML = '<tr><td colspan="17" style="padding:18px;color:var(--muted)">Loading the scan…</td></tr>'; $('rv-count').textContent=''; return; }
+    $('rv-count').textContent = r.length + ' match' + (r.length===1?'':'es');
+    body.innerHTML = r.map(function(x){
+      var spring = x.sp ? ' <span style="font-size:10px; padding:1px 6px; border-radius:8px; background:var(--saffron); color:#000; font-weight:700;">SPRING</span>' : '';
+      var ctxTxt = x.cx==='p' ? 'Pullback in uptrend' : x.cx==='b' ? 'Bounce in downtrend' : '-';
+      return '<tr><td class="name"><a href="'+link(x)+'" target="_blank" rel="noopener">'+esc(x.s)+'</a>'+spring+'</td><td>'+esc(x.n)+'</td><td>'+esc(x.c||'-')+'</td>'+
+        '<td class="num mono">'+x.p.toFixed(2)+'</td>'+
+        '<td class="num mono up">'+x.lv.toFixed(2)+'</td><td class="num mono">'+pct(x.ds)+'</td>'+
+        '<td class="mono">'+esc(x.td)+'</td><td class="num mono">'+x.ty+'</td>'+
+        '<td class="num mono">'+x.ll.toFixed(2)+'</td><td class="num mono up">'+pct(x.bn)+'</td>'+
+        '<td class="num mono">'+x.tc+'</td><td>'+(x.hl?'<span class="up">Yes</span>':'No')+'</td>'+
+        '<td>'+ctxTxt+'</td><td>'+(x.cf?'<span class="up">Confirmed</span>':'Candle only')+'</td>'+
+        '<td class="num mono">'+(x.up==null?'-':'+'+x.up.toFixed(2)+'%')+'</td><td class="num mono"><b>'+(x.rr==null?'-':x.rr.toFixed(1))+'</b></td>'+
+        '<td class="num mono">'+(x.tv==null?'-':x.tv.toFixed(1)+'x')+'</td></tr>';
+    }).join('') || '<tr><td colspan="17" style="padding:18px;color:var(--muted)">No '+(uni()==='stocks'?'stocks':'ETFs')+' match — try more days, a lower reward : risk, or "Confirmed or rejection candle".</td></tr>';
+  }
+  function status(u){
+    var j = D[u];
+    $('rv-asof').textContent = 'updated ' + j.updated;
+    $('rv-source-label').textContent = 'Live scan — ' + j.scanned + (u==='stocks' ? ' Indian stocks' : ' ETFs') + ' scanned on the daily chart' + (j.data_date ? ' · prices as of ' + j.data_date : '') + (j.failed ? ' · ' + j.failed + ' skipped (no data / stale)' : '');
+    $('rv-dot').className = 'tm-dot live';
+  }
+  function load(u){
+    if(D[u] || loading[u]) return;
+    loading[u] = true;
+    fetch('data/rv_'+u+'.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      D[u] = j; loading[u] = false;
+      if(uni()===u){ status(u); render(); }
+    }).catch(function(){
+      loading[u] = false;
+      if(uni()===u){
+        $('rv-asof').textContent = 'no data yet';
+        $('rv-source-label').textContent = 'data/rv_'+u+'.json not found — run the "Update S&R, Breakout and Reversal Screeners" action first';
+        $('rv-body').innerHTML = '<tr><td colspan="17" style="padding:18px;color:var(--muted)">No scan data yet.</td></tr>';
+      }
+    });
+  }
+  function setUni(){
+    var u = uni();
+    $('rv-etf-only').style.display = u==='etf' ? 'flex' : 'none';
+    $('rv-search').placeholder = u==='etf' ? 'Search by ticker or fund name…' : 'Search by symbol or company…';
+    if(D[u]){ status(u); render(); } else { $('rv-asof').textContent = 'loading…'; $('rv-source-label').textContent = 'Loading scan…'; $('rv-dot').className = 'tm-dot'; render(); load(u); }
+  }
+  $('rv-uni').addEventListener('change', setUni);
+  ['rv-days','rv-conf','rv-ctx','rv-hl','rv-dist','rv-touch','rv-rr','rv-swing','rv-mkt','rv-cat','rv-vol','rv-search'].forEach(function(id){ $(id).addEventListener('input', render); });
+  $('rv-head').addEventListener('click', function(e){
+    var th = e.target.closest('th'); if(!th || !th.dataset.key) return;
+    asc = (sortKey===th.dataset.key) ? !asc : true; sortKey = th.dataset.key; render();
+  });
+  var TVX = {TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
+  function tvSym(x){
+    if(uni()==='stocks') return 'NSE:' + x.s.replace(/[&-]/g,'_');
+    var i = x.s.lastIndexOf('.'); if(i < 0) return x.s;
+    var base = x.s.slice(0,i), suf = x.s.slice(i+1), ex = TVX[suf];
+    if(!ex) return base;
+    if(suf==='HK') base = base.replace(/^0+/,'') || '0';
+    return ex + ':' + base;
+  }
+  $('rv-export').addEventListener('click', function(){
+    var r = rows() || [];
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen = {}, list = [];
+    r.forEach(function(x){ var t = tvSym(x); if(!seen[t]){ seen[t] = 1; list.push(t); } });
+    if(list.length > 1000){ list = list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'}));
+    a.download = 'reversal-from-support-' + uni() + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-panel="rv"],[data-goto="rv"]').forEach(function(b){ b.addEventListener('click', setUni); });
+})();
+</script>
+
+<script>
+(function(){
+  function $(i){ return document.getElementById(i); }
+  var HINT = {
+    bo: 'Breakout: stocks / ETFs that have just closed above their latest swing high.',
+    rv: 'Reversal: stocks / ETFs that have just bounced from a support level (a swing low), with reward : risk.'
+  };
+  function apply(){
+    var s = $('br-setup').value, other = s === 'bo' ? 'rv' : 'bo';
+    $('br-bo').style.display = s === 'bo' ? '' : 'none';
+    $('br-rv').style.display = s === 'rv' ? '' : 'none';
+    $('br-hint').textContent = HINT[s];
+    // keep the universe the same when switching, and let that setup load / refresh its data
+    var tgt = $(s + '-uni'), src = $(other + '-uni');
+    tgt.value = src.value;
+    tgt.dispatchEvent(new Event('change'));
+  }
+  $('br-setup').addEventListener('change', apply);
+})();
+</script>
+
+
+
 
 
