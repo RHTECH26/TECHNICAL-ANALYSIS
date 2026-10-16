@@ -23,7 +23,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 OUT_FILE      = "data/cot_breadth.json"
 LIST_DIR      = "index_lists"
 SWING_OPTIONS = [3, 5, 8]
-PERIOD        = "10y"
+START_DATE    = "2001-01-01"   # was PERIOD = "10y" -- now pulls ~25 years of history
 CHUNK         = 100
 MIN_BARS      = 120
 
@@ -134,7 +134,7 @@ def main():
         tickers = [s + ".NS" for s in part]
         print(f"Downloading {i + 1}-{i + len(part)} of {len(universe)}", flush=True)
         try:
-            data = yf.download(tickers, period=PERIOD, interval="1d", group_by="ticker",
+            data = yf.download(tickers, start=START_DATE, interval="1d", group_by="ticker",
                                auto_adjust=True, threads=True, progress=False)
         except Exception as e:
             print("  chunk failed:", e)
@@ -197,7 +197,7 @@ def main():
     ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     payload = {
         "updated": ist.strftime("%d %b %Y, %H:%M IST"),
-        "params": {"options": SWING_OPTIONS, "years": 10, "failed": failed, "stocks": len(frames)},
+        "params": {"options": SWING_OPTIONS, "years": 25, "failed": failed, "stocks": len(frames)},
         "dates": [d.strftime("%Y-%m-%d") for d in dates[start:]],
         "indices": out_idx,
     }
