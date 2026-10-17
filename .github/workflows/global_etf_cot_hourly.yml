@@ -1,1 +1,37 @@
+name: Update Global ETF CoT Scan (1 hour)
 
+on:
+  schedule:
+    - cron: "30 2 * * 2-6"      # 8:00 AM IST, Tue-Sat (after the US close)
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+# a new run waits for the previous 1-hour run instead of running alongside it
+concurrency:
+  group: global-etf-cot-hourly
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl
+      - run: python scan_global_etf_cot.py 1H
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add data/global_etf_cot_1H.json
+          git diff --staged --quiet || git commit -m "Update Global ETF CoT Scan (1 hour)"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase && git push && break
+            echo "Push attempt $attempt failed - retrying..."
+            sleep 5
+          done
