@@ -227,9 +227,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="global-etfs">Global ETF Heatmap</button>
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
   <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
-  <button role="tab" aria-selected="false" data-panel="support">Support Scanner</button>
-  <button role="tab" aria-selected="false" data-panel="trend">IND Stock COT</button>
-  <button role="tab" aria-selected="false" data-panel="global-cot">Global ETF CoT</button>
+  <button role="tab" aria-selected="false" data-panel="cot">COT</button>
   <button role="tab" aria-selected="false" data-panel="sr">S&amp;R</button>
   <button role="tab" aria-selected="false" data-panel="bo">Breakout / Reversal</button>
 </nav>
@@ -269,32 +267,20 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <p>Rules-based daily scan of the global ETF universe: range breakout, MA crossover, volume confirmation, or narrow-range breakout mode.</p>
       <span class="go">Open ETF screener →</span>
     </button>
-    <button class="tile" data-goto="support">
+    <button class="tile" data-goto="cot">
       <span class="num">06</span>
-      <h3>Support Scanner</h3>
-      <p>NSE stocks sitting at an intact previous swing-low support, where the swing was 5% or more. Daily scan on Yahoo Finance data.</p>
-      <span class="go">Open support scanner →</span>
-    </button>
-    <button class="tile" data-goto="trend">
-      <span class="num">07</span>
-      <h3>IND Stock COT</h3>
-      <p>Daily Dow structure: price closes above the last lower high after a downtrend (bullish), or below the last higher low after an uptrend (bearish).</p>
-      <span class="go">Open IND Stock COT →</span>
-    </button>
-    <button class="tile" data-goto="global-cot">
-      <span class="num">08</span>
-      <h3>Global ETF CoT</h3>
-      <p>Dow Theory change of trend across the global ETF universe: daily close breaking the last lower high (bullish) or last higher low (bearish).</p>
-      <span class="go">Open Global ETF CoT →</span>
+      <h3>COT — Change of Trend</h3>
+      <p>Dow Theory change of trend for Indian stocks or global ETFs on the 1-hour, daily, weekly or monthly chart: a close above the last lower high (bullish) or below the last higher low (bearish).</p>
+      <span class="go">Open COT →</span>
     </button>
     <button class="tile" data-goto="sr">
-      <span class="num">09</span>
+      <span class="num">07</span>
       <h3>S&amp;R</h3>
       <p>Indian stocks or global ETFs sitting right at a swing high (near resistance) or a swing low (near support).</p>
       <span class="go">Open S&amp;R →</span>
     </button>
     <button class="tile" data-goto="bo">
-      <span class="num">10</span>
+      <span class="num">08</span>
       <h3>Breakout / Reversal</h3>
       <p>Pick a setup for Indian stocks or global ETFs: a fresh close above a swing high (breakout) or a bounce from a support level (reversal), with level strength, volume and reward-to-risk.</p>
       <span class="go">Open Breakout / Reversal →</span>
@@ -557,69 +543,35 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= SUPPORT SCANNER ================= -->
-<section class="panel" id="panel-support">
+<!-- ================= COT (stocks + global ETFs, 4 timeframes) ================= -->
+<section class="panel" id="panel-cot">
   <div class="card">
-    <h4>Support Scanner<span class="asof" id="sup-asof">loading…</span></h4>
-    <div class="tm-datarow">
-      <span class="tm-dot" id="sup-dot"></span>
-      <span id="sup-source-label">Loading scan…</span>
+    <h4>COT — Change of Trend</h4>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:10px 0 6px;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="cot-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks" selected>Indian Stocks</option><option value="etf">Global ETFs</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Timeframe
+        <select id="cot-tf" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="1H">1 Hour</option><option value="1D" selected>1 Day</option><option value="1W">1 Week</option><option value="1M">1 Month</option></select></label>
     </div>
-    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max distance above support (%)
-        <input type="number" id="sup-dist" value="3" min="0" max="3" step="0.5" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min. swing size (%)
-        <input type="number" id="sup-swing" value="5" min="5" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Min. retests
-        <input type="number" id="sup-ret" value="0" min="0" max="20" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max support age (days)
-        <input type="number" id="sup-age" value="500" min="1" max="1000" step="10" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
-    </div>
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
-      <input type="text" id="sup-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
-      <span id="sup-count" class="note" style="margin:0;"></span>
-      <button type="button" id="sup-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
-    </div>
-    <div class="gtm-scroll">
-      <table>
-        <thead id="sup-head">
-          <tr>
-            <th class="sortable" data-key="symbol">Symbol</th><th class="sortable" data-key="name">Company</th>
-            <th class="num sortable" data-key="cmp">CMP</th><th class="num sortable" data-key="support">Support</th>
-            <th class="num sortable" data-key="dist_pct">% Above</th><th class="num sortable" data-key="swing_up_pct">Swing Up %</th>
-            <th class="num sortable" data-key="swing_down_pct">Prior Fall %</th><th class="num sortable" data-key="retests">Retests</th>
-            <th class="sortable" data-key="support_date">Low Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
-          </tr>
-        </thead>
-        <tbody id="sup-body"></tbody>
-      </table>
-    </div>
-    <div class="note" id="sup-note">A swing low is confirmed only after price rallies at least 5% from it (zig-zag on daily High/Low). A stock is listed when its latest close is within the chosen distance above that low. A support is dropped for good once any close falls more than 1% below it.</div>
-  </div>
-</section>
-
-<!-- ================= PRIMARY TREND CHANGE ================= -->
-<section class="panel" id="panel-trend">
-  <div class="card">
-    <h4>IND Stock COT — Change of Trend<span class="asof" id="trd-asof">loading…</span></h4>
+    <div id="cot-stock-view">
     <div class="tm-datarow">
       <span class="tm-dot" id="trd-dot"></span>
-      <span id="trd-source-label">Loading scan…</span>
+      <span id="trd-source-label">Loading scan…</span><span class="asof" id="trd-asof" style="margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted);">loading…</span>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Swing size (bars each side)
         <select id="trd-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
         <select id="trd-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (days)
-        <input type="number" id="trd-days" value="10" min="0" max="60" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (candles)
+        <input type="number" id="trd-days" value="10" min="0" max="200" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
         <input type="number" id="trd-ext" value="10" min="0" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
     </div>
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
       <input type="text" id="trd-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
       <span id="trd-count" class="note" style="margin:0;"></span>
-      <button type="button" id="trd-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+      <button type="button" id="trd-export-csv" title="Downloads the matching symbols as a TradingView watchlist file (.txt)" class="echip" style="white-space:nowrap;">⬇ TradingView watchlist (.txt)</button>
     </div>
     <div class="gtm-scroll">
       <table>
@@ -629,23 +581,18 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
             <th class="sortable" data-key="direction">Signal</th><th class="num sortable" data-key="cmp">CMP</th>
             <th class="num sortable" data-key="level">Level Broken</th><th class="num sortable" data-key="pct_from_level">% From Level</th>
             <th class="num sortable" data-key="ref">Stop Reference</th><th class="num sortable" data-key="pct_to_ref">% From It</th>
-            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
+            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Candles Ago</th>
           </tr>
         </thead>
         <tbody id="trd-body"></tbody>
       </table>
     </div>
-    <div class="note" id="trd-note">Daily chart. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Days Ago counts trading days. Signals use closing prices only.</div>
-  </div>
-</section>
-
-<!-- ================= GLOBAL ETF CoT ================= -->
-<section class="panel" id="panel-global-cot">
-  <div class="card">
-    <h4>Global ETF CoT — Change of Trend<span class="asof" id="gcot-asof">loading…</span></h4>
+    <div class="note" id="trd-note"><span class="cot-tfn">Daily</span> chart. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Candles Ago counts candles of the chosen timeframe. Signals use closing prices only.<span class="cot-tfx"></span></div>
+    </div>
+    <div id="cot-etf-view" style="display:none">
     <div class="tm-datarow">
       <span class="tm-dot" id="gcot-dot"></span>
-      <span id="gcot-source-label">Loading scan…</span>
+      <span id="gcot-source-label">Loading scan…</span><span class="asof" id="gcot-asof" style="margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted);">loading…</span>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Market
@@ -658,15 +605,15 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <select id="gcot-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
         <select id="gcot-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (days)
-        <input type="number" id="gcot-days" value="10" min="0" max="30" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (candles)
+        <input type="number" id="gcot-days" value="10" min="0" max="200" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
         <input type="number" id="gcot-ext" value="10" min="0" max="100" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
     </div>
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
       <input type="text" id="gcot-search" class="gtm-search-input" placeholder="Search by ticker or fund name…" style="flex:1; min-width:200px; margin-bottom:0;" />
       <span id="gcot-count" class="note" style="margin:0;"></span>
-      <button type="button" id="gcot-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
+      <button type="button" id="gcot-export-csv" title="Downloads the matching symbols as a TradingView watchlist file (.txt)" class="echip" style="white-space:nowrap;">⬇ TradingView watchlist (.txt)</button>
     </div>
     <div class="gtm-scroll">
       <table>
@@ -676,13 +623,14 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
             <th class="sortable" data-key="direction">Signal</th><th class="num sortable" data-key="cmp">CMP</th>
             <th class="num sortable" data-key="level">Level Broken</th><th class="num sortable" data-key="pct_from_level">% From Level</th>
             <th class="num sortable" data-key="ref">Stop Reference</th><th class="num sortable" data-key="pct_to_ref">% From It</th>
-            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Days Ago</th>
+            <th class="sortable" data-key="trigger_date">Break Date</th><th class="num sortable" data-key="days_since">Candles Ago</th>
           </tr>
         </thead>
         <tbody id="gcot-body"></tbody>
       </table>
     </div>
-    <div class="note" id="gcot-note">Daily chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Days Ago counts trading days. Min avg volume uses the volume figure from the Global ETF Heatmap list; set it to 0 to see illiquid ETFs too.</div>
+    <div class="note" id="gcot-note"><span class="cot-tfn">Daily</span> chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Candles Ago counts candles of the chosen timeframe. Min avg volume uses the volume figure from the Global ETF Heatmap list; set it to 0 to see illiquid ETFs too.<span class="cot-tfx"></span></div>
+    </div>
   </div>
 </section>
 
@@ -2616,72 +2564,17 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 
 <script>
 (function(){
-  var SUP=null, sortKey='dist_pct', asc=true, loaded=false;
+  var TRD=null, sortKey='days_since', asc=true, curTF='', cache={};
   function $(i){return document.getElementById(i);}
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  function rows(){
-    if(!SUP) return [];
-    var d=+$('sup-dist').value, sw=+$('sup-swing').value, rt=+$('sup-ret').value, ag=+$('sup-age').value, q=$('sup-search').value.toLowerCase();
-    var r=SUP.results.filter(function(x){
-      return x.dist_pct<=d && x.swing_up_pct>=sw && x.retests>=rt && x.days_since<=ag && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
-    });
-    r.sort(function(a,b){
-      var A=a[sortKey], B=b[sortKey], c;
-      if(typeof A==='string' || typeof B==='string') c=String(A==null?'':A).localeCompare(String(B==null?'':B));
-      else c=(A==null?-1e9:A)-(B==null?-1e9:B);
-      return asc?c:-c;
-    });
-    return r;
-  }
-  function render(){
-    var r=rows();
-    $('sup-count').textContent=r.length+' stocks';
-    $('sup-body').innerHTML=r.map(function(x){
-      var cls=x.dist_pct<=1.5?'up':'';
-      var tv='https://www.tradingview.com/chart/?symbol=NSE:'+encodeURIComponent(String(x.symbol).replace('&','_'));
-      return '<tr><td class="name"><a href="'+tv+'" target="_blank" rel="noopener">'+esc(x.symbol)+'</a></td><td>'+esc(x.name)+'</td>'+
-        '<td class="num mono">'+x.cmp.toFixed(2)+'</td><td class="num mono">'+x.support.toFixed(2)+'</td>'+
-        '<td class="num mono '+cls+'">'+x.dist_pct.toFixed(2)+'%</td><td class="num mono">'+x.swing_up_pct+'</td>'+
-        '<td class="num mono">'+(x.swing_down_pct==null?'–':x.swing_down_pct)+'</td><td class="num mono">'+x.retests+'</td>'+
-        '<td class="mono">'+esc(x.support_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
-    }).join('');
-  }
-  function load(){
-    if(loaded) return; loaded=true;
-    fetch('data/support.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
-      SUP=j;
-      $('sup-asof').textContent='updated '+j.updated;
-      $('sup-source-label').textContent='Live scan — '+j.scanned+' stocks scanned (swing ≥ '+j.params.swing_pct+'%)'+(j.failed?' · '+j.failed+' skipped':'');
-      $('sup-dot').className='tm-dot live';
-      render();
-    }).catch(function(){
-      $('sup-asof').textContent='no data yet';
-      $('sup-source-label').textContent='data/support.json not found — run the Support Scan action first';
-    });
-  }
-  ['sup-dist','sup-swing','sup-ret','sup-age','sup-search'].forEach(function(id){ $(id).addEventListener('input',render); });
-  $('sup-head').addEventListener('click',function(e){
-    var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
-    asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
-  });
-  $('sup-export-csv').addEventListener('click',function(){
-    var r=rows(), h=['Symbol','Company','CMP','Support','% Above','Swing Up %','Prior Fall %','Retests','Low Date','Days Ago'];
-    var lines=[h.join(',')].concat(r.map(function(x){
-      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"',x.cmp,x.support,x.dist_pct,x.swing_up_pct,x.swing_down_pct==null?'':x.swing_down_pct,x.retests,x.support_date,x.days_since].join(',');
-    }));
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
-    a.download='support-scan.csv'; document.body.appendChild(a); a.click(); a.remove();
-  });
-  document.querySelectorAll('[data-panel="support"],[data-goto="support"]').forEach(function(b){ b.addEventListener('click',load); });
-})();
-</script>
-
-<script>
-(function(){
-  var TRD=null, sortKey='days_since', asc=true, loaded=false;
-  function $(i){return document.getElementById(i);}
-  function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  var TFN={'1H':'1-hour','1D':'daily','1W':'weekly','1M':'monthly'};
+  var TFD={'1H':7,'1D':10,'1W':4,'1M':2};   // default "signal fired within" (candles) per timeframe
+  var TFX={'1H':' Hourly data from Yahoo Finance reaches back about two years and is refreshed several times on market days.',
+           '1D':'',
+           '1W':' The current week is still forming, so a signal can fire on an unfinished weekly candle and reverse before it closes.',
+           '1M':' The current month is still forming, so a signal can fire on an unfinished monthly candle and reverse before it closes.'};
+  var view=$('cot-stock-view');
+  function url(tf){ return tf==='1D'?'data/dow_trend.json':'data/dow_trend_'+tf+'.json'; }
   function rows(){
     if(!TRD) return [];
     var dir=$('trd-dir').value, dy=+$('trd-days').value, ex=+$('trd-ext').value, q=$('trd-search').value.toLowerCase();
@@ -2710,17 +2603,27 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         '<td class="mono">'+esc(x.trigger_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
     }).join('');
   }
-  function load(){
-    if(loaded) return; loaded=true;
-    fetch('data/dow_trend.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
-      TRD=j;
-      $('trd-asof').textContent='updated '+j.updated;
-      $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the daily chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped':'');
-      $('trd-dot').className='tm-dot live';
-      render();
+  function applyTF(tf){
+    $('trd-days').value=TFD[tf];
+    var n=view.querySelector('.cot-tfn'); if(n) n.textContent=TFN[tf].charAt(0).toUpperCase()+TFN[tf].slice(1);
+    var x=view.querySelector('.cot-tfx'); if(x) x.textContent=TFX[tf];
+  }
+  function header(j,tf){
+    $('trd-asof').textContent='updated '+j.updated;
+    $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped':'');
+    $('trd-dot').className='tm-dot live';
+  }
+  function load(tf){
+    if(tf!==curTF){ curTF=tf; applyTF(tf); }
+    if(cache[tf]){ TRD=cache[tf]; header(TRD,tf); render(); return; }
+    TRD=null; render();
+    $('trd-asof').textContent='loading…'; $('trd-source-label').textContent='Loading '+TFN[tf]+' scan…'; $('trd-dot').className='tm-dot';
+    fetch(url(tf)+'?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      cache[tf]=j; if(curTF!==tf) return; TRD=j; header(j,tf); render();
     }).catch(function(){
+      if(curTF!==tf) return;
       $('trd-asof').textContent='no data yet';
-      $('trd-source-label').textContent='data/dow_trend.json not found — run the Update Dow Trend Change Scan action first';
+      $('trd-source-label').textContent=url(tf)+' not found — run the "Update Dow Trend Change Scan'+(tf==='1H'?' (1 hour)':'')+'" action first';
     });
   }
   ['trd-swing','trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
@@ -2729,25 +2632,34 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
   });
   $('trd-export-csv').addEventListener('click',function(){
-    var r=rows(), h=['Symbol','Company','Signal','CMP','Level Broken','% From Level','Stop Reference','% From It','Break Date','Days Ago'];
-    var lines=[h.join(',')].concat(r.map(function(x){
-      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"',x.direction,x.cmp,x.level,x.pct_from_level,x.ref,x.pct_to_ref,x.trigger_date,x.days_since].join(',');
-    }));
+    var r=rows();
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen={}, list=[];
+    r.forEach(function(x){ var t='NSE:'+String(x.symbol).replace(/[&-]/g,'_'); if(!seen[t]){ seen[t]=1; list.push(t); } });
+    if(list.length>1000){ list=list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
     var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
-    a.download='trend-change-scan.csv'; document.body.appendChild(a); a.click(); a.remove();
+    a.href=URL.createObjectURL(new Blob([list.join(',')],{type:'text/plain'}));
+    a.download='cot-stocks-'+curTF.toLowerCase()+'-'+(($('trd-dir').value||'all').toLowerCase())+'.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
-  document.querySelectorAll('[data-panel="trend"],[data-goto="trend"]').forEach(function(b){ b.addEventListener('click',load); });
+  window.COT_STOCK={load:load};
 })();
 </script>
 
 <script>
 (function(){
-  var G=null, sortKey='days_since', asc=true, loaded=false;
+  var G=null, sortKey='days_since', asc=true, curTF='', cache={};
   function $(i){return document.getElementById(i);}
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   var MKT={TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
   function market(sym){ var i=sym.lastIndexOf('.'); if(i<0) return 'US'; var s=sym.slice(i+1); return MKT[s]||'Other'; }
+  var TFN={'1H':'1-hour','1D':'daily','1W':'weekly','1M':'monthly'};
+  var TFD={'1H':7,'1D':10,'1W':4,'1M':2};   // default "signal fired within" (candles) per timeframe
+  var TFX={'1H':' Hourly data from Yahoo Finance reaches back about two years and is refreshed several times on market days.',
+           '1D':'',
+           '1W':' The current week is still forming, so a signal can fire on an unfinished weekly candle and reverse before it closes.',
+           '1M':' The current month is still forming, so a signal can fire on an unfinished monthly candle and reverse before it closes.'};
+  var view=$('cot-etf-view');
+  function url(tf){ return tf==='1D'?'data/global_etf_cot.json':'data/global_etf_cot_'+tf+'.json'; }
   function rows(){
     if(!G) return [];
     var src=(G.variants&&G.variants[$('gcot-swing').value])||G.results;
@@ -2779,17 +2691,27 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         '<td class="mono">'+esc(x.trigger_date)+'</td><td class="num mono">'+x.days_since+'</td></tr>';
     }).join('');
   }
-  function load(){
-    if(loaded) return; loaded=true;
-    fetch('data/global_etf_cot.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
-      G=j;
-      $('gcot-asof').textContent='updated '+j.updated;
-      $('gcot-source-label').textContent='Live scan — '+j.scanned+' ETFs scanned on the daily chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped (no data / stale)':'');
-      $('gcot-dot').className='tm-dot live';
-      render();
+  function applyTF(tf){
+    $('gcot-days').value=TFD[tf];
+    var n=view.querySelector('.cot-tfn'); if(n) n.textContent=TFN[tf].charAt(0).toUpperCase()+TFN[tf].slice(1);
+    var x=view.querySelector('.cot-tfx'); if(x) x.textContent=TFX[tf];
+  }
+  function header(j,tf){
+    $('gcot-asof').textContent='updated '+j.updated;
+    $('gcot-source-label').textContent='Live scan — '+j.scanned+' ETFs scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped (no data / stale)':'');
+    $('gcot-dot').className='tm-dot live';
+  }
+  function load(tf){
+    if(tf!==curTF){ curTF=tf; applyTF(tf); }
+    if(cache[tf]){ G=cache[tf]; header(G,tf); render(); return; }
+    G=null; render();
+    $('gcot-asof').textContent='loading…'; $('gcot-source-label').textContent='Loading '+TFN[tf]+' scan…'; $('gcot-dot').className='tm-dot';
+    fetch(url(tf)+'?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      cache[tf]=j; if(curTF!==tf) return; G=j; header(j,tf); render();
     }).catch(function(){
+      if(curTF!==tf) return;
       $('gcot-asof').textContent='no data yet';
-      $('gcot-source-label').textContent='data/global_etf_cot.json not found — run the Update Global ETF CoT Scan action first';
+      $('gcot-source-label').textContent=url(tf)+' not found — run the "Update Global ETF CoT Scan'+(tf==='1H'?' (1 hour)':'')+'" action first';
     });
   }
   ['gcot-swing','gcot-mkt','gcot-cat','gcot-vol','gcot-dir','gcot-days','gcot-ext','gcot-search'].forEach(function(id){ $(id).addEventListener('input',render); });
@@ -2797,19 +2719,41 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
     asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
   });
+  var TVX={TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
+  function tvSym(sym){
+    var i=sym.lastIndexOf('.'); if(i<0) return sym;            // US ETFs: no prefix, TradingView picks the primary listing
+    var base=sym.slice(0,i), suf=sym.slice(i+1), ex=TVX[suf];
+    if(!ex) return base;
+    if(suf==='HK') base=base.replace(/^0+/,'')||'0';
+    return ex+':'+base;
+  }
   $('gcot-export-csv').addEventListener('click',function(){
-    var r=rows(), h=['Ticker','ETF','Category','Signal','CMP','Level Broken','% From Level','Stop Reference','% From It','Break Date','Days Ago'];
-    var lines=[h.join(',')].concat(r.map(function(x){
-      return [x.symbol,'"'+String(x.name).replace(/"/g,'""')+'"','"'+String(x.cat).replace(/"/g,'""')+'"',x.direction,x.cmp,x.level,x.pct_from_level,x.ref,x.pct_to_ref,x.trigger_date,x.days_since].join(',');
-    }));
+    var r=rows();
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen={}, list=[];
+    r.forEach(function(x){ var t=tvSym(x.symbol); if(!seen[t]){ seen[t]=1; list.push(t); } });
+    if(list.length>1000){ list=list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
     var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
-    a.download='global-etf-cot.csv'; document.body.appendChild(a); a.click(); a.remove();
+    a.href=URL.createObjectURL(new Blob([list.join(',')],{type:'text/plain'}));
+    a.download='cot-etfs-'+curTF.toLowerCase()+'-'+(($('gcot-dir').value||'all').toLowerCase())+'.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
-  document.querySelectorAll('[data-panel="global-cot"],[data-goto="global-cot"]').forEach(function(b){ b.addEventListener('click',load); });
+  window.COT_ETF={load:load};
 })();
 </script>
-
+<script>
+(function(){
+  function $(i){return document.getElementById(i);}
+  function apply(){
+    var uni=$('cot-uni').value, tf=$('cot-tf').value;
+    $('cot-stock-view').style.display = uni==='stocks' ? '' : 'none';
+    $('cot-etf-view').style.display   = uni==='etf'    ? '' : 'none';
+    (uni==='stocks' ? window.COT_STOCK : window.COT_ETF).load(tf);
+  }
+  $('cot-uni').addEventListener('change',apply);
+  $('cot-tf').addEventListener('change',apply);
+  document.querySelectorAll('[data-panel="cot"],[data-goto="cot"]').forEach(function(b){ b.addEventListener('click',apply); });
+})();
+</script>
 <script>
 (function(){
   var D = {stocks:null, etf:null}, loading = {}, sortKey = null, asc = true;

@@ -4,21 +4,44 @@ Same logic as the TradingView indicator:
   * swing high / low = pivot with N bars on each side (confirmed N bars later)
   * uptrend   -> turns BEARISH when a daily CLOSE is below the last higher low
   * downtrend -> turns BULLISH when a daily CLOSE is above the last lower high
-Output: data/dow_trend.json  (read by the "Trend Change" tab of index.html)
+Timeframes: 1H, 1D, 1W, 1M (run:  python scan_dow_trend.py 1D 1W 1M   or   python scan_dow_trend.py 1H).
+Output: data/dow_trend.json (1D) and data/dow_trend_1H.json / _1W.json / _1M.json
+        (read by the COT tab of index.html)
 """
 import glob, json, math, os, time
 from datetime import datetime, timezone, timedelta
+import sys
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 import pandas as pd
 import yfinance as yf
 
 OUT_FILE      = "data/dow_trend.json"
 SWING_OPTIONS = [3, 5, 8]      # selectable on the webpage
 DEFAULT_SWING = 5
-MAX_DAYS      = 60             # keep signals fired within the last 60 trading days
 CHUNK         = 100
-PERIOD        = "3y"
-MIN_BARS      = 120
+
+# ---- timeframes -------------------------------------------------------------------------
+# interval / history Yahoo is asked for, minimum candles needed, and how many candles back a
+# signal may have fired and still be listed. "1D" keeps the original output file name so
+# nothing that already reads it breaks; the others get a suffix.
+TIMEFRAMES = {
+    "1H": {"interval": "1h",  "period": "730d", "min_bars": 300, "max_bars": 100},
+    "1D": {"interval": "1d",  "period": "3y",   "min_bars": 120, "max_bars": 60},
+    "1W": {"interval": "1wk", "period": "10y",  "min_bars": 60,  "max_bars": 26},
+    "1M": {"interval": "1mo", "period": "max",  "min_bars": 36,  "max_bars": 12},
+}
+
+def stamp(ts, intraday=None):
+    """Break date; includes the time for hourly candles."""
+    ts = pd.Timestamp(ts)
+    if ts.hour or ts.minute:
+        return ts.strftime("%Y-%m-%d %H:%M")
+    return ts.strftime("%Y-%m-%d")
+
+
+def out_path(base, tf):
+    return base if tf == "1D" else base.replace(".json", "_" + tf + ".json")
 
 
 def _read_table(path):
@@ -71,20 +94,35 @@ def load_symbols():
     return uniq
 
 
-def analyse(dates, high, low, close, L):
-    """Replays the Pine state machine bar by bar. Returns the latest change of trend, or None."""
+def analyse(dates, high, low, close, L, max_bars):
+    """Same Dow-Theory state machine as before, but the pivots are found in one vectorised pass
+    (a pivot at bar p becomes known at bar p+L) so the 1H scan stays fast."""
     n = len(close)
+    if n < 2 * L + 2:
+        return None
+    ph_val = np.full(n, np.nan)
+    pl_val = np.full(n, np.nan)
+    win = 2 * L + 1
+    wh = sliding_window_view(high, win)
+    wl = sliding_window_view(low, win)
+    ch, cl = high[L: n - L], low[L: n - L]
+    is_ph = (ch == wh.max(axis=1)) & ((wh == ch[:, None]).sum(axis=1) == 1)
+    is_pl = (cl == wl.min(axis=1)) & ((wl == cl[:, None]).sum(axis=1) == 1)
+    for k in np.nonzero(is_ph)[0]:
+        ph_val[k + 2 * L] = ch[k]            # pivot bar = k+L, confirmed at k+2L
+    for k in np.nonzero(is_pl)[0]:
+        pl_val[k + 2 * L] = cl[k]
+
     lastPH = prevPH = lastPL = prevPL = np.nan
     trend = 0
     last = None   # (direction, bar_index, level_broken, stop_reference)
     for t in range(n):
-        p = t - L                              # pivot candidate, now confirmed by L bars to its right
-        if p - L >= 0:
-            wh, wl = high[p - L: t + 1], low[p - L: t + 1]
-            if high[p] == wh.max() and (wh == high[p]).sum() == 1:
-                prevPH, lastPH = lastPH, high[p]
-            if low[p] == wl.min() and (wl == low[p]).sum() == 1:
-                prevPL, lastPL = lastPL, low[p]
+        v = ph_val[t]
+        if v == v:
+            prevPH, lastPH = lastPH, v
+        v = pl_val[t]
+        if v == v:
+            prevPL, lastPL = lastPL, v
 
         if trend == 0 and not (math.isnan(prevPH) or math.isnan(prevPL)):
             if lastPH > prevPH and lastPL > prevPL:
@@ -103,7 +141,7 @@ def analyse(dates, high, low, close, L):
         return None
     direction, idx, level, ref = last
     days_since = n - 1 - idx
-    if days_since > MAX_DAYS:
+    if days_since > max_bars:
         return None
     after = close[idx + 1:]
     if len(after):                              # drop if price later closed back through the stop reference
@@ -119,37 +157,43 @@ def analyse(dates, high, low, close, L):
         "pct_from_level": round((cmp_ - level) / level * 100, 2),
         "ref": round(ref, 2),
         "pct_to_ref": round((cmp_ - ref) / ref * 100, 2),
-        "trigger_date": str(dates[idx])[:10],
+        "trigger_date": stamp(dates[idx]),
         "days_since": int(days_since),
     }
 
 
-def main():
-    universe = load_symbols()
+def run_timeframe(tf, universe):
+    cfg = TIMEFRAMES[tf]
     variants = {str(L): [] for L in SWING_OPTIONS}
     scanned, failed = 0, 0
     for i in range(0, len(universe), CHUNK):
         part = universe[i: i + CHUNK]
         tickers = [s + ".NS" for s, _ in part]
-        print(f"Downloading {i + 1}-{i + len(part)} of {len(universe)}", flush=True)
-        try:
-            data = yf.download(tickers, period=PERIOD, interval="1d", group_by="ticker",
-                               auto_adjust=True, threads=True, progress=False)
-        except Exception as e:
-            print("  chunk failed:", e)
+        print(f"[{tf}] downloading {i + 1}-{i + len(part)} of {len(universe)}", flush=True)
+        data = None
+        for attempt in range(2):
+            try:
+                data = yf.download(tickers, period=cfg["period"], interval=cfg["interval"],
+                                   group_by="ticker", auto_adjust=True, threads=True, progress=False)
+                if data is not None and len(data):
+                    break
+            except Exception as e:
+                print("  chunk failed:", e)
+            time.sleep(5)
+        if data is None or not len(data):
             failed += len(part)
             continue
         for (sym, name), tk in zip(part, tickers):
             try:
                 df = data[tk] if isinstance(data.columns, pd.MultiIndex) else data
                 df = df.dropna(subset=["High", "Low", "Close"])
-                if len(df) < MIN_BARS:
+                if len(df) < cfg["min_bars"]:
                     failed += 1
                     continue
                 h, l, c = (df[k].to_numpy(float) for k in ("High", "Low", "Close"))
                 scanned += 1
                 for L in SWING_OPTIONS:
-                    r = analyse(df.index, h, l, c, L)
+                    r = analyse(df.index, h, l, c, L, cfg["max_bars"])
                     if r:
                         variants[str(L)].append({"symbol": sym, "name": name, **r})
             except Exception:
@@ -163,14 +207,25 @@ def main():
         "updated": ist.strftime("%d %b %Y, %H:%M IST"),
         "scanned": scanned,
         "failed": failed,
-        "params": {"swing_bars": DEFAULT_SWING, "options": SWING_OPTIONS, "max_days": MAX_DAYS},
+        "params": {"timeframe": tf, "swing_bars": DEFAULT_SWING, "options": SWING_OPTIONS, "max_days": cfg["max_bars"]},
         "results": variants[str(DEFAULT_SWING)],
         "variants": variants,
     }
     os.makedirs("data", exist_ok=True)
-    with open(OUT_FILE, "w") as f:
+    path = out_path(OUT_FILE, tf)
+    with open(path, "w") as f:
         json.dump(payload, f, separators=(",", ":"))
-    print(f"Done. scanned={scanned} failed={failed} signals(default)={len(payload['results'])}")
+    print(f"[{tf}] done. scanned={scanned} failed={failed} signals(default)={len(payload['results'])} -> {path}")
+
+
+def main():
+    tfs = [a.upper() for a in sys.argv[1:]] or ["1D"]
+    bad = [t for t in tfs if t not in TIMEFRAMES]
+    if bad:
+        raise SystemExit("Unknown timeframe(s): %s. Use any of %s" % (bad, list(TIMEFRAMES)))
+    universe = load_symbols()
+    for tf in tfs:
+        run_timeframe(tf, universe)
 
 
 if __name__ == "__main__":
