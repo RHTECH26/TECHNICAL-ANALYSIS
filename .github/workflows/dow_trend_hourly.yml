@@ -1,16 +1,16 @@
-name: Update Dow Trend Change Scan (1 hour)
+name: Update Dow Trend Change Scan (live)
 
 on:
   schedule:
-    - cron: "15 5,7,9,10 * * 1-5"   # 10:45, 12:45, 14:45 and 15:45 IST, Mon-Fri (during and just after the NSE session)
+    - cron: "15 5,7,9 * * 1-5"   # 10:45 AM, 12:45 PM and 2:45 PM IST, Mon-Fri (during the NSE session)
   workflow_dispatch:             # lets you run it manually from the Actions tab
 
 permissions:
   contents: write
 
-# a new run waits for the previous 1-hour run instead of running alongside it
+# a new run waits for the previous run instead of running alongside it
 concurrency:
-  group: dow-trend-hourly
+  group: dow-trend-scan
   cancel-in-progress: false
 
 jobs:
@@ -23,13 +23,13 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install yfinance pandas numpy openpyxl
-      - run: python scan_dow_trend.py 1H
+      - run: python scan_dow_trend.py 1H 1D 1W 1M
       - name: Commit results
         run: |
           git config user.name  "github-actions"
           git config user.email "actions@github.com"
-          git add data/dow_trend_1H.json
-          git diff --staged --quiet || git commit -m "Update Dow Trend Change Scan (1 hour)"
+          git add data/dow_trend.json data/dow_trend_1H.json data/dow_trend_1W.json data/dow_trend_1M.json
+          git diff --staged --quiet || git commit -m "Update Dow Trend Change Scan (live)"
           for attempt in 1 2 3 4 5; do
             git pull --rebase && git push && break
             echo "Push attempt $attempt failed - retrying..."
