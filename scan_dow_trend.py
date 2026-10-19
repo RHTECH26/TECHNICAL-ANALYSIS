@@ -166,6 +166,11 @@ def run_timeframe(tf, universe):
     cfg = TIMEFRAMES[tf]
     variants = {str(L): [] for L in SWING_OPTIONS}
     scanned, failed = 0, 0
+    # was the NSE session open when this scan started? Then the latest candle is still forming and
+    # every signal is based on the live price (it only becomes final after the 3:30 PM close).
+    ist0 = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    mins0 = ist0.hour * 60 + ist0.minute
+    market_open = ist0.weekday() < 5 and (9 * 60 + 15) <= mins0 <= (15 * 60 + 30)
     for i in range(0, len(universe), CHUNK):
         part = universe[i: i + CHUNK]
         tickers = [s + ".NS" for s, _ in part]
@@ -207,6 +212,7 @@ def run_timeframe(tf, universe):
         "updated": ist.strftime("%d %b %Y, %H:%M IST"),
         "scanned": scanned,
         "failed": failed,
+        "market_open": market_open,
         "params": {"timeframe": tf, "swing_bars": DEFAULT_SWING, "options": SWING_OPTIONS, "max_days": cfg["max_bars"]},
         "results": variants[str(DEFAULT_SWING)],
         "variants": variants,

@@ -2610,7 +2610,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   }
   function header(j,tf){
     $('trd-asof').textContent='updated '+j.updated;
-    $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped':'');
+    $('trd-source-label').textContent='Live scan — '+j.scanned+' stocks scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped':'')+(j.market_open?' · LIVE price (market was open) - signals are final only after the close':'');
     $('trd-dot').className='tm-dot live';
   }
   function load(tf){
@@ -2623,7 +2623,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }).catch(function(){
       if(curTF!==tf) return;
       $('trd-asof').textContent='no data yet';
-      $('trd-source-label').textContent=url(tf)+' not found — run the "Update Dow Trend Change Scan'+(tf==='1H'?' (1 hour)':'')+'" action first';
+      $('trd-source-label').textContent=url(tf)+' not found — run the "Update Dow Trend Change Scan" action first';
     });
   }
   ['trd-swing','trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
