@@ -298,6 +298,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div class="tm-controls" style="margin-bottom:2px;">
       <div class="etf-chiprow" id="breadth-indicator-toggle">
         <button class="echip" aria-pressed="true" data-indicator="cotNet">COT Net (Bull−Bear)</button>
+        <button class="echip" aria-pressed="false" data-indicator="netAD">NET AD LINE</button>
         <button class="echip" aria-pressed="false" data-indicator="netHL">Net Highs (H-L)</button>
         <button class="echip" aria-pressed="false" data-indicator="pctSma">Stocks &gt; 200 SMA (%)</button>
         <button class="echip" aria-pressed="false" data-indicator="newHighs">52-Week Highs</button>
@@ -1526,7 +1527,9 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     cotBear: {label:'COT Bearish Stocks (#)', short:'stocks in Dow downtrend (COT)', color:'--bad', unit:'count', fill:false, cot:true,
       desc:'how many constituents are in a Dow downtrend each day (daily chart, Dow Theory change-of-trend rule).'},
     cotNet: {label:'COT Net (Bull − Bear)', short:'net bullish − bearish stocks (COT)', color:'--saffron', unit:'count', fill:false, cot:true,
-      desc:'bullish stocks minus bearish stocks each day — above zero means more constituents are in uptrends than downtrends.'}
+      desc:'bullish stocks minus bearish stocks each day — above zero means more constituents are in uptrends than downtrends.'},
+    netAD: {label:'NET AD LINE', short:'net advances − declines', color:'--teal', unit:'count', fill:false, ad:true,
+      desc:'advances minus declines each day: how many constituents closed above their own previous close minus how many closed below it. Above zero means more stocks rose than fell.'}
   };
   function curPrice(){ return PRICE[breadthActiveIndex]; }
   function curPct(){ return PCT[breadthActiveIndex]; }
@@ -1534,6 +1537,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   // Whichever indicator is selected, return it as the same [["YYYY-MM-DD", value], ...] shape
   // that pctSma already uses, so the range-slicing and charting code below stays generic.
   function curIndicatorSeries(){
+    if(breadthActiveIndicator==='netAD') return adSeries();
     if(breadthActiveIndicator.indexOf('cot')===0) return cotSeries();
     if(breadthActiveIndicator==='pctSma') return curPct();
     var extra = curExtra();
@@ -1748,7 +1752,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
           borderColor: color, borderWidth:1.25,
           pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor: color,
           fill: ind.fill, backgroundColor: color + '26', tension:0
-        }].concat(ind.cot && (ind.unit==='pct' || breadthActiveIndicator==='cotNet')
+        }].concat((ind.cot && (ind.unit==='pct' || breadthActiveIndicator==='cotNet')) || ind.ad
           ? [{data: data.map(function(){ return ind.unit==='pct' ? 50 : 0; }), borderColor: tok('--ink-soft'), borderWidth:1, borderDash:[4,3], pointRadius:0, pointHoverRadius:0, fill:false}]
           : [])
       },
@@ -1769,6 +1773,10 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
               title:function(items){ return data[items[0].dataIndex][0]; },
               label:function(item){
                 var v = data[item.dataIndex][1];
+                if(ind.ad){
+                  var ad = adDay(breadthActiveIndex, data[item.dataIndex][0]);
+                  if(ad) return ['Advances: '+ad.adv, 'Declines: '+ad.dec, 'Net: '+(ad.net>0?'+':'')+ad.net];
+                }
                 if(ind.cot){
                   var c = cotDay(breadthActiveIndex, data[item.dataIndex][0]);
                   if(c) return ['Bullish (uptrend): '+c.up+' ('+c.pctUp.toFixed(1)+'%)', 'Bearish (downtrend): '+c.dn, 'Net: '+(c.up-c.dn>0?'+':'')+(c.up-c.dn), 'Fresh CoT: '+c.bu+' ↑ / '+c.be+' ↓'];
@@ -1815,7 +1823,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     } else {
       tiles.push(['Stocks &gt; 200 SMA', '—', 'connect live data', null]);
     }
-    tiles = tiles.concat(cotTiles());
+    tiles = tiles.concat(cotTiles()).concat(adTiles());
     document.getElementById('breadth-tiles').innerHTML = tiles.map(function(t){
       var dcls = t[3]===null ? '' : (t[3]>=0?'up':'down');
       return '<div class="mtile"><div class="k">'+t[0]+'</div><div class="v">'+t[1]+'</div><div class="d '+dcls+'">'+t[2]+'</div></div>';
@@ -1836,6 +1844,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         srcEl.textContent = 'no data yet';
       }
     }
+    if(srcEl && ind.ad && !adData(breadthActiveIndex)){ srcEl.textContent = 'NET AD LINE not built yet for '+meta.name+' — run the "Update COT Breadth" action'; }
     var dot = document.getElementById('np-dot'), label = document.getElementById('np-source-label');
     if(price && price.length){
       dot.classList.add('live');
@@ -1912,6 +1921,35 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       ['Dow COT — Bullish stocks', c.up+' / '+c.tot, c.pctUp.toFixed(1)+'% in uptrend · '+c.date, c.pctUp-50],
       ['Dow COT — Bearish stocks', c.dn+' / '+c.tot, (100-c.pctUp).toFixed(1)+'% in downtrend', -((100-c.pctUp)-50)],
       ['Fresh COT today', c.bu+' ↑ / '+c.be+' ↓', 'trend flips on '+c.date, c.bu-c.be]
+    ];
+  }
+  // ---- NET AD LINE: advances minus declines per day (scan_cot_breadth.py writes it into data/cot_breadth.json) ----
+  function adData(key){
+    if(!COT) return null;
+    if(key==='sp500'){ var sp = COT.sp500_ad; return sp && sp.dates && sp.dates.length ? sp : null; }
+    var e = COT.indices && COT.indices[key];
+    return e && e.ad ? {dates:COT.dates, adv:e.ad.adv, dec:e.ad.dec, net:e.ad.net} : null;
+  }
+  function adSeries(){
+    var a = adData(breadthActiveIndex); if(!a) return null;
+    var out = [];
+    for(var i=0;i<a.dates.length;i++){ if(a.adv[i]+a.dec[i] > 0) out.push([a.dates[i], a.net[i]]); }
+    return out;
+  }
+  function adDay(key, date){
+    var a = adData(key); if(!a) return null;
+    var i = a.dates.indexOf(date);
+    return i<0 ? null : {date:date, adv:a.adv[i], dec:a.dec[i], net:a.net[i]};
+  }
+  function adTiles(){
+    var a = adData(breadthActiveIndex); if(!a) return [];
+    var i = a.dates.length-1; while(i>=0 && !(a.adv[i]+a.dec[i])) i--;
+    if(i<0) return [];
+    var adv=a.adv[i], dec=a.dec[i], net=a.net[i], tot=adv+dec;
+    return [
+      ['NET AD LINE', (net>0?'+':'')+net, a.dates[i], net],
+      ['Advances', String(adv), (adv/tot*100).toFixed(1)+'% of stocks that moved', 1],
+      ['Declines', String(dec), (dec/tot*100).toFixed(1)+'% of stocks that moved', -1]
     ];
   }
   function cotFmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
