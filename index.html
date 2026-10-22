@@ -66,6 +66,9 @@ nav.tabs button:not([aria-selected="true"]):hover{border-color:var(--line-strong
 nav.tabs button:focus-visible{outline:2px solid var(--indigo); outline-offset:2px;}
 
 section.panel{display:none;}
+section.subpanel{display:none;}
+section.subpanel.active{display:block; animation:fade .3s ease;}
+.subnav{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 20px; padding-bottom:14px; border-bottom:1px solid var(--line);}
 section.panel.active{display:block; animation:fade .3s ease;}
 @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
 
@@ -224,11 +227,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="true" data-panel="desk">Desk</button>
   <button role="tab" aria-selected="false" data-panel="flows">Flows</button>
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
-  <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
-  <button role="tab" aria-selected="false" data-panel="cot">COT</button>
+  <button role="tab" aria-selected="false" data-panel="scanner">Scanner</button>
   <button role="tab" aria-selected="false" data-panel="rs">Relative Strength</button>
-  <button role="tab" aria-selected="false" data-panel="sr">S&amp;R</button>
-  <button role="tab" aria-selected="false" data-panel="bo">Breakout / Reversal</button>
 </nav>
 
 <!-- ================= DESK ================= -->
@@ -248,35 +248,17 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <p>Live Nifty 500 index price plus the % of names trading above their 200-day SMA, a full daily series back to 2006.</p>
       <span class="go">Open breadth →</span>
     </button>
-    <button class="tile" data-goto="breakout">
+    <button class="tile" data-goto="scanner">
       <span class="num">03</span>
-      <h3>ETF Screener</h3>
-      <p>Rules-based daily scan of the global ETF universe: range breakout, MA crossover, volume confirmation, or narrow-range breakout mode.</p>
-      <span class="go">Open ETF screener →</span>
-    </button>
-    <button class="tile" data-goto="cot">
-      <span class="num">04</span>
-      <h3>COT — Change of Trend</h3>
-      <p>Dow Theory change of trend for Indian stocks or global ETFs on the 1-hour, daily, weekly or monthly chart: a close above the last lower high (bullish) or below the last higher low (bearish).</p>
-      <span class="go">Open COT →</span>
+      <h3>Scanner</h3>
+      <p>Four scanners in one place: the ETF Screener (breakouts, crossovers, volume), COT change of trend, S&amp;R levels, and Breakout / Reversal setups.</p>
+      <span class="go">Open scanner →</span>
     </button>
     <button class="tile" data-goto="rs">
-      <span class="num">05</span>
+      <span class="num">04</span>
       <h3>Relative Strength</h3>
       <p>Pick a market high date and low date, then see which ETFs or stocks have beaten the benchmark since each one, and how far they sit from their 52-week high.</p>
       <span class="go">Open relative strength →</span>
-    </button>
-    <button class="tile" data-goto="sr">
-      <span class="num">06</span>
-      <h3>S&amp;R</h3>
-      <p>Indian stocks or global ETFs sitting right at a swing high (near resistance) or a swing low (near support).</p>
-      <span class="go">Open S&amp;R →</span>
-    </button>
-    <button class="tile" data-goto="bo">
-      <span class="num">07</span>
-      <h3>Breakout / Reversal</h3>
-      <p>Pick a setup for Indian stocks or global ETFs: a fresh close above a swing high (breakout) or a bounce from a support level (reversal), with level strength, volume and reward-to-risk.</p>
-      <span class="go">Open Breakout / Reversal →</span>
     </button>
   </div>
 </section>
@@ -365,8 +347,16 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= BREAKOUT SCANNER ================= -->
-<section class="panel" id="panel-breakout">
+<!-- ================= SCANNER (ETF Screener, COT, S&R, Breakout / Reversal) ================= -->
+<section class="panel" id="panel-scanner">
+  <div class="subnav" role="tablist" aria-label="Scanners">
+    <button type="button" class="echip" role="tab" aria-pressed="true"  data-sub="breakout" data-panel="breakout">ETF Screener</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="cot" data-panel="cot">COT</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="sr" data-panel="sr">S&amp;R</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="bo" data-panel="bo">Breakout / Reversal</button>
+  </div>
+
+<section class="subpanel active" id="panel-breakout">
   <div class="card">
     <h4>ETF Screener<span class="asof" id="brk-asof">connect live data</span></h4>
     <div class="tm-datarow">
@@ -457,8 +447,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= COT (stocks + global ETFs, 4 timeframes) ================= -->
-<section class="panel" id="panel-cot">
+<section class="subpanel" id="panel-cot">
   <div class="card">
     <h4>COT — Change of Trend</h4>
     <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:10px 0 6px;">
@@ -548,110 +537,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= RELATIVE STRENGTH ================= -->
-<section class="panel" id="panel-rs">
-  <style>
-#panel-rs .rs-hero{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:14px 0 4px;}
-#panel-rs .rs-card{border:1px solid var(--line); background:var(--surface-2); border-radius:12px; padding:12px 14px; position:relative; overflow:hidden;}
-#panel-rs .rs-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--line-strong);}
-#panel-rs .rs-card.bm::before{background:var(--saffron);}
-#panel-rs .rs-card.hi::before{background:var(--indigo);}
-#panel-rs .rs-card.lo::before{background:var(--teal);}
-#panel-rs .rs-card.both::before{background:var(--good);}
-#panel-rs .rs-k{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700;}
-#panel-rs .rs-v{font-size:22px; font-weight:700; color:var(--ink); margin-top:4px; font-variant-numeric:tabular-nums;}
-#panel-rs .rs-s{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
-#panel-rs .rs-up{color:var(--good);} #panel-rs .rs-dn{color:var(--bad);}
-#panel-rs .rs-scroll{max-height:640px; overflow:auto; border:1px solid var(--line); border-radius:10px; margin-top:10px;}
-#panel-rs table{border-collapse:separate; border-spacing:0; width:100%; font-size:13px;}
-#panel-rs thead th{position:sticky; top:0; z-index:4; background:var(--surface-2); height:40px; padding:0 12px; text-align:right; white-space:nowrap; cursor:pointer; user-select:none; border-bottom:1px solid var(--line-strong);}
-#panel-rs thead th.l{text-align:left;}
-#panel-rs thead th.on{color:var(--ink);} #panel-rs thead th .ar{opacity:.7; margin-left:4px;}
-#panel-rs td{padding:9px 12px; border-bottom:1px solid var(--line); text-align:right; vertical-align:middle; white-space:nowrap;}
-#panel-rs td.l{text-align:left;}
-#panel-rs td .sub{display:block; font-size:10.5px; color:var(--muted); margin-top:2px;}
-#panel-rs td .nm{color:var(--ink); font-weight:600;}
-#panel-rs tr.bmrow td{position:sticky; top:40px; z-index:3; background:var(--surface-3); border-bottom:2px solid var(--saffron); font-weight:600;}
-#panel-rs tr.bmrow td.l{border-left:4px solid var(--saffron);}
-#panel-rs .tag{display:inline-block; font-size:9.5px; letter-spacing:.08em; font-weight:800; padding:2px 7px; border-radius:99px; background:var(--saffron); color:#111; margin-left:6px; vertical-align:middle;}
-#panel-rs .pill{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:99px; margin-left:4px; border:1px solid var(--line-strong); color:var(--muted);}
-#panel-rs .pill.y{background:rgba(47,191,106,.16); border-color:rgba(47,191,106,.5); color:var(--good);}
-#panel-rs .pill.both{background:var(--good); border-color:var(--good); color:#06210f;}
-#panel-rs .ex{display:inline-flex; align-items:center; gap:8px; justify-content:flex-end;}
-#panel-rs .exv{min-width:62px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
-#panel-rs .exbar{display:flex; width:76px; height:8px; border-radius:4px; background:var(--surface-3); overflow:hidden;}
-#panel-rs .exbar i{display:block; height:100%; width:50%; position:relative;}
-#panel-rs .exbar i b{position:absolute; top:0; bottom:0; display:block; border-radius:3px;}
-#panel-rs .exbar i.n{border-right:1px solid var(--line-strong);} #panel-rs .exbar i.n b{right:0; background:var(--bad);} #panel-rs .exbar i.p b{left:0; background:var(--good);}
-#panel-rs .gauge{display:inline-block; width:64px; height:8px; border-radius:4px; background:var(--surface-3); overflow:hidden; vertical-align:middle; margin-left:8px;}
-#panel-rs .gauge b{display:block; height:100%; border-radius:4px;}
-#panel-rs .sm{font-size:11px; color:var(--muted); font-weight:500;}
-#panel-rs .chg{font-variant-numeric:tabular-nums; font-weight:600; color:var(--ink);}
-#panel-rs .mono{font-variant-numeric:tabular-nums;}
-#panel-rs .rs-empty{padding:36px 0; text-align:center; color:var(--muted);}
-#panel-rs .rs-help{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
-</style>
-  <div class="card">
-    <h4>Relative Strength vs Benchmark<span class="asof" id="rs-asof"></span></h4>
-    <div class="tm-datarow"><span class="tm-dot" id="rs-dot"></span><span id="rs-status">Open this tab to load prices…</span></div>
-
-    <div style="display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end; margin:10px 0 4px;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
-        <select id="rs-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="global" selected>Global ETFs</option><option value="inetf">Indian ETFs</option><option value="istock">Indian Stocks</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Benchmark
-        <select id="rs-bench" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="IXIC" selected>Nasdaq Composite</option><option value="GSPC">S&amp;P 500</option><option value="NSEI">Nifty 50</option><option value="CRSLDX">Nifty 500</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">High date
-        <input type="date" id="rs-hd" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;"></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Low date
-        <input type="date" id="rs-ld" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;"></label>
-      <button type="button" id="rs-auto" class="echip" title="Sets the High date to the benchmark's highest close and the Low date to its lowest close after that">✨ Auto-pick from benchmark</button>
-    </div>
-    <div class="rs-help" id="rs-datehelp"></div>
-    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;">
-      <span class="sm" style="font-size:11px; color:var(--muted); font-weight:600;">Market episodes:</span>
-      <button type="button" class="echip rs-ep" data-from="1999-06-01" data-to="2003-06-30" title="Benchmark's highest close and the lowest close after it, in this window">Dot-com crash</button>
-      <button type="button" class="echip rs-ep" data-from="2007-01-01" data-to="2009-12-31" title="Benchmark's highest close and the lowest close after it, in this window">2008 financial crisis</button>
-      <button type="button" class="echip rs-ep" data-from="2020-01-01" data-to="2020-04-30" title="Benchmark's highest close and the lowest close after it, in this window">COVID crash</button>
-      <button type="button" class="echip rs-ep" data-from="2021-09-01" data-to="2023-03-31" title="Benchmark's highest close and the lowest close after it, in this window">2022 bear market</button>
-      <button type="button" class="echip rs-ep" data-from="2024-11-01" data-to="2025-05-01" title="Benchmark's highest close and the lowest close after it, in this window">2025 sell-off</button>
-    </div>
-
-    <div style="display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end; margin:14px 0 4px;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
-        <select id="rs-show" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="all">All</option><option value="h">Beating benchmark since High date</option><option value="l">Beating benchmark since Low date</option><option value="both" selected>Beating on both</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sort by
-        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="d1">1D change</option><option value="chh">Since High</option><option value="chl" selected>Since Low</option><option value="off">Since 52-week high</option><option value="s">Symbol</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Order
-        <select id="rs-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="-1" selected>Highest first</option><option value="1">Lowest first</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-mktw">Market
-        <select id="rs-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-catw">Category
-        <select id="rs-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-volw">Min avg volume
-        <input type="number" id="rs-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;" style="width:110px;"></label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Rows to show
-        <select id="rs-rows" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="100">100</option><option value="300" selected>300</option><option value="1000">1000</option><option value="99999">All</option></select></label>
-    </div>
-
-    <div class="rs-hero" id="rs-hero"></div>
-
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:14px;">
-      <input type="text" id="rs-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
-      <span id="rs-count" class="note" style="margin:0;"></span>
-      <button type="button" id="rs-export" class="echip" style="white-space:nowrap;" title="Downloads the rows in the table as a TradingView watchlist file (.txt)">⬇ TradingView watchlist (.txt)</button>
-    </div>
-
-    <div class="rs-scroll"><table>
-      <thead><tr id="rs-head"></tr></thead>
-      <tbody id="rs-body"></tbody>
-    </table></div>
-
-    <div class="note">How to read this: <b>1D change</b> is the latest close against the close before it. <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
-  </div>
-</section>
-
-<!-- ================= S&R SCREENER ================= -->
-<section class="panel" id="panel-sr">
+<section class="subpanel" id="panel-sr">
   <div class="card">
     <h4>S&amp;R — stocks / ETFs at a swing high or swing low<span class="asof" id="sr-asof">loading…</span></h4>
     <div class="tm-datarow">
@@ -703,8 +589,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= BREAKOUT / REVERSAL (one tab, two setups) ================= -->
-<section class="panel" id="panel-bo">
+<section class="subpanel" id="panel-bo">
   <div class="card">
     <div style="display:flex; flex-wrap:wrap; gap:14px 28px; align-items:flex-end;">
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Setup
@@ -829,10 +714,108 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 </div>
 </section>
 
+</section>
+<!-- ================= RELATIVE STRENGTH ================= -->
+<section class="panel" id="panel-rs">
+  <style>
+#panel-rs .rs-hero{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:14px 0 4px;}
+#panel-rs .rs-card{border:1px solid var(--line); background:var(--surface-2); border-radius:12px; padding:12px 14px; position:relative; overflow:hidden;}
+#panel-rs .rs-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--line-strong);}
+#panel-rs .rs-card.bm::before{background:var(--saffron);}
+#panel-rs .rs-card.hi::before{background:var(--indigo);}
+#panel-rs .rs-card.lo::before{background:var(--teal);}
+#panel-rs .rs-card.both::before{background:var(--good);}
+#panel-rs .rs-k{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700;}
+#panel-rs .rs-v{font-size:22px; font-weight:700; color:var(--ink); margin-top:4px; font-variant-numeric:tabular-nums;}
+#panel-rs .rs-s{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+#panel-rs .rs-up{color:var(--good);} #panel-rs .rs-dn{color:var(--bad);}
+#panel-rs .rs-scroll{max-height:640px; overflow:auto; border:1px solid var(--line); border-radius:10px; margin-top:10px;}
+#panel-rs table{border-collapse:separate; border-spacing:0; width:100%; font-size:13px;}
+#panel-rs thead th{position:sticky; top:0; z-index:4; background:var(--surface-2); height:40px; padding:0 12px; text-align:right; white-space:nowrap; cursor:pointer; user-select:none; border-bottom:1px solid var(--line-strong);}
+#panel-rs thead th.l{text-align:left;}
+#panel-rs thead th.on{color:var(--ink);} #panel-rs thead th .ar{opacity:.7; margin-left:4px;}
+#panel-rs td{padding:9px 12px; border-bottom:1px solid var(--line); text-align:right; vertical-align:middle; white-space:nowrap;}
+#panel-rs td.l{text-align:left;}
+#panel-rs td .sub{display:block; font-size:10.5px; color:var(--muted); margin-top:2px;}
+#panel-rs td .nm{color:var(--ink); font-weight:600;}
+#panel-rs tr.bmrow td{position:sticky; top:40px; z-index:3; background:var(--surface-3); border-bottom:2px solid var(--saffron); font-weight:600;}
+#panel-rs tr.bmrow td.l{border-left:4px solid var(--saffron);}
+#panel-rs .tag{display:inline-block; font-size:9.5px; letter-spacing:.08em; font-weight:800; padding:2px 7px; border-radius:99px; background:var(--saffron); color:#111; margin-left:6px; vertical-align:middle;}
+#panel-rs .pill{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:99px; margin-left:4px; border:1px solid var(--line-strong); color:var(--muted);}
+#panel-rs .pill.y{background:rgba(47,191,106,.16); border-color:rgba(47,191,106,.5); color:var(--good);}
+#panel-rs .pill.both{background:var(--good); border-color:var(--good); color:#06210f;}
+#panel-rs .ex{display:inline-flex; align-items:center; gap:8px; justify-content:flex-end;}
+#panel-rs .exv{min-width:62px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
+#panel-rs .exbar{display:flex; width:76px; height:8px; border-radius:4px; background:var(--surface-3); overflow:hidden;}
+#panel-rs .exbar i{display:block; height:100%; width:50%; position:relative;}
+#panel-rs .exbar i b{position:absolute; top:0; bottom:0; display:block; border-radius:3px;}
+#panel-rs .exbar i.n{border-right:1px solid var(--line-strong);} #panel-rs .exbar i.n b{right:0; background:var(--bad);} #panel-rs .exbar i.p b{left:0; background:var(--good);}
+#panel-rs .gauge{display:inline-block; width:64px; height:8px; border-radius:4px; background:var(--surface-3); overflow:hidden; vertical-align:middle; margin-left:8px;}
+#panel-rs .gauge b{display:block; height:100%; border-radius:4px;}
+#panel-rs .sm{font-size:11px; color:var(--muted); font-weight:500;}
+#panel-rs .chg{font-variant-numeric:tabular-nums; font-weight:600; color:var(--ink);}
+#panel-rs .mono{font-variant-numeric:tabular-nums;}
+#panel-rs .rs-empty{padding:36px 0; text-align:center; color:var(--muted);}
+#panel-rs .rs-help{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+</style>
+  <div class="card">
+    <h4>Relative Strength vs Benchmark<span class="asof" id="rs-asof"></span></h4>
+    <div class="tm-datarow"><span class="tm-dot" id="rs-dot"></span><span id="rs-status">Open this tab to load prices…</span></div>
 
+    <div style="display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end; margin:10px 0 4px;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="rs-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="global" selected>Global ETFs</option><option value="inetf">Indian ETFs</option><option value="istock">Indian Stocks</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Benchmark
+        <select id="rs-bench" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="IXIC" selected>Nasdaq Composite</option><option value="GSPC">S&amp;P 500</option><option value="NSEI">Nifty 50</option><option value="CRSLDX">Nifty 500</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">High date
+        <input type="date" id="rs-hd" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Low date
+        <input type="date" id="rs-ld" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;"></label>
+      <button type="button" id="rs-auto" class="echip" title="Sets the High date to the benchmark's highest close and the Low date to its lowest close after that">✨ Auto-pick from benchmark</button>
+    </div>
+    <div class="rs-help" id="rs-datehelp"></div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;">
+      <span class="sm" style="font-size:11px; color:var(--muted); font-weight:600;">Market episodes:</span>
+      <button type="button" class="echip rs-ep" data-from="1999-06-01" data-to="2003-06-30" title="Benchmark's highest close and the lowest close after it, in this window">Dot-com crash</button>
+      <button type="button" class="echip rs-ep" data-from="2007-01-01" data-to="2009-12-31" title="Benchmark's highest close and the lowest close after it, in this window">2008 financial crisis</button>
+      <button type="button" class="echip rs-ep" data-from="2020-01-01" data-to="2020-04-30" title="Benchmark's highest close and the lowest close after it, in this window">COVID crash</button>
+      <button type="button" class="echip rs-ep" data-from="2021-09-01" data-to="2023-03-31" title="Benchmark's highest close and the lowest close after it, in this window">2022 bear market</button>
+      <button type="button" class="echip rs-ep" data-from="2024-11-01" data-to="2025-05-01" title="Benchmark's highest close and the lowest close after it, in this window">2025 sell-off</button>
+    </div>
 
+    <div style="display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end; margin:14px 0 4px;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
+        <select id="rs-show" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="all">All</option><option value="h">Beating benchmark since High date</option><option value="l">Beating benchmark since Low date</option><option value="both" selected>Beating on both</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sort by
+        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="d1">1D change</option><option value="chh">Since High</option><option value="chl" selected>Since Low</option><option value="off">Since 52-week high</option><option value="s">Symbol</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Order
+        <select id="rs-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="-1" selected>Highest first</option><option value="1">Lowest first</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-mktw">Market
+        <select id="rs-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>US</option><option>Canada</option><option>Korea</option><option>India</option><option>Germany</option><option>Australia</option><option>Japan</option><option>UK</option><option>Brazil</option><option>Hong Kong</option><option>Other</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-catw">Category
+        <select id="rs-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option>Broad Market</option><option>Country &amp; Regional</option><option>Factor &amp; Strategy</option><option>Sector</option><option>Thematic &amp; Industry</option><option>Commodities</option><option>Fixed Income</option><option>Other</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-volw">Min avg volume
+        <input type="number" id="rs-vol" value="10000" min="0" step="1000" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px;" style="width:110px;"></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Rows to show
+        <select id="rs-rows" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="100">100</option><option value="300" selected>300</option><option value="1000">1000</option><option value="99999">All</option></select></label>
+    </div>
 
+    <div class="rs-hero" id="rs-hero"></div>
 
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:14px;">
+      <input type="text" id="rs-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="rs-count" class="note" style="margin:0;"></span>
+      <button type="button" id="rs-export" class="echip" style="white-space:nowrap;" title="Downloads the rows in the table as a TradingView watchlist file (.txt)">⬇ TradingView watchlist (.txt)</button>
+    </div>
+
+    <div class="rs-scroll"><table>
+      <thead><tr id="rs-head"></tr></thead>
+      <tbody id="rs-body"></tbody>
+    </table></div>
+
+    <div class="note">How to read this: <b>1D change</b> is the latest close against the close before it. <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
+  </div>
+</section>
 
 <footer>
   <span>Right Horizons Markets Screener — a concept research desk, compiled from public NSE-linked market data</span>
@@ -880,10 +863,22 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     panels.forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+name); });
     if(name==='flows' && !window.__flowsDrawn){ drawFlows(); window.__flowsDrawn = true; }
     if(name==='breadth' && !window.__breadthDrawn){ drawBreadth(); drawNiftyPrice(); window.__breadthDrawn = true; }
-    if(name==='breakout' && !window.__breakoutDrawn){ renderBreakoutScanner(); window.__breakoutDrawn = true; }
+    if(name==='scanner'){ showSub(curSub); }
   }
   tabs.forEach(function(b){ b.addEventListener('click', function(){ activate(b.dataset.panel); }); });
   document.querySelectorAll('[data-goto]').forEach(function(b){ b.addEventListener('click', function(){ activate(b.dataset.goto); }); });
+
+  // ---- Scanner tab: four sub-tabs ----
+  var curSub = 'breakout';
+  var subBtns = document.querySelectorAll('.subnav button');
+  var subPanels = document.querySelectorAll('section.subpanel');
+  function showSub(name){
+    curSub = name;
+    subBtns.forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.sub===name ? 'true' : 'false'); });
+    subPanels.forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+name); });
+    if(name==='breakout' && !window.__breakoutDrawn){ renderBreakoutScanner(); window.__breakoutDrawn = true; }
+  }
+  subBtns.forEach(function(b){ b.addEventListener('click', function(){ showSub(b.dataset.sub); }); });
   // Re-draw whatever has already been drawn, so charts (which read their colours when they are created) follow a theme change.
   window.__rhRedrawThemed = function(){
     if(window.__flowsDrawn){ drawFlows(); }
