@@ -129,7 +129,6 @@ tbody td.name{color:var(--ink); font-weight:600;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:var(--surface-2);}
 .tag{font-size:10.5px; padding:2px 8px; border-radius:99px; background:var(--surface-3); color:var(--ink-soft);}
-.brk-ticker{font-size:12.5px; padding:3px 9px;}
 .up{color:var(--good);} .down{color:var(--bad);}
 
 /* ---- flows chart card ---- */
@@ -255,7 +254,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <button class="tile" data-goto="scanner">
       <span class="num">03</span>
       <h3>Scanner</h3>
-      <p>Four scanners in one place: the ETF Screener (breakouts, crossovers, volume), COT change of trend, S&amp;R levels, and Breakout / Reversal setups.</p>
+      <p>Three scanners in one place: COT change of trend (stocks and ETFs, 1H to 1M), S&amp;R levels, and Breakout / Reversal setups.</p>
       <span class="go">Open scanner →</span>
     </button>
     <button class="tile" data-goto="rs">
@@ -352,107 +351,15 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= SCANNER (ETF Screener, COT, S&R, Breakout / Reversal) ================= -->
+<!-- ================= SCANNER (COT, S&R, Breakout / Reversal) ================= -->
 <section class="panel" id="panel-scanner">
   <div class="subnav" role="tablist" aria-label="Scanners">
-    <button type="button" class="echip" role="tab" aria-pressed="true"  data-sub="breakout" data-panel="breakout">ETF Screener</button>
-    <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="cot" data-panel="cot">COT</button>
+    <button type="button" class="echip" role="tab" aria-pressed="true" data-sub="cot" data-panel="cot">COT</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="sr" data-panel="sr">S&amp;R</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="bo" data-panel="bo">Breakout / Reversal</button>
   </div>
 
-<section class="subpanel active" id="panel-breakout">
-  <div class="card">
-    <h4>ETF Screener<span class="asof" id="brk-asof">connect live data</span></h4>
-    <div class="tm-datarow">
-      <span class="tm-dot" id="brk-dot"></span>
-      <span id="brk-source-label">Static preview — no live feed connected</span>
-    </div>
-    <div class="brk-mode-toggle" style="display:flex; gap:8px; margin:14px 0 2px; flex-wrap:wrap;">
-      <button type="button" id="brk-mode-volume" class="echip" aria-pressed="true">Range Breakout</button>
-      <button type="button" id="brk-mode-macross" class="echip" aria-pressed="false">MA Crossover</button>
-      <button type="button" id="brk-mode-volconfirm" class="echip" aria-pressed="false">Volume Confirmation</button>
-      <button type="button" id="brk-mode-narrowrange" class="echip" aria-pressed="false">Narrow Range</button>
-    </div>
-    <div class="brk-controls" id="brk-vol-controls" style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">
-        New-high lookback
-        <select id="brk-lookback" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;">
-          <option value="20" selected>20 days</option>
-          <option value="50">50 days</option>
-          <option value="100">100 days</option>
-          <option value="200">200 days</option>
-        </select>
-      </label>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">
-        Min. volume multiple
-        <input type="number" id="brk-vol-mult" value="1.5" min="1" max="10" step="0.1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;">
-      </label>
-    </div>
-    <div class="brk-controls" id="brk-ma-controls" style="display:none; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">
-        Fresh-cross window
-        <select id="brk-cross-window" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;">
-          <option value="5">Last 5 days</option>
-          <option value="10" selected>Last 10 days</option>
-          <option value="20">Last 20 days</option>
-          <option value="50">Last 50 days</option>
-        </select>
-      </label>
-      <div style="font-size:12px; color:var(--ink-soft); max-width:460px; padding-bottom:8px; line-height:1.5;">Flags an ETF whose 50-day EMA crossed above its 100-day SMA within the selected window (and is still above it today), with price currently above the 20-day EMA.</div>
-    </div>
-    <div class="brk-controls" id="brk-vc-controls" style="display:none; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
-      <div style="display:flex; gap:8px;">
-        <button type="button" id="brk-vc-rising" class="echip" aria-pressed="true">Price &amp; Volume Rising</button>
-        <button type="button" id="brk-vc-falling" class="echip" aria-pressed="false">Price &amp; Volume Falling</button>
-      </div>
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">
-        <span id="brk-vc-mult-label">Min. volume multiple vs 20D avg</span>
-        <input type="number" id="brk-vc-vol-mult" value="1.2" min="1" max="10" step="0.1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;">
-      </label>
-      <div style="font-size:12px; color:var(--ink-soft); max-width:460px; padding-bottom:8px; line-height:1.5;" id="brk-vc-note">Flags an ETF whose price rose today AND whose volume is at or above the chosen multiple of its trailing 20-day average.</div>
-    </div>
-    <div class="brk-controls" id="brk-nr-controls" style="display:none; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:14px 0;">
-      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">
-        Trailing lookback
-        <select id="brk-nr-lookback" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;">
-          <option value="30" selected>30 days</option>
-          <option value="60">60 days</option>
-          <option value="90">90 days</option>
-        </select>
-      </label>
-      <div style="display:flex; gap:8px;">
-        <button type="button" id="brk-nr-above" class="echip" aria-pressed="true">Breaking Above (New High)</button>
-        <button type="button" id="brk-nr-below" class="echip" aria-pressed="false">Breaking Below (New Low)</button>
-      </div>
-      <div style="font-size:12px; color:var(--ink-soft); max-width:460px; padding-bottom:8px; line-height:1.5;" id="brk-nr-note">Flags an ETF whose close today is a new 30-day high — its highest close over the trailing 30 days (today included).</div>
-    </div>
-    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); cursor:pointer; margin-bottom:14px;">
-      <input type="checkbox" id="brk-only-flagged" checked style="cursor:pointer;">
-      Show only ETFs flagged as breaking out today
-    </label>
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
-      <input type="text" id="brk-search" class="gtm-search-input" placeholder="Search by ETF name or ticker…" style="flex:1; min-width:200px; margin-bottom:0;" />
-      <button type="button" id="brk-export-csv" class="echip" style="white-space:nowrap;">⬇ Download Excel (CSV)</button>
-    </div>
-    <div class="gtm-scroll">
-      <table>
-        <thead id="brk-head">
-          <tr>
-            <th>ETF</th><th class="num sortable" data-key="price">Price</th><th class="num sortable" data-key="chg1d">1D %</th>
-            <th id="brk-highn-th">20D High</th><th class="num sortable" id="brk-volratio-th" data-key="volRatio">Vol vs 20D Avg</th>
-            <th class="num sortable" data-key="volume">Avg Daily Volume (20D)</th>
-            <th class="num sortable" data-key="rsi14">RSI (14)</th><th>Trend</th>
-          </tr>
-        </thead>
-        <tbody id="brk-body"></tbody>
-      </table>
-    </div>
-    <div id="brk-note" hidden></div>
-  </div>
-</section>
-
-<section class="subpanel" id="panel-cot">
+<section class="subpanel active" id="panel-cot">
   <div class="card">
     <h4>COT — Change of Trend</h4>
     <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:10px 0 6px;">
@@ -873,21 +780,19 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   document.querySelectorAll('[data-goto]').forEach(function(b){ b.addEventListener('click', function(){ activate(b.dataset.goto); }); });
 
   // ---- Scanner tab: four sub-tabs ----
-  var curSub = 'breakout';
+  var curSub = 'cot';
   var subBtns = document.querySelectorAll('.subnav button');
   var subPanels = document.querySelectorAll('section.subpanel');
   function showSub(name){
     curSub = name;
     subBtns.forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.sub===name ? 'true' : 'false'); });
     subPanels.forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+name); });
-    if(name==='breakout' && !window.__breakoutDrawn){ renderBreakoutScanner(); window.__breakoutDrawn = true; }
   }
   subBtns.forEach(function(b){ b.addEventListener('click', function(){ showSub(b.dataset.sub); }); });
   // Re-draw whatever has already been drawn, so charts (which read their colours when they are created) follow a theme change.
   window.__rhRedrawThemed = function(){
     if(window.__flowsDrawn){ drawFlows(); }
     if(window.__breadthDrawn){ drawBreadth(); drawNiftyPrice(); }
-    if(window.__breakoutDrawn){ renderBreakoutScanner(); }
   };
 
   // ---- macro tiles (desk) ----
@@ -943,557 +848,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     'Thematic & Industry':'--teal', 'Factor & Strategy':'--warn', 'Fixed Income':'--good',
     'Commodities':'--bad', 'Other':'--ink-soft'
   };
-
-  // ---- breakout screener (rules-based, two modes) ----
-  // Mode 1, "volume" (labeled "Range Breakout"): new N-day high + volume confirmation (the
-  // original scan).
-  // Mode 2, "macross": 50-day EMA crossing above the 100-day SMA within a recent window,
-  // still above it today, with price above the 20-day EMA -- computed client-side from
-  // each row's own trailing close series, same as the volume mode's on-the-fly recompute.
-  // Mode 3, "volconfirm": flags an ETF whose price and volume are moving the same direction
-  // today -- both up ("rising") or both down ("falling") -- with volume measured against its
-  // trailing 20-day average. A standalone indicator, not tied to any other mode's logic.
-  // Mode 4, "narrowrange" (labeled "Narrow Range"): flags an ETF whose close today is a new
-  // trailing-N-day high (or low), N adjustable between 30/60/90 days -- a plain price-range
-  // breakout/breakdown with no volume component, independent of the other three modes.
-  // Reuses the same category classification and colors as the Global ETF tab
-  // (GLOBAL_ETF_BY_TICKER), so a ticker's name/category is looked up rather than
-  // duplicated in data/breakout-scanner.json — that file only carries the day's computed
-  // signals (price, flags, RSI, trend), keeping it small relative to the full universe.
-  var BRK_DATA = null;          // {asof, rows:[{t,price,chg1d,high20,high52w,volRatio,rsi14,aboveSma50,aboveSma200,breakout,closes,vols}]}
-  var BRK_SORT = {key: null, dir: -1};
-  var BRK_MODE = 'volume';      // 'volume' | 'macross' | 'volconfirm' | 'narrowrange'
-  var BRK_LOOKBACK = 20;        // new-high lookback window, adjustable: 20/50/100/200 days
-  var BRK_VOL_MULT = 1.5;       // min volume-vs-average multiple to count as a breakout, adjustable
-  var BRK_CROSS_WINDOW = 10;    // macross mode: how many recent trading days count as a "fresh" cross
-  var BRK_VC_DIRECTION = 'rising';  // volconfirm mode: 'rising' | 'falling'
-  var BRK_VC_VOL_MULT = 1.2;        // volconfirm mode: min volume-vs-20D-avg multiple (rising: >=; falling: <= 1/mult)
-  var BRK_VC_VOL_LOOKBACK = 20;     // volconfirm mode: trailing window volume is compared against (fixed at 20 per spec)
-  var BRK_NR_LOOKBACK = 30;         // narrowrange mode: trailing window, adjustable 30/60/90 days
-  var BRK_NR_DIRECTION = 'above';   // narrowrange mode: 'above' (new high) | 'below' (new low)
-  var BRK_MAX_ROWS = 200;       // DOM row cap -- see renderBreakoutScanner()
-
-  function brkRowMeta(row){
-    return GLOBAL_ETF_BY_TICKER[row.t] || {n: row.t, t: row.t, cat: 'Other'};
-  }
-  // Simple-moving-average series over `closes`, one value per index (null until `period`
-  // points are available).
-  function computeSMASeries(closes, period){
-    var out = new Array(closes.length).fill(null);
-    if(closes.length < period) return out;
-    var sum = 0;
-    for(var i = 0; i < closes.length; i++){
-      sum += closes[i];
-      if(i >= period) sum -= closes[i - period];
-      if(i >= period - 1) out[i] = sum / period;
-    }
-    return out;
-  }
-  // Exponential-moving-average series, seeded with the SMA of the first `period` points
-  // (the standard approach when you don't have data back to a series' true inception).
-  function computeEMASeries(closes, period){
-    var out = new Array(closes.length).fill(null);
-    if(closes.length < period) return out;
-    var k = 2 / (period + 1);
-    var seedSum = 0;
-    for(var i = 0; i < period; i++) seedSum += closes[i];
-    var ema = seedSum / period;
-    out[period - 1] = ema;
-    for(var i = period; i < closes.length; i++){
-      ema = closes[i] * k + ema * (1 - k);
-      out[i] = ema;
-    }
-    return out;
-  }
-  // Recomputes the new-high flag and volume ratio for the CURRENT lookback/multiple settings
-  // from each row's own trailing close/volume history — this is what makes the lookback and
-  // volume-multiple controls instant, with no extra fetch: the raw series already sitting in
-  // BRK_DATA covers up to a 200-day lookback (see fetch_breakout_scanner.py's
-  // CLIENT_HISTORY_WINDOW). 52-week-high, RSI and SMA trend are fixed-window indicators and
-  // stay exactly as the server computed them.
-  function brkComputeVolume(row, n, mult){
-    var closes = row.closes, vols = row.vols;
-    if(!closes || !closes.length || closes.length < n){
-      return {highN: null, volRatio: null, breakout: false};
-    }
-    var last = closes[closes.length - 1];
-    var windowCloses = closes.slice(closes.length - n);
-    var highN = last >= Math.max.apply(null, windowCloses);
-    var volRatio = null;
-    if(vols && vols.length >= n + 1){
-      var prevVols = vols.slice(vols.length - (n + 1), vols.length - 1);
-      var avgVol = prevVols.reduce(function(a,b){ return a+b; }, 0) / prevVols.length;
-      var todayVol = vols[vols.length - 1];
-      if(avgVol > 0) volRatio = todayVol / avgVol;
-    }
-    var breakout = !!(highN && volRatio !== null && volRatio >= mult);
-    return {highN: highN, volRatio: volRatio, breakout: breakout};
-  }
-  // Volume ratio on a specific day index: that day's volume vs. the average of the `n` days
-  // immediately before it (same shape as brkComputeVolume's ratio, just at an arbitrary index
-  // instead of always the latest day) -- used to check Dow-Theory-style volume confirmation
-  // on an arbitrary day index, given that day's trailing `n`-day volume history -- shared by
-  // the volume-confirmation mode below.
-  function brkVolRatioAt(vols, idx, n){
-    if(!vols || idx < n) return null;
-    var prevVols = vols.slice(idx - n, idx);
-    var avgVol = prevVols.reduce(function(a,b){ return a+b; }, 0) / prevVols.length;
-    if(avgVol <= 0) return null;
-    return vols[idx] / avgVol;
-  }
-  // MA-crossover mode: flags a "golden cross"-style setup -- the 50-day EMA crossed above
-  // the 100-day SMA within the last `crossWindow` trading days and hasn't crossed back below
-  // since, with today's price also above the 20-day EMA (a simple trend-confirmation filter).
-  function brkComputeMACross(row, crossWindow){
-    var closes = row.closes;
-    if(!closes || closes.length < 100){
-      return {ema50: null, sma100: null, ema20: null, aboveEma20: null, crossDaysAgo: null, breakout: false};
-    }
-    var ema50 = computeEMASeries(closes, 50);
-    var sma100 = computeSMASeries(closes, 100);
-    var ema20 = computeEMASeries(closes, 20);
-    var last = closes.length - 1;
-    var ema50Now = ema50[last], sma100Now = sma100[last], ema20Now = ema20[last];
-    if(ema50Now === null || sma100Now === null){
-      return {ema50: ema50Now, sma100: sma100Now, ema20: ema20Now, aboveEma20: null, crossDaysAgo: null, breakout: false};
-    }
-    var aboveEma20 = (ema20Now !== null) ? (closes[last] > ema20Now) : null;
-    var crossDaysAgo = null;
-    var windowStart = Math.max(100, last - crossWindow + 1);
-    for(var i = last; i >= windowStart; i--){
-      if(ema50[i] === null || sma100[i] === null || ema50[i-1] === null || sma100[i-1] === null) continue;
-      if(ema50[i] > sma100[i] && ema50[i-1] <= sma100[i-1]){
-        crossDaysAgo = last - i;
-        break;
-      }
-    }
-    var currentlyAbove = ema50Now > sma100Now;
-    var breakout = !!(currentlyAbove && crossDaysAgo !== null && aboveEma20 === true);
-    return {ema50: ema50Now, sma100: sma100Now, ema20: ema20Now, aboveEma20: aboveEma20, crossDaysAgo: crossDaysAgo, breakout: breakout};
-  }
-  // Volume Confirmation mode: a standalone indicator, not part of either scan above. Flags an
-  // ETF whose today's price move and today's volume are pointing the same way -- "rising"
-  // requires both up (price change > 0 and volume >= `volMult`x its trailing 20-day average),
-  // "falling" requires both down (price change < 0 and volume <= 1/`volMult`x that average, the
-  // symmetric threshold on the downside). Volume is always measured against the fixed 20-day
-  // window regardless of any other mode's settings, per spec.
-  function brkComputeVolConfirm(row, direction, volMult){
-    var vols = row.vols;
-    var n = BRK_VC_VOL_LOOKBACK;
-    if(!vols || vols.length < n + 1 || row.chg1d === null || row.chg1d === undefined){
-      return {volRatio: null, breakout: false};
-    }
-    var volRatio = brkVolRatioAt(vols, vols.length - 1, n);
-    var breakout = false;
-    if(volRatio !== null){
-      breakout = (direction === 'rising')
-        ? (row.chg1d > 0 && volRatio >= volMult)
-        : (row.chg1d < 0 && volRatio <= (1 / volMult));
-    }
-    return {volRatio: volRatio, breakout: breakout};
-  }
-  // Narrow Range mode: a plain trailing-N-day high/low breakout with no volume component.
-  // "above" flags a new N-day high (today's close is the max close over the trailing N days,
-  // today included); "below" flags a new N-day low (today's close is the min over that same
-  // window) -- same window-inclusive convention as brkComputeVolume's new-high check, for
-  // consistency across modes.
-  function brkComputeNarrowRange(row, n, direction){
-    var closes = row.closes;
-    if(!closes || closes.length < n){
-      return {level: null, breakout: false};
-    }
-    var last = closes[closes.length - 1];
-    var windowCloses = closes.slice(closes.length - n);
-    var level, breakout;
-    if(direction === 'above'){
-      level = Math.max.apply(null, windowCloses);
-      breakout = last >= level;
-    } else {
-      level = Math.min.apply(null, windowCloses);
-      breakout = last <= level;
-    }
-    return {level: level, breakout: breakout};
-  }
-  function brkScored(){
-    if(!BRK_DATA) return [];
-    return BRK_DATA.rows.map(function(row){
-      var meta = brkRowMeta(row);
-      if(BRK_MODE === 'macross'){
-        var c = brkComputeMACross(row, BRK_CROSS_WINDOW);
-        return {row: row, meta: meta, breakout: c.breakout, ema50: c.ema50, sma100: c.sma100,
-                ema20: c.ema20, aboveEma20: c.aboveEma20, crossDaysAgo: c.crossDaysAgo};
-      }
-      if(BRK_MODE === 'volconfirm'){
-        var vc = brkComputeVolConfirm(row, BRK_VC_DIRECTION, BRK_VC_VOL_MULT);
-        return {row: row, meta: meta, breakout: vc.breakout, volRatio: vc.volRatio};
-      }
-      if(BRK_MODE === 'narrowrange'){
-        var nr = brkComputeNarrowRange(row, BRK_NR_LOOKBACK, BRK_NR_DIRECTION);
-        return {row: row, meta: meta, breakout: nr.breakout, level: nr.level};
-      }
-      var v = brkComputeVolume(row, BRK_LOOKBACK, BRK_VOL_MULT);
-      return {row: row, meta: meta, highN: v.highN, volRatio: v.volRatio, breakout: v.breakout};
-    });
-  }
-  function brkFiltered(){
-    var q = (document.getElementById('brk-search').value || '').toLowerCase().trim();
-    var onlyFlagged = document.getElementById('brk-only-flagged').checked;
-    return brkScored().filter(function(x){
-      if(onlyFlagged && !x.breakout) return false;
-      if(q && x.meta.n.toLowerCase().indexOf(q) < 0 && x.row.t.toLowerCase().indexOf(q) < 0) return false;
-      return true;
-    });
-  }
-  // Average daily volume over the trailing 20 days BEFORE today (same window the "Vol vs 20D
-  // Avg" ratio columns use as their denominator), straight off each row's own trailing
-  // series -- same value regardless of which mode is active, so it's sortable in all three.
-  function brkAvgVolume20(row){
-    var vols = row.vols, n = 20;
-    if(!vols || vols.length < n + 1) return null;
-    var prevVols = vols.slice(vols.length - (n + 1), vols.length - 1);
-    return prevVols.reduce(function(a,b){ return a+b; }, 0) / prevVols.length;
-  }
-  function brkSortValue(x, key){
-    if(key === 'price') return x.row.price;
-    if(key === 'chg1d') return x.row.chg1d;
-    if(key === 'volRatio'){
-      if(BRK_MODE === 'macross'){
-        if(x.ema50 == null || x.sma100 == null || x.sma100 === 0) return null;
-        return (x.ema50 - x.sma100) / x.sma100;
-      }
-      if(BRK_MODE === 'narrowrange'){
-        if(x.level == null || x.level === 0) return null;
-        return (x.row.price - x.level) / x.level;
-      }
-      return x.volRatio;
-    }
-    if(key === 'volume') return brkAvgVolume20(x.row);
-    if(key === 'rsi14') return x.row.rsi14;
-    return null;
-  }
-  function renderBrkHeadSort(){
-    document.querySelectorAll('#brk-head th.sortable').forEach(function(th){
-      var key = th.getAttribute('data-key');
-      var base = th.getAttribute('data-label');
-      if(base === null){ base = th.textContent.trim(); th.setAttribute('data-label', base); }
-      th.textContent = base + (BRK_SORT.key === key ? (BRK_SORT.dir === 1 ? ' ▲' : ' ▼') : '');
-    });
-  }
-  document.querySelectorAll('#brk-head th.sortable').forEach(function(th){
-    th.addEventListener('click', function(){
-      var key = th.getAttribute('data-key');
-      if(BRK_SORT.key === key){ BRK_SORT.dir *= -1; } else { BRK_SORT.key = key; BRK_SORT.dir = -1; }
-      renderBrkHeadSort();
-      renderBreakoutScanner();
-    });
-  });
-  // Column headers relabel themselves whenever the mode or lookback control changes — done
-  // by resetting data-label so renderBrkHeadSort's cached base text (and any active sort
-  // arrow) stays correct.
-  function updateBrkHeaders(){
-    var highTh = document.getElementById('brk-highn-th');
-    var volTh = document.getElementById('brk-volratio-th');
-    volTh.removeAttribute('data-label');
-    if(BRK_MODE === 'macross'){
-      highTh.textContent = 'Cross';
-      volTh.textContent = '50/100 Spread';
-    } else if(BRK_MODE === 'volconfirm'){
-      highTh.textContent = (BRK_VC_DIRECTION === 'rising') ? 'Price Up' : 'Price Down';
-      volTh.textContent = 'Vol vs 20D Avg';
-    } else if(BRK_MODE === 'narrowrange'){
-      highTh.textContent = BRK_NR_LOOKBACK + 'D ' + (BRK_NR_DIRECTION === 'above' ? 'High' : 'Low');
-      volTh.textContent = '% From Level';
-    } else {
-      highTh.textContent = BRK_LOOKBACK + 'D High';
-      volTh.textContent = 'Vol vs ' + BRK_LOOKBACK + 'D Avg';
-    }
-    renderBrkHeadSort();
-  }
-  updateBrkHeaders();
-
-  function brkTrendLabel(row, x){
-    var parts = [];
-    if(row.aboveSma50 !== null && row.aboveSma50 !== undefined) parts.push('50D '+(row.aboveSma50 ? 'above' : 'below'));
-    if(row.aboveSma200 !== null && row.aboveSma200 !== undefined) parts.push('200D '+(row.aboveSma200 ? 'above' : 'below'));
-    if(BRK_MODE === 'macross' && x && x.aboveEma20 !== null && x.aboveEma20 !== undefined){
-      parts.push('20EMA '+(x.aboveEma20 ? 'above' : 'below'));
-    }
-    return parts.length ? parts.join(' · ') : '—';
-  }
-  // Mode toggle: switches which compute function scores each row, swaps the visible control
-  // panel, relabels the shared columns, and re-renders.
-  function brkSetMode(mode){
-    if(BRK_MODE === mode) return;
-    BRK_MODE = mode;
-    document.getElementById('brk-mode-volume').setAttribute('aria-pressed', String(mode === 'volume'));
-    document.getElementById('brk-mode-macross').setAttribute('aria-pressed', String(mode === 'macross'));
-    document.getElementById('brk-mode-volconfirm').setAttribute('aria-pressed', String(mode === 'volconfirm'));
-    document.getElementById('brk-mode-narrowrange').setAttribute('aria-pressed', String(mode === 'narrowrange'));
-    document.getElementById('brk-vol-controls').style.display = (mode === 'volume') ? 'flex' : 'none';
-    document.getElementById('brk-ma-controls').style.display = (mode === 'macross') ? 'flex' : 'none';
-    document.getElementById('brk-vc-controls').style.display = (mode === 'volconfirm') ? 'flex' : 'none';
-    document.getElementById('brk-nr-controls').style.display = (mode === 'narrowrange') ? 'flex' : 'none';
-    BRK_SORT = {key: null, dir: -1};
-    updateBrkHeaders();
-    renderBreakoutScanner();
-  }
-  document.getElementById('brk-mode-volume').addEventListener('click', function(){ brkSetMode('volume'); });
-  document.getElementById('brk-mode-macross').addEventListener('click', function(){ brkSetMode('macross'); });
-  document.getElementById('brk-mode-volconfirm').addEventListener('click', function(){ brkSetMode('volconfirm'); });
-  document.getElementById('brk-mode-narrowrange').addEventListener('click', function(){ brkSetMode('narrowrange'); });
-  document.getElementById('brk-cross-window').addEventListener('change', function(){
-    BRK_CROSS_WINDOW = parseInt(this.value, 10) || 10;
-    renderBreakoutScanner();
-  });
-  // Volume Confirmation mode's own direction toggle (rising/falling), independent of the
-  // other two modes' controls.
-  function brkSetVcDirection(direction){
-    if(BRK_VC_DIRECTION === direction) return;
-    BRK_VC_DIRECTION = direction;
-    document.getElementById('brk-vc-rising').setAttribute('aria-pressed', String(direction === 'rising'));
-    document.getElementById('brk-vc-falling').setAttribute('aria-pressed', String(direction === 'falling'));
-    document.getElementById('brk-vc-mult-label').textContent = (direction === 'rising')
-      ? 'Min. volume multiple vs 20D avg'
-      : 'Max. volume multiple vs 20D avg';
-    document.getElementById('brk-vc-note').textContent = (direction === 'rising')
-      ? 'Flags an ETF whose price rose today AND whose volume is at or above the chosen multiple of its trailing 20-day average.'
-      : 'Flags an ETF whose price fell today AND whose volume is at or below 1 ÷ the chosen multiple of its trailing 20-day average.';
-    updateBrkHeaders();
-    renderBreakoutScanner();
-  }
-  document.getElementById('brk-vc-rising').addEventListener('click', function(){ brkSetVcDirection('rising'); });
-  document.getElementById('brk-vc-falling').addEventListener('click', function(){ brkSetVcDirection('falling'); });
-  document.getElementById('brk-vc-vol-mult').addEventListener('input', function(){
-    var v = parseFloat(this.value);
-    BRK_VC_VOL_MULT = (isFinite(v) && v > 0) ? v : 1.2;
-    renderBreakoutScannerDebounced();
-  });
-  // Narrow Range mode's own lookback (30/60/90) and direction (above/below) controls,
-  // independent of the other three modes' controls.
-  document.getElementById('brk-nr-lookback').addEventListener('change', function(){
-    BRK_NR_LOOKBACK = parseInt(this.value, 10) || 30;
-    updateBrkHeaders();
-    brkUpdateNrNote();
-    renderBreakoutScanner();
-  });
-  function brkSetNrDirection(direction){
-    if(BRK_NR_DIRECTION === direction) return;
-    BRK_NR_DIRECTION = direction;
-    document.getElementById('brk-nr-above').setAttribute('aria-pressed', String(direction === 'above'));
-    document.getElementById('brk-nr-below').setAttribute('aria-pressed', String(direction === 'below'));
-    updateBrkHeaders();
-    brkUpdateNrNote();
-    renderBreakoutScanner();
-  }
-  function brkUpdateNrNote(){
-    document.getElementById('brk-nr-note').textContent = (BRK_NR_DIRECTION === 'above')
-      ? 'Flags an ETF whose close today is a new '+BRK_NR_LOOKBACK+'-day high — its highest close over the trailing '+BRK_NR_LOOKBACK+' days (today included).'
-      : 'Flags an ETF whose close today is a new '+BRK_NR_LOOKBACK+'-day low — its lowest close over the trailing '+BRK_NR_LOOKBACK+' days (today included).';
-  }
-  document.getElementById('brk-nr-above').addEventListener('click', function(){ brkSetNrDirection('above'); });
-  document.getElementById('brk-nr-below').addEventListener('click', function(){ brkSetNrDirection('below'); });
-
-  // Filtered rows (search/category/only-flagged), sorted by the active column sort or, absent
-  // one, the default (flagged first, then best 1-day % change). Shared by the table renderer
-  // (which then caps to BRK_MAX_ROWS for the DOM) and the CSV export (which does not cap --
-  // the download always covers every row currently matching the filters).
-  function brkFilteredSorted(){
-    var rows = brkFiltered();
-    if(BRK_SORT.key){
-      var key = BRK_SORT.key, dir = BRK_SORT.dir;
-      rows = rows.slice().sort(function(a, b){
-        var va = brkSortValue(a, key), vb = brkSortValue(b, key);
-        var na = (va===null || va===undefined || isNaN(va));
-        var nb = (vb===null || vb===undefined || isNaN(vb));
-        if(na && nb) return 0;
-        if(na) return 1;
-        if(nb) return -1;
-        return (va - vb) * dir;
-      });
-    } else {
-      rows = rows.slice().sort(function(a, b){
-        if(a.breakout !== b.breakout) return a.breakout ? -1 : 1;
-        return (b.row.chg1d||0) - (a.row.chg1d||0);
-      });
-    }
-    return rows;
-  }
-  // A th's clean sort label, without the ▲/▼ arrow renderBrkHeadSort appends when it's the
-  // active sort column (that base text is cached in data-label the first time a header is
-  // drawn -- fall back to the live textContent if that hasn't happened yet).
-  function brkThLabel(id){
-    var th = document.getElementById(id);
-    var base = th.getAttribute('data-label');
-    return base !== null ? base : th.textContent.trim();
-  }
-  // Wraps a CSV field in quotes (doubling any embedded quotes) whenever it contains a comma,
-  // quote or newline -- the standard CSV escaping rule, so ETF names with commas in them
-  // don't silently shift every column after them.
-  function csvField(v){
-    if(v === null || v === undefined) return '';
-    var s = String(v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }
-  // Exports every row currently matching the search/only-flagged filters (not just the
-  // BRK_MAX_ROWS shown in the DOM), with the same columns and values the on-screen table
-  // shows for the active mode -- a CSV opens directly in Excel, so no extra library is
-  // needed to produce a real .xlsx file client-side.
-  function brkExportCsv(){
-    var rows = brkFilteredSorted();
-    if(!BRK_DATA || !rows.length){
-      alert('No data to export — connect live data or adjust the filters first.');
-      return;
-    }
-    var highLabel = brkThLabel('brk-highn-th');
-    var volLabel = brkThLabel('brk-volratio-th');
-    var header = ['ETF Name','Ticker','Category','Price','1D %',highLabel,volLabel,'Avg Daily Volume (20D)','RSI (14)','Trend','Flagged'];
-    var lines = [header.map(csvField).join(',')];
-    rows.forEach(function(x){
-      var row = x.row, meta = x.meta;
-      var col4, col5;
-      if(BRK_MODE === 'macross'){
-        col4 = (x.crossDaysAgo === null) ? '' : (x.crossDaysAgo === 0 ? 'Today' : x.crossDaysAgo + 'd ago');
-        var spread = (x.ema50 != null && x.sma100 != null && x.sma100 !== 0) ? (x.ema50 - x.sma100) / x.sma100 * 100 : null;
-        col5 = spread !== null ? fmt(spread) + '%' : '';
-      } else if(BRK_MODE === 'volconfirm'){
-        var priceMatch = (row.chg1d !== null && row.chg1d !== undefined) &&
-          (BRK_VC_DIRECTION === 'rising' ? row.chg1d > 0 : row.chg1d < 0);
-        col4 = priceMatch ? 'Yes' : '';
-        col5 = x.volRatio !== null ? x.volRatio.toFixed(2) + 'x' : '';
-      } else if(BRK_MODE === 'narrowrange'){
-        col4 = (x.level === null) ? '' : (x.breakout ? 'Yes' : '');
-        var nrDist = (x.level != null && x.level !== 0) ? (row.price - x.level) / x.level * 100 : null;
-        col5 = nrDist !== null ? fmt(nrDist) + '%' : '';
-      } else {
-        col4 = (x.highN === null) ? '' : (x.highN ? 'Yes' : '');
-        col5 = x.volRatio !== null ? x.volRatio.toFixed(2) + 'x' : '';
-      }
-      var avgVol = brkAvgVolume20(row);
-      var fields = [
-        meta.n, row.t, meta.cat,
-        row.price != null ? row.price.toFixed(2) : '',
-        row.chg1d !== null && row.chg1d !== undefined ? fmt(row.chg1d) + '%' : '',
-        col4, col5,
-        avgVol !== null ? Math.round(avgVol) : '',
-        row.rsi14 !== null && row.rsi14 !== undefined ? row.rsi14.toFixed(1) : '',
-        brkTrendLabel(row, x),
-        x.breakout ? 'Yes' : 'No'
-      ];
-      lines.push(fields.map(csvField).join(','));
-    });
-    var csv = lines.join('\r\n');
-    var blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8;'});
-    var url = URL.createObjectURL(blob);
-    var modeSlug = BRK_MODE === 'volume' ? 'range-breakout' : BRK_MODE === 'macross' ? 'ma-crossover' :
-      BRK_MODE === 'volconfirm' ? 'volume-confirmation' : 'narrow-range';
-    var asof = (BRK_DATA && BRK_DATA.asof) ? BRK_DATA.asof : new Date().toISOString().slice(0, 10);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'breakout-screener-' + modeSlug + '-' + asof + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-  document.getElementById('brk-export-csv').addEventListener('click', brkExportCsv);
-  function renderBreakoutScanner(){
-    var dot = document.getElementById('brk-dot'), label = document.getElementById('brk-source-label');
-    var asofEl = document.getElementById('brk-asof');
-    if(!BRK_DATA){
-      dot.classList.remove('live');
-      label.textContent = 'Static preview — no live feed connected';
-      asofEl.textContent = 'connect live data';
-      document.getElementById('brk-body').innerHTML = '';
-      document.getElementById('brk-note').innerHTML = 'Connect live data to run the scan. Rules-based scan (not the ML breakout-probability model) — Range Breakout mode flags a new N-day high with a volume spike; MA Crossover mode flags a recent 50-day-EMA/100-day-SMA cross with price above the 20-day EMA; Volume Confirmation mode flags price and volume moving the same direction vs. the 20-day average volume; Narrow Range mode flags a new trailing 30/60/90-day high or low.';
-      return;
-    }
-    dot.classList.add('live');
-    label.textContent = 'Live data connected — updated daily by the site\'s GitHub Action';
-    asofEl.textContent = BRK_DATA.asof;
-    var rows = brkFilteredSorted();
-    // Cap rendered DOM rows at BRK_MAX_ROWS (keeps the table light).
-    // With thousands of tickers in the universe, rendering every matched row on every
-    // keystroke was the dominant source of the site's slowdown after the ticker-list
-    // expansion -- this keeps the DOM small while search/filters/sort still work over the
-    // full universe (narrowing a search or turning on "only flagged" surfaces the rest).
-    // The CSV export (brkExportCsv) reuses this same filtered+sorted list, unTruncated, so
-    // the download always contains every matching row regardless of this DOM cap.
-    var totalMatched = rows.length;
-    var shown = rows.slice(0, BRK_MAX_ROWS);
-    document.getElementById('brk-body').innerHTML = shown.map(function(x){
-      var row = x.row, meta = x.meta;
-      var col4, col5;
-      if(BRK_MODE === 'macross'){
-        col4 = '<td>'+((x.crossDaysAgo === null) ? '—' : (x.crossDaysAgo === 0 ? 'Today' : x.crossDaysAgo + 'd ago'))+'</td>';
-        var spread = (x.ema50 != null && x.sma100 != null && x.sma100 !== 0) ? (x.ema50 - x.sma100) / x.sma100 * 100 : null;
-        col5 = '<td class="num mono'+(spread!==null ? (spread>=0?' up':' down') : '')+'">'+(spread!==null ? fmt(spread)+'%' : '—')+'</td>';
-      } else if(BRK_MODE === 'volconfirm'){
-        var priceMatch = (row.chg1d !== null && row.chg1d !== undefined) &&
-          (BRK_VC_DIRECTION === 'rising' ? row.chg1d > 0 : row.chg1d < 0);
-        col4 = '<td>'+(priceMatch ? 'Yes' : '—')+'</td>';
-        col5 = '<td class="num mono">'+(x.volRatio!==null ? x.volRatio.toFixed(2)+'x' : '—')+'</td>';
-      } else if(BRK_MODE === 'narrowrange'){
-        col4 = '<td>'+(x.level===null ? '—' : (x.breakout ? 'Yes' : '—'))+'</td>';
-        var nrDist = (x.level != null && x.level !== 0) ? (row.price - x.level) / x.level * 100 : null;
-        col5 = '<td class="num mono'+(nrDist!==null ? (nrDist>=0?' up':' down') : '')+'">'+(nrDist!==null ? fmt(nrDist)+'%' : '—')+'</td>';
-      } else {
-        col4 = '<td>'+(x.highN===null ? '—' : (x.highN ? 'Yes' : '—'))+'</td>';
-        col5 = '<td class="num mono">'+(x.volRatio!==null ? x.volRatio.toFixed(2)+'x' : '—')+'</td>';
-      }
-      var vol = brkAvgVolume20(row);
-      return '<tr'+(x.breakout ? ' style="background:color-mix(in srgb, var(--good) 10%, transparent);"' : '')+'>'+
-        '<td class="name"><span class="cat-dot" style="background:'+tok(GTM_CAT_COLOR[meta.cat])+'" title="'+meta.cat+'"></span>'+meta.n+' <span class="tag mono brk-ticker">'+row.t+'</span></td>'+
-        '<td class="num mono">$'+row.price.toFixed(2)+'</td>'+
-        '<td class="num mono'+(row.chg1d!==null ? (row.chg1d>=0?' up':' down') : '')+'">'+(row.chg1d!==null ? fmt(row.chg1d)+'%' : '—')+'</td>'+
-        col4 + col5 +
-        '<td class="num mono">'+(vol!==null ? Math.round(vol).toLocaleString('en-US') : '—')+'</td>'+
-        '<td class="num mono">'+(row.rsi14!==null ? row.rsi14.toFixed(1) : '—')+'</td>'+
-        '<td>'+brkTrendLabel(row, x)+'</td></tr>';
-    }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:20px 0;">No ETFs match the current filters.</td></tr>';
-    var capNote = totalMatched > BRK_MAX_ROWS
-      ? ' Showing top '+BRK_MAX_ROWS+' of '+totalMatched.toLocaleString('en-US')+' matches by current sort — narrow your search or turn on "only flagged" to see more of them.'
-      : '';
-    var modeNote;
-    if(BRK_MODE === 'macross'){
-      modeNote = 'MA Crossover mode — flags an ETF whose 50-day EMA crossed above its 100-day SMA within the last '+BRK_CROSS_WINDOW+' trading days (adjustable above) and is still above it today, with price above its 20-day EMA. RSI and 50/200-day-SMA trend are additional context, not part of the flag.';
-    } else if(BRK_MODE === 'volconfirm'){
-      modeNote = (BRK_VC_DIRECTION === 'rising')
-        ? 'Volume Confirmation mode (Rising) — flags an ETF whose price rose today AND whose volume is at least '+BRK_VC_VOL_MULT+'x its trailing 20-day average (adjustable above). RSI and 50/200-day-SMA trend are additional context, not part of the flag.'
-        : 'Volume Confirmation mode (Falling) — flags an ETF whose price fell today AND whose volume is at or below 1÷'+BRK_VC_VOL_MULT+' ('+(1/BRK_VC_VOL_MULT).toFixed(2)+'x) of its trailing 20-day average (adjustable above). RSI and 50/200-day-SMA trend are additional context, not part of the flag.';
-    } else if(BRK_MODE === 'narrowrange'){
-      modeNote = (BRK_NR_DIRECTION === 'above')
-        ? 'Narrow Range mode (Breaking Above) — flags an ETF whose close today is a new '+BRK_NR_LOOKBACK+'-day high (adjustable above). RSI and 50/200-day-SMA trend are additional context, not part of the flag.'
-        : 'Narrow Range mode (Breaking Below) — flags an ETF whose close today is a new '+BRK_NR_LOOKBACK+'-day low (adjustable above). RSI and 50/200-day-SMA trend are additional context, not part of the flag.';
-    } else {
-      modeNote = 'Range Breakout mode — flags an ETF when today\'s close is a new '+BRK_LOOKBACK+'-day high AND today\'s volume is at least '+BRK_VOL_MULT+'x its trailing '+BRK_LOOKBACK+'-day average (both adjustable above). RSI and 50/200-day-SMA trend are additional context, not part of the flag.';
-    }
-    document.getElementById('brk-note').innerHTML = 'Rules-based scan (not the ML breakout-probability model). '+modeNote+' As of '+BRK_DATA.asof+', live-updated daily by the site\'s GitHub Action; a ticker needs enough price history for the selected check or it shows "—" for that column instead of being dropped from the table.'+capNote;
-  }
-  // Debounce wrapper: waits until the person stops typing/adjusting for `wait` ms before
-  // running `fn`, instead of re-scoring and re-rendering thousands of rows on every single
-  // keystroke or slider tick. Typing itself stays instant; the (now-capped) table update
-  // follows shortly after.
-  function debounce(fn, wait){
-    var t = null;
-    return function(){
-      var args = arguments, ctx = this;
-      clearTimeout(t);
-      t = setTimeout(function(){ fn.apply(ctx, args); }, wait);
-    };
-  }
-  var renderBreakoutScannerDebounced = debounce(renderBreakoutScanner, 200);
-  document.getElementById('brk-search').addEventListener('input', renderBreakoutScannerDebounced);
-  document.getElementById('brk-only-flagged').addEventListener('change', renderBreakoutScanner);
-  document.getElementById('brk-lookback').addEventListener('change', function(){
-    BRK_LOOKBACK = parseInt(this.value, 10) || 20;
-    updateBrkHeaders();
-    renderBreakoutScanner();
-  });
-  document.getElementById('brk-vol-mult').addEventListener('input', function(){
-    var v = parseFloat(this.value);
-    BRK_VOL_MULT = (isFinite(v) && v > 0) ? v : 1.5;
-    renderBreakoutScannerDebounced();
-  });
 
   // ---- market breadth (scanner-style: KPI tiles + stacked price/SMA + selectable breadth chart) ----
   // 5 indices — Nifty 50, Nifty 500 (has a static 20-year %>200SMA backfill), Nifty Midcap 150,
@@ -1922,8 +1276,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var n = COT.dates.length-1, c = cotDayAt(breadthActiveIndex, n);
     if(!c || !c.tot) return [];
     return [
-      ['Dow COT — Bullish stocks', c.up+' / '+c.tot, c.pctUp.toFixed(1)+'% in uptrend · '+c.date, c.pctUp-50],
-      ['Dow COT — Bearish stocks', c.dn+' / '+c.tot, (100-c.pctUp).toFixed(1)+'% in downtrend', -((100-c.pctUp)-50)],
+      ['Dow COT — Bullish / Bearish', c.up+' / '+c.dn, c.pctUp.toFixed(1)+'% / '+(100-c.pctUp).toFixed(1)+'% of '+c.tot+' · '+c.date, c.pctUp-50],
       ['Fresh COT today', c.bu+' ↑ / '+c.be+' ↓', 'trend flips on '+c.date, c.bu-c.be]
     ];
   }
@@ -1952,8 +1305,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var adv=a.adv[i], dec=a.dec[i], net=a.net[i], tot=adv+dec;
     return [
       ['NET AD LINE', (net>0?'+':'')+net, a.dates[i], net],
-      ['Advances', String(adv), (adv/tot*100).toFixed(1)+'% of stocks that moved', 1],
-      ['Declines', String(dec), (dec/tot*100).toFixed(1)+'% of stocks that moved', -1]
+      ['Advances / Declines', adv+' / '+dec, (adv/tot*100).toFixed(1)+'% / '+(dec/tot*100).toFixed(1)+'% of stocks that moved', net]
     ];
   }
   function cotFmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -2074,16 +1426,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       if(window.__breadthDrawn) drawBreadth();
     }
   }).catch(function(){ /* keep the empty state until live data connects */ });
-
-  liveFetch('breakout-scanner.json').then(function(r){
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
-  }).then(function(data){
-    if(data && data.rows && data.rows.length){
-      BRK_DATA = data;
-      if(window.__breakoutDrawn){ renderBreakoutScanner(); }
-    }
-  }).catch(function(){ /* keep the "connect live data" empty state showing */ });
 })();
 </script>
 
@@ -3049,6 +2391,11 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
 
 .tilerow{gap:0; background:var(--surface);}
 .mtile{box-shadow:inset -1px -1px 0 var(--line);}
+/* Market Breadth summary tiles: 5 per row on laptops, one single row on large monitors, fewer on small screens */
+#breadth-tiles{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media (min-width:1700px){ #breadth-tiles{grid-template-columns:repeat(9,minmax(0,1fr));} }
+@media (min-width:721px) and (max-width:1000px){ #breadth-tiles{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:720px){ #breadth-tiles{grid-template-columns:repeat(2,minmax(0,1fr));} }
 /* tablets */
 @media (max-width:1100px){
   .masthead{gap:12px;}
