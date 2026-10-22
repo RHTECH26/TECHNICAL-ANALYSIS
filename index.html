@@ -713,7 +713,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
         <select id="rs-show" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="all">All</option><option value="h">Beating benchmark since High date</option><option value="l">Beating benchmark since Low date</option><option value="both" selected>Beating on both</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sort by
-        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="exh">High difference (vs benchmark)</option><option value="exl" selected>Low difference (vs benchmark)</option><option value="chh">Change since High date</option><option value="chl">Change since Low date</option><option value="off">Closest to 52-week high</option><option value="s">Symbol</option></select></label>
+        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="chh">Since High</option><option value="chl" selected>Since Low</option><option value="off">Since 52-week high</option><option value="s">Symbol</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Order
         <select id="rs-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="-1" selected>Highest first</option><option value="1">Lowest first</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-mktw">Market
@@ -739,7 +739,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <tbody id="rs-body"></tbody>
     </table></div>
 
-    <div class="note">How to read this: <b>High difference</b> compares each fund with the benchmark from the close on your <b>High date</b> to the latest close. <b>Low difference</b> does the same from your <b>Low date</b>. The green or red bar shows how many percentage points it is ahead of or behind the benchmark. <b>52-wk gap</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Dates:</b> inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes. "Beating" means a higher percentage change than the benchmark over the same period.</div>
+    <div class="note">How to read this: <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
   </div>
 </section>
 
@@ -3266,7 +3266,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   var TVX={TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
   var PROXY={IXIC:{global:'QQQ'},GSPC:{global:'SPY'},NSEI:{inetf:'NIFTYBEES'}};   // used only if the benchmark file is not published yet
   var LONGFILE={global:'data/rs_long_global.json',inetf:'data/rs_long_inetf.json',istock:'data/rs_long_istock.json'};
-  var cache={}, benchFile=null, started=false, bench=null, view=[], sortKey='exl', sortDir=-1;
+  var cache={}, benchFile=null, started=false, bench=null, view=[], sortKey='chl', sortDir=-1;
   var LONG={}, DAILY_START={}, longPending=false, readyMsg='';
 
   function getJSON(urls){
@@ -3370,7 +3370,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     return {last:last,date:lastDate,chh:(last/h.p-1)*100,chl:(last/l.p-1)*100,phd:h.p,pld:l.p,hdUsed:h.d,ldUsed:l.d,off:hi>0?(last/hi-1)*100:null};
   }
   function f1(v){ if(v==null) return '—'; var x=v.toFixed(2); if(parseFloat(x)===0) return '0.00'; return (v>0?'+':'')+x; }
-  function money(cur,v){ return cur+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function money(cur,v){ return cur+v.toLocaleString(cur==='₹'?'en-IN':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function num(v){ return v.toLocaleString('en-US',{maximumFractionDigits:2}); }
 
   // ---- compute + render ----
@@ -3413,7 +3413,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       return true;
     });
     var key=sortKey;
-    function val(r){ return key==='exh'?r.exh:key==='exl'?r.exl:key==='chh'?r.m.chh:key==='chl'?r.m.chl:key==='off'?r.m.off:r.it.t; }
+    function val(r){ return key==='chh'?r.m.chh:key==='chl'?r.m.chl:key==='off'?r.m.off:r.it.t; }
     rows.sort(function(a,b){
       var A=val(a),B=val(b);
       if(key==='s') return sortDir*(-1)*String(A).localeCompare(String(B));   // "Highest first" = A to Z for symbols
@@ -3434,45 +3434,38 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       heroCard('lo','Benchmark since Low date',f1(b.chl)+'%','from '+num(b.pld)+' on '+when('rs-ld',b.ldUsed),b.chl>=0?'rs-up':'rs-dn')+
       heroCard('both','Beating on both',nB+' <span class="sm">of '+total+'</span>','High only: '+(nH-nB)+' · Low only: '+(nL-nB));
   }
-  var COLS=[['s','Symbol','l'],['cmp','CMP',''],['chh','Since High date',''],['exh','High difference',''],['chl','Since Low date',''],['exl','Low difference',''],['off','52-wk gap',''],['b','Beating','']];
-  function exCell(ex,max){
-    if(ex==null) return '<span class="sm">—</span>';
-    var w=Math.min(100,Math.abs(ex)/max*100);
-    var bar='<span class="exbar"><i class="n">'+(ex<0?'<b style="width:'+w+'%"></b>':'')+'</i><i class="p">'+(ex>0?'<b style="width:'+w+'%"></b>':'')+'</i></span>';
-    return '<span class="ex"><span class="exv '+(ex>=0?'rs-up':'rs-dn')+'">'+f1(ex)+' pts</span>'+bar+'</span>';
+  var COLS=[['s','Symbol','l'],['cmp','CMP',''],['off','Since 52-wk high',''],['chh','Since High',''],['chl','Since Low',''],['b','Beating','']];
+  function pctCell(v){
+    if(v==null) return '<span class="sm">—</span>';
+    return '<span class="mono chg '+(v>=0?'rs-up':'rs-dn')+'">'+f1(v)+'%</span>';
   }
-  function gauge(off){
-    if(off==null) return '<span class="sm">—</span>';
-    var fill=Math.max(0,Math.min(100,100+off)), col=off>=-5?'var(--good)':off>=-15?'var(--warn)':'var(--bad)';
-    return '<span class="mono chg">'+off.toFixed(1)+'%</span><span class="gauge" title="Closer to full = closer to the 52-week high"><b style="width:'+fill+'%;background:'+col+'"></b></span>';
+  function offCell(v){
+    if(v==null) return '<span class="sm">—</span>';
+    var col=v>=-5?'var(--good)':v>=-15?'var(--warn)':'var(--bad)';
+    return '<span class="mono chg" style="color:'+col+'">'+(v>-0.005?'0.00':v.toFixed(2))+'%</span>';
   }
   function renderTable(u){
     var head='';
     COLS.forEach(function(c){
-      var k=({chh:1,exh:1,chl:1,exl:1,off:1,s:1})[c[0]]?c[0]:'';
+      var k=({chh:1,chl:1,off:1,s:1})[c[0]]?c[0]:'';
       var on=k&&k===sortKey;
       head+='<th class="'+c[2]+(on?' on':'')+'" data-k="'+k+'" style="'+(k?'':'cursor:default')+'">'+c[1]+(on?'<span class="ar">'+(sortDir<0?'▼':'▲')+'</span>':'')+'</th>';
     });
     $('rs-head').innerHTML=head;
-    var b=bench.m, cur=(cache[u].items[0]||{}).cur||'';
-    var maxH=5, maxL=5; view.forEach(function(r){ if(r.exh!=null) maxH=Math.max(maxH,Math.abs(r.exh)); if(r.exl!=null) maxL=Math.max(maxL,Math.abs(r.exl)); });
-    maxH=Math.min(maxH,60); maxL=Math.min(maxL,60);
+    var b=bench.m;
     var html='<tr class="bmrow"><td class="l"><span class="nm">'+esc(bench.name)+'</span><span class="tag">BENCHMARK</span><span class="sub">'+b.date+'</span></td>'+
       '<td class="mono">'+num(b.last)+'</td>'+
-      '<td class="mono '+(b.chh>=0?'rs-up':'rs-dn')+'">'+f1(b.chh)+'%</td><td class="sm">reference</td>'+
-      '<td class="mono '+(b.chl>=0?'rs-up':'rs-dn')+'">'+f1(b.chl)+'%</td><td class="sm">reference</td>'+
-      '<td>'+gauge(b.off)+'</td><td></td></tr>';
+      '<td>'+offCell(b.off)+'</td><td>'+pctCell(b.chh)+'</td><td>'+pctCell(b.chl)+'</td><td></td></tr>';
     var limit=+$('rs-rows').value||300, shown=view.slice(0,limit);
     shown.forEach(function(r){
       var m=r.m, it=r.it;
-      var beat=(r.bh&&r.bl)?'<span class="pill both">BOTH</span>':'<span class="pill'+(r.bh?' y':'')+'">H</span><span class="pill'+(r.bl?' y':'')+'">L</span>';
+      var tip='vs benchmark: '+(r.exh==null?'n/a':f1(r.exh)+' pts since High')+' · '+(r.exl==null?'n/a':f1(r.exl)+' pts since Low');
+      var beat=(r.bh&&r.bl)?'<span class="pill both" title="'+tip+'">BOTH</span>':'<span class="pill'+(r.bh?' y':'')+'" title="'+tip+'">H</span><span class="pill'+(r.bl?' y':'')+'" title="'+tip+'">L</span>';
       html+='<tr><td class="l"><span class="nm">'+esc(it.t)+'</span><span class="sub">'+esc(it.n)+(it.cat?' · '+esc(it.cat):'')+'</span></td>'+
         '<td class="mono">'+money(it.cur,m.last)+'</td>'+
-        '<td class="mono chg '+(m.chh==null?'':m.chh>=0?'rs-up':'rs-dn')+'">'+(m.chh==null?'—':f1(m.chh)+'%')+'</td><td>'+exCell(r.exh,maxH)+'</td>'+
-        '<td class="mono chg '+(m.chl==null?'':m.chl>=0?'rs-up':'rs-dn')+'">'+(m.chl==null?'—':f1(m.chl)+'%')+'</td><td>'+exCell(r.exl,maxL)+'</td>'+
-        '<td>'+gauge(m.off)+'</td><td>'+beat+'</td></tr>';
+        '<td>'+offCell(m.off)+'</td><td>'+pctCell(m.chh)+'</td><td>'+pctCell(m.chl)+'</td><td>'+beat+'</td></tr>';
     });
-    if(!shown.length) html+='<tr><td colspan="8"><div class="rs-empty">Nothing matches these filters. Try “Show: All”, a different date, or a smaller minimum volume.</div></td></tr>';
+    if(!shown.length) html+='<tr><td colspan="6"><div class="rs-empty">Nothing matches these filters. Try “Show: All”, a different date, or a smaller minimum volume.</div></td></tr>';
     $('rs-body').innerHTML=html;
     $('rs-count').textContent=view.length+' match'+(view.length>limit?' (showing the first '+limit+')':'');
   }
