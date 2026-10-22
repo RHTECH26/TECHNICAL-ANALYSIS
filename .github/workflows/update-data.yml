@@ -109,26 +109,9 @@ jobs:
             data/breadth-extra-sp500.json
           retention-days: 1
 
-  fetch-breakout:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - name: Install dependencies
-        run: pip install yfinance pandas curl_cffi
-      - name: Scan the global ETF universe for today's breakouts (new 20-day high + volume confirmation)
-        run: python3 scripts/fetch_breakout_scanner.py
-      - name: Upload data file
-        uses: actions/upload-artifact@v4
-        with:
-          name: data-breakout
-          path: data/breakout-scanner.json
-          retention-days: 1
-
   commit:
-    needs: [fetch-etf, fetch-live, fetch-global-etf, fetch-breakout, fetch-sp500]
-    if: always() && (needs.fetch-etf.result == 'success' || needs.fetch-live.result == 'success' || needs.fetch-global-etf.result == 'success' || needs.fetch-breakout.result == 'success' || needs.fetch-sp500.result == 'success')
+    needs: [fetch-etf, fetch-live, fetch-global-etf, fetch-sp500]
+    if: always() && (needs.fetch-etf.result == 'success' || needs.fetch-live.result == 'success' || needs.fetch-global-etf.result == 'success' || needs.fetch-sp500.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -152,7 +135,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/etf-history.json data/live.json data/nifty50-price.json data/breadth-history-nifty50.json data/nifty500-price.json data/breadth-history.json data/niftymidcap150-price.json data/breadth-history-midcap150.json data/niftysc250-price.json data/breadth-history-sc250.json data/breadth-extra.json data/global-etf-history.json data/breakout-scanner.json data/sp500-price.json data/breadth-history-sp500.json
+          git add data/etf-history.json data/live.json data/nifty50-price.json data/breadth-history-nifty50.json data/nifty500-price.json data/breadth-history.json data/niftymidcap150-price.json data/breadth-history-midcap150.json data/niftysc250-price.json data/breadth-history-sc250.json data/breadth-extra.json data/global-etf-history.json data/sp500-price.json data/breadth-history-sp500.json
           git diff --quiet --cached || git commit -m "Update live data ($(date -u +%Y-%m-%d))"
           # Belt-and-braces: if something else (a manual edit on GitHub, an overlapping run
           # the concurrency guard above didn't catch) pushed to main in the meantime, rebase
