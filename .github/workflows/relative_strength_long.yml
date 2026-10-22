@@ -1,0 +1,36 @@
+name: Update Relative Strength Full History
+
+on:
+  schedule:
+    - cron: "0 3 1 * *"         # 8:30 AM IST on the 1st of every month
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        universe: [global, inetf, istock]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl curl_cffi
+      - run: python scan_rs_long.py ${{ matrix.universe }}
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add data/rs_long_${{ matrix.universe }}.json
+          git diff --staged --quiet || git commit -m "Update Relative Strength full history (${{ matrix.universe }})"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase && git push && break
+            echo "Push attempt $attempt failed - retrying..."
+            sleep 5
+          done
