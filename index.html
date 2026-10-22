@@ -106,13 +106,6 @@ section.panel.active{display:block; animation:fade .3s ease;}
 .tile p{margin:0; font-size:13px; color:var(--ink-soft); line-height:1.55; flex-grow:1;}
 .tile .go{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--saffron); font-weight:700;}
 
-/* ---- heatmap ---- */
-.heatmap{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
-@media (max-width:700px){.heatmap{grid-template-columns:repeat(2,1fr);}}
-.hcell{border-radius:9px; padding:14px 14px 12px; min-height:76px; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--line);}
-.hcell .n{font-size:12.5px; font-weight:700;}
-.hcell .c{font-family:"JetBrains Mono",monospace; font-size:16px; font-weight:600;}
-
 /* ---- screener chips + table ---- */
 .chiprow{display:flex; gap:8px; margin-bottom:16px;}
 .chip{appearance:none; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); font-size:12px; font-weight:600; padding:7px 14px; border-radius:99px; cursor:pointer;}
@@ -146,30 +139,15 @@ canvas{max-width:100%;}
 .echip{appearance:none; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); font-size:12px; font-weight:600; padding:7px 14px; border-radius:99px; cursor:pointer;}
 .echip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--bg);}
 
-/* ---- ETF performance treemap ---- */
 .tm-controls{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;}
-.tm-toggle{display:flex; gap:6px;}
-.tm-toggle button{appearance:none; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:7px; cursor:pointer; font-family:"JetBrains Mono",monospace;}
-.tm-toggle button[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--bg);}
-.tm-toggle button:disabled{opacity:.32; cursor:not-allowed;}
-.tm-legend{display:flex; align-items:center; gap:8px; font-size:10.5px; color:var(--muted); font-family:"JetBrains Mono",monospace;}
-.tm-legend .grad{width:160px; height:10px; border-radius:99px;}
+
 .tm-datarow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; font-size:11.5px; color:var(--ink-soft);}
 .tm-dot{width:8px; height:8px; border-radius:50%; background:var(--bad); flex-shrink:0;}
 .tm-dot.live{background:var(--good); box-shadow:0 0 0 3px rgba(47,191,106,.18);}
 .tm-datarow input[type="text"]{flex:1; min-width:180px; background:var(--surface); border:1px solid var(--line-strong); border-radius:7px; color:var(--ink); font-size:11.5px; font-family:"JetBrains Mono",monospace; padding:6px 10px;}
 .tm-datarow button, .tm-daterange button{appearance:none; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); font-size:11.5px; font-weight:600; padding:6px 13px; border-radius:7px; cursor:pointer;}
 .tm-datarow button:hover, .tm-daterange button:hover{border-color:var(--saffron); color:var(--ink);}
-.tm-daterange{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);}
-.tm-daterange label{display:flex; align-items:center; gap:6px;}
-.tm-daterange input[type="date"]{background:var(--surface); border:1px solid var(--line-strong); border-radius:7px; color:var(--ink); font-size:11.5px; font-family:"JetBrains Mono",monospace; padding:5px 8px; color-scheme:dark;}
-.tmroot{display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:2px; border-radius:8px; overflow:hidden; background:var(--bg); border:1px solid var(--line); padding:2px;}
-.tmcell{box-sizing:border-box; border:2px solid var(--bg); aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; overflow:hidden; cursor:default; color:#fff; gap:2px;}
-.tmcell .sym{font-weight:800; font-family:"IBM Plex Sans",sans-serif; font-size:12.5px; line-height:1.15; text-shadow:0 1px 3px rgba(0,0,0,.45); letter-spacing:.01em;}
-.tmcell .chg{font-family:"JetBrains Mono",monospace; font-weight:700; font-size:10.5px; line-height:1.15; text-shadow:0 1px 3px rgba(0,0,0,.45);}
-.tmcell .yr{font-family:"JetBrains Mono",monospace; font-weight:600; font-size:9px; line-height:1.15; opacity:.9; text-shadow:0 1px 3px rgba(0,0,0,.45);}
-.tm-tooltip{position:fixed; z-index:80; pointer-events:none; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:8px; padding:10px 12px; font-size:11.5px; color:var(--ink-soft); box-shadow:0 8px 24px rgba(0,0,0,.45); display:none; max-width:250px; line-height:1.6;}
-.tm-tooltip b{color:var(--ink);}
+
 .cat-dot{width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:7px; vertical-align:1px;}
 
 /* ---- breadth ---- */
@@ -190,7 +168,7 @@ canvas{max-width:100%;}
 .gtm-scroll{max-height:480px; overflow-y:auto; border:1px solid var(--line);}
 .gtm-scroll table{border:none;}
 .gtm-scroll thead th{position:sticky; top:0; background:var(--surface-2); z-index:1;}
-.gtm-empty{padding:40px 0; text-align:center; color:var(--muted); font-size:12.5px;}
+
 .gauge-labels{display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); margin-top:8px; font-family:"JetBrains Mono",monospace;}
 
 footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;}
@@ -865,7 +843,19 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 (function(){
   // Public, read-only JSON published on the site's own GitHub Pages domain by the scheduled
   // Action — nothing secret, no key, and never shown to the user as a URL.
-  var LIVE_DATA_BASE = 'https://rhdano099.github.io/indoetf/data/';
+  // All data files are read from THIS site's own data/ folder (written by the GitHub Actions in this repo).
+  // If one cannot be read, its name is listed next to the live-status badge in the header.
+  var missingData = [];
+  function liveFetch(file){
+    return fetch('data/' + file).then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r;
+    }).catch(function(err){
+      if(missingData.indexOf(file) < 0) missingData.push(file);
+      markLiveStatus();
+      throw err;
+    });
+  }
   var SECTORS = [{"n":"FMCG","c":1.63},{"n":"PSU Bank","c":1.44},{"n":"Realty","c":0.99},{"n":"Bank","c":0.89},{"n":"Pvt Bank","c":0.79},{"n":"Media","c":0.74},{"n":"Fin Service","c":0.74},{"n":"Oil & Gas","c":0.7},{"n":"Metal","c":0.55},{"n":"Auto","c":0.51},{"n":"Consr Durbl","c":0.06},{"n":"Healthcare","c":-0.15},{"n":"Pharma","c":-0.16},{"n":"Midsml Health","c":-0.56},{"n":"IT","c":-1.58}];
   var FLOWS = [{"d":"07 Sep","fii":280.13,"dii":566.76},{"d":"08 Sep","fii":-123.19,"dii":1349.64},{"d":"09 Sep","fii":-582.99,"dii":1509.04},{"d":"10 Sep","fii":-438.24,"dii":1025.85},{"d":"11 Sep","fii":-930.9,"dii":1968.17},{"d":"15 Sep","fii":-2977.86,"dii":2686.05},{"d":"16 Sep","fii":-2032.61,"dii":3908.23}];
   var MACRO = {"vix":{"v":13.17,"chg":-1.95,"asof":"16 Sep 2026, 3:59pm"},"pe":{"v":19.63,"median5y":21.99,"asof":"16 Sep 2026"},"usdinr":{"v":95.96,"asof":"17 Sep 2026"},"gsec10y":{"v":7.08,"chg":-0.02,"mchg":0.29,"ychg":0.58,"asof":"16 Sep 2026"},"brent":{"v":108.34,"chg":1.77,"ychg_pct":57.65,"asof":"16 Sep 2026, 7am ET"}};
@@ -1422,7 +1412,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     label.textContent = 'Live data connected — updated daily by the site\'s GitHub Action';
     asofEl.textContent = BRK_DATA.asof;
     var rows = brkFilteredSorted();
-    // Cap rendered DOM rows at BRK_MAX_ROWS (mirrors the Global Heatmap's top-100 cap).
+    // Cap rendered DOM rows at BRK_MAX_ROWS (keeps the table light).
     // With thousands of tickers in the universe, rendering every matched row on every
     // keystroke was the dominant source of the site's slowdown after the ticker-list
     // expansion -- this keeps the DOM small while search/filters/sort still work over the
@@ -1972,16 +1962,15 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   function drawNiftyPrice(){ drawBreadth(); } // kept as an alias — both charts redraw together now
 
   // ---- site-wide live data: sectors, macro, flows, breadth history, Nifty 500 index ----
-  // Same repo/site the ETF heatmap already connects to. All of this is read-only public JSON
-  // written by the GitHub Action — no key, nothing secret, nothing fetched from this page directly.
+  // All of this is read-only public JSON written by the GitHub Actions in this repo — no key, nothing secret.
   var liveOK = {sectors:false, breadth:false, nifty:false, globalEtfs:false};
   function markLiveStatus(){
     var dot = document.getElementById('live-dot'), lbl = document.getElementById('live-status');
     var anyLive = liveOK.sectors || liveOK.breadth || liveOK.nifty;
     if(dot) dot.classList.toggle('live', anyLive);
-    if(lbl) lbl.textContent = anyLive ? 'Live data connected' : 'Static preview';
+    if(lbl) lbl.textContent = (anyLive ? 'Live data connected' : 'Static preview') + (missingData.length ? ' · missing: ' + missingData.join(', ') : '');
   }
-  fetch(LIVE_DATA_BASE + 'live.json').then(function(r){
+  liveFetch('live.json').then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(data){
@@ -2010,7 +1999,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   var PCT_FILES = {nifty50:'breadth-history-nifty50.json', nifty500:'breadth-history.json', midcap150:'breadth-history-midcap150.json', smallcap250:'breadth-history-sc250.json', sp500:'breadth-history-sp500.json'};
   var PRICE_FILES = {nifty50:'nifty50-price.json', nifty500:'nifty500-price.json', midcap150:'niftymidcap150-price.json', smallcap250:'niftysc250-price.json', sp500:'sp500-price.json'};
   Object.keys(PCT_FILES).forEach(function(key){
-    fetch(LIVE_DATA_BASE + PCT_FILES[key]).then(function(r){
+    liveFetch(PCT_FILES[key]).then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status);
       return r.json();
     }).then(function(data){
@@ -2023,7 +2012,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }).catch(function(){ /* keep whatever static/empty data is already loaded */ });
   });
   Object.keys(PRICE_FILES).forEach(function(key){
-    fetch(LIVE_DATA_BASE + PRICE_FILES[key]).then(function(r){
+    liveFetch(PRICE_FILES[key]).then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status);
       return r.json();
     }).then(function(data){
@@ -2035,7 +2024,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }).catch(function(){ /* leave the "connect on your published site" message showing */ });
   });
 
-  fetch(LIVE_DATA_BASE + 'breadth-extra.json').then(function(r){
+  liveFetch('breadth-extra.json').then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(data){
@@ -2047,7 +2036,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }
   }).catch(function(){ /* keep the empty state until live data connects */ });
 
-  fetch(LIVE_DATA_BASE + 'breakout-scanner.json').then(function(r){
+  liveFetch('breakout-scanner.json').then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(data){
@@ -2647,7 +2636,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 (function(){
   var $=function(i){return document.getElementById(i);};
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  var BASE_LIVE='https://rhdano099.github.io/indoetf/data/';
   var IN_ETFS=[{"t":"EQUAL200","n":"BSE 200 Equal Weight","cat":"Factor & Strategy","vol":11579},{"t":"HDFCBSE500","n":"BSE 500","cat":"Broad Market","vol":406756},{"t":"DIVIDEND","n":"BSE 500 Dividend Leaders 50","cat":"Factor & Strategy","vol":3093},{"t":"ICICIB22","n":"BSE BHARAT 22","cat":"Sector & Thematic","vol":93364},{"t":"ECAPINSURE","n":"BSE Capital Markets & Insurance","cat":"Sector & Thematic","vol":25046},{"t":"MOVALUE","n":"BSE Enhanced Value","cat":"Factor & Strategy","vol":23671},{"t":"MOHEALTH","n":"BSE Healthcare","cat":"Sector & Thematic","vol":37111},{"t":"GROWWHOSPI","n":"BSE Hospitals","cat":"Sector & Thematic","vol":162536},{"t":"DEFENCE","n":"BSE India Defence","cat":"Sector & Thematic","vol":74148},{"t":"MOINFRA","n":"BSE India Infrastructure","cat":"Sector & Thematic","vol":854},{"t":"INSUREIETF","n":"BSE Insurance","cat":"Sector & Thematic","vol":567539},{"t":"ELMDIV","n":"BSE LargeMid (60:40) Stable Dividend 50","cat":"Factor & Strategy","vol":1285},{"t":"MOMMIDCAP","n":"BSE Midcap 150 Momentum 30","cat":"Factor & Strategy","vol":741054},{"t":"MIDSELIETF","n":"BSE Midcap Select","cat":"Broad Market","vol":309334},{"t":"MIDBANKADD","n":"BSE MidSmall Private Banks","cat":"Sector & Thematic","vol":5396},{"t":"GROWWPOWER","n":"BSE Power","cat":"Broad Market","vol":1336722},{"t":"SBIBPB","n":"BSE PSU Bank","cat":"Sector & Thematic","vol":43131},{"t":"MOQUALITY","n":"BSE Quality","cat":"Factor & Strategy","vol":39},{"t":"SELECTIPO","n":"BSE Select IPO","cat":"Broad Market","vol":10801},{"t":"HDFCSENSEX","n":"BSE Sensex","cat":"Broad Market","vol":24180},{"t":"SNXT30BEES","n":"BSE Sensex Next 30","cat":"Broad Market","vol":2367},{"t":"SNXT50BETA","n":"BSE SENSEX Next 50","cat":"Broad Market","vol":1698},{"t":"BANK10BETF","n":"BSE Top 10 Banks","cat":"Sector & Thematic","vol":10079},{"t":"MSCI360","n":"MSCI India","cat":"Broad Market","vol":40187},{"t":"TOP100CASE","n":"Nifty 100","cat":"Broad Market","vol":406160},{"t":"NIFTY100EW","n":"Nifty 100 Equal Weight","cat":"Factor & Strategy","vol":26112},{"t":"ESG","n":"Nifty 100 ESG Sector Leaders","cat":"Broad Market","vol":6752},{"t":"LOWVOLIETF","n":"Nifty 100 Low Volatility 30","cat":"Factor & Strategy","vol":324718},{"t":"HDFCQUAL","n":"Nifty 100 Quality 30","cat":"Factor & Strategy","vol":7970},{"t":"GROWWN200","n":"Nifty 200","cat":"Broad Market","vol":8942},{"t":"ALPHAETF","n":"Nifty 200 Alpha 30","cat":"Factor & Strategy","vol":396229},{"t":"MOM30IETF","n":"Nifty 200 Momentum 30","cat":"Factor & Strategy","vol":274700},{"t":"NIFTYQLITY","n":"Nifty 200 Quality 30","cat":"Factor & Strategy","vol":62538},{"t":"VAL30IETF","n":"Nifty 200 Value 30","cat":"Factor & Strategy","vol":38898},{"t":"NIFTYBEES","n":"Nifty 50","cat":"Broad Market","vol":4123049},{"t":"SBINEQWETF","n":"Nifty 50 Equal Weight","cat":"Factor & Strategy","vol":10791},{"t":"SHARIABEES","n":"Nifty 50 Shariah","cat":"Broad Market","vol":4200},{"t":"NV20IETF","n":"Nifty 50 Value 20","cat":"Factor & Strategy","vol":233770},{"t":"MONIFTY500","n":"Nifty 500","cat":"Broad Market","vol":352161},{"t":"FLEXIADD","n":"Nifty 500 Flexicap Quality 30","cat":"Factor & Strategy","vol":112203},{"t":"HEALTHCARE","n":"Nifty 500 Healthcare","cat":"Sector & Thematic","vol":124073},{"t":"GROWWLOVOL","n":"Nifty 500 Low Volatility 50","cat":"Factor & Strategy","vol":7921},{"t":"MOMENTUM50","n":"Nifty 500 Momentum 50","cat":"Factor & Strategy","vol":204779},{"t":"MULTICAP","n":"Nifty 500 Multicap 50:25:25","cat":"Broad Market","vol":40067},{"t":"EMULTIMQ","n":"Nifty 500 Multicap Momentum Quality 50","cat":"Factor & Strategy","vol":14237},{"t":"VALUEAXIS","n":"Nifty 500 Value 50","cat":"Factor & Strategy","vol":32085},{"t":"ALPHA","n":"NIFTY Alpha 50","cat":"Factor & Strategy","vol":479299},{"t":"ALPL30IETF","n":"Nifty Alpha Low-Volatility 30","cat":"Factor & Strategy","vol":799850},{"t":"AUTOIETF","n":"Nifty Auto","cat":"Sector & Thematic","vol":139705},{"t":"BANKIETF","n":"Nifty Bank","cat":"Sector & Thematic","vol":1852955},{"t":"MOCAPITAL","n":"Nifty Capital Market","cat":"Sector & Thematic","vol":651562},{"t":"CEMNTGROWW","n":"Nifty Cements","cat":"Sector & Thematic","vol":54476},{"t":"CHEMICAL","n":"Nifty Chemicals","cat":"Sector & Thematic","vol":217788},{"t":"COMMOIETF","n":"Nifty Commodities","cat":"Sector & Thematic","vol":19319},{"t":"CPSEETF","n":"Nifty CPSE","cat":"Sector & Thematic","vol":398582},{"t":"DIVOPPBEES","n":"Nifty Dividend Opportunities 50","cat":"Factor & Strategy","vol":10437},{"t":"ENERGY","n":"Nifty Energy","cat":"Sector & Thematic","vol":222386},{"t":"GROWWEV","n":"Nifty EV and New Age Automotive","cat":"Sector & Thematic","vol":190460},{"t":"BFSI","n":"Nifty Financial Services","cat":"Sector & Thematic","vol":55969},{"t":"FINIETF","n":"Nifty Financial Services Ex-Bank","cat":"Sector & Thematic","vol":186206},{"t":"FMCGIETF","n":"Nifty FMCG","cat":"Sector & Thematic","vol":714064},{"t":"FMCGADD","n":"Nifty FMCG","cat":"Sector & Thematic","vol":24235},{"t":"HDFCGROWTH","n":"Nifty Growth Sectors 15","cat":"Sector & Thematic","vol":3665},{"t":"HEALTHY","n":"Nifty Healthcare","cat":"Sector & Thematic","vol":62784},{"t":"CONSUMBEES","n":"Nifty India Consumption","cat":"Sector & Thematic","vol":38920},{"t":"MODEFENCE","n":"Nifty India Defence","cat":"Sector & Thematic","vol":1579734},{"t":"INFRA","n":"Nifty India Infrastructure & Logistics","cat":"Sector & Thematic","vol":37405},{"t":"GROWWNET","n":"Nifty India Internet","cat":"Sector & Thematic","vol":145099},{"t":"MAKEINDIA","n":"Nifty India Manufacturing","cat":"Sector & Thematic","vol":23250},{"t":"CONSUMER","n":"Nifty India New Age Consumption","cat":"Sector & Thematic","vol":64530},{"t":"GROWWRAIL","n":"Nifty India Railways PSU","cat":"Sector & Thematic","vol":282090},{"t":"MOTOUR","n":"Nifty India Tourism","cat":"Sector & Thematic","vol":3600},{"t":"INFRAIETF","n":"Nifty Infrastructure","cat":"Sector & Thematic","vol":340639},{"t":"ITBEES","n":"Nifty IT","cat":"Sector & Thematic","vol":6501454},{"t":"ELM250","n":"Nifty LargeMidcap 250","cat":"Broad Market","vol":17383},{"t":"METALIETF","n":"Nifty Metal","cat":"Sector & Thematic","vol":2185550},{"t":"MIDCAPETF","n":"Nifty Midcap 150","cat":"Broad Market","vol":1101962},{"t":"MOMIDMTM","n":"Nifty Midcap 150 Momentum 50","cat":"Factor & Strategy","vol":78075},{"t":"MIDQ50ADD","n":"Nifty Midcap 150 Quality 50","cat":"Factor & Strategy","vol":3800},{"t":"MIDCAP","n":"NIFTY Midcap 50","cat":"Broad Market","vol":116477},{"t":"MIDSMALL","n":"Nifty MidSmallcap400 Momentum Quality 100","cat":"Factor & Strategy","vol":82368},{"t":"MNC","n":"Nifty MNC","cat":"Sector & Thematic","vol":10681},{"t":"NEXT50IETF","n":"Nifty Next 50","cat":"Broad Market","vol":282204},{"t":"OILIETF","n":"Nifty Oil & Gas","cat":"Sector & Thematic","vol":8843834},{"t":"PHARMABEES","n":"Nifty Pharma","cat":"Sector & Thematic","vol":1705123},{"t":"PVTBANIETF","n":"Nifty Private Bank","cat":"Sector & Thematic","vol":1048761},{"t":"ABSLPSE","n":"Nifty PSE","cat":"Sector & Thematic","vol":84999},{"t":"PSUBNKBEES","n":"Nifty PSU Bank","cat":"Sector & Thematic","vol":1164915},{"t":"MOREALTY","n":"Nifty Realty","cat":"Sector & Thematic","vol":298057},{"t":"MOSERVICE","n":"Nifty Services Sector","cat":"Sector & Thematic","vol":468},{"t":"HDFCSML250","n":"Nifty Smallcap 250","cat":"Broad Market","vol":1514651},{"t":"SMALLCAP","n":"Nifty Smallcap 250 Momentum Quality 100","cat":"Factor & Strategy","vol":1088232},{"t":"SML100CASE","n":"Nifty Smallcap100","cat":"Broad Market","vol":672690},{"t":"TOP10ADD","n":"Nifty Top 10 Equal Weight","cat":"Factor & Strategy","vol":14437},{"t":"TOP15IETF","n":"Nifty Top 15 Equal Weight","cat":"Factor & Strategy","vol":15752},{"t":"TOP20","n":"Nifty Top 20 Equal Weight","cat":"Factor & Strategy","vol":16303},{"t":"AONETOTAL","n":"Nifty Total Market","cat":"Broad Market","vol":49975},{"t":"AONETMMQ50","n":"Nifty Total Market Momentum Quality 50","cat":"Factor & Strategy","vol":51933}];
   var MKT={TO:'Canada',KS:'Korea',NS:'India',DE:'Germany',AX:'Australia',T:'Japan',L:'UK',SA:'Brazil',HK:'Hong Kong'};
   var TVX={TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
@@ -2681,13 +2669,13 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     if(cache[u]) return Promise.resolve(cache[u]);
     var p;
     if(u==='global'){
-      p=getJSON(['data/global-etf-history.json',BASE_LIVE+'global-etf-history.json']).then(function(h){
+      p=getJSON(['data/global-etf-history.json']).then(function(h){
         var meta=window.__GLOBAL_ETFS||[], out=[];
         meta.forEach(function(m){ var pr=h[m.t]; if(pr&&pr.length>40){ out.push({t:m.t,n:m.n,cat:m.cat,vol:m.vol||0,mkt:mktOf(m.t),s:toSeries(pr),cur:'$'}); } });
         return {items:out,hist:h,updated:null};
       });
     } else if(u==='inetf'){
-      p=getJSON(['data/etf-history.json',BASE_LIVE+'etf-history.json']).then(function(h){
+      p=getJSON(['data/etf-history.json']).then(function(h){
         var out=[];
         IN_ETFS.forEach(function(m){ var pr=h[m.t]; if(pr&&pr.length>40){ out.push({t:m.t,n:m.n,cat:m.cat,vol:m.vol||0,mkt:'India',s:toSeries(pr),cur:'₹'}); } });
         return {items:out,hist:h,updated:null};
@@ -2926,7 +2914,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       setStatus(readyMsg,true);
       compute();
     }).catch(function(){
-      setStatus(u==='istock'?'data/rs_stocks.json not found — run the "Update Relative Strength Data" action first':'Price history could not be loaded for this list.',false);
+      setStatus(u==='istock'?'data/rs_stocks.json not found — run the "Update Relative Strength Data" action first':('data/'+(u==='global'?'global-etf-history.json':'etf-history.json')+' not found — run the "Update ETF data" action first'),false);
     });
   }
   function start(){
