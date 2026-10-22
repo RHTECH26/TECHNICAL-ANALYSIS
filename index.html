@@ -2378,7 +2378,7 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
 .adbar{display:flex; height:6px; border-radius:3px; overflow:hidden; margin-top:10px; background:var(--surface-3);}
 .adbar i{display:block; height:100%;}
 .desk-movers{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:14px; margin-bottom:14px;}
-.mv-row{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);}
+.mv-row{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:center; height:50px; box-sizing:border-box; padding:0; border-bottom:1px solid var(--line);}
 .mv-row:last-child{border-bottom:none;}
 .mv-sym{font-weight:700; color:var(--ink); font-size:13px;}
 .mv-name{display:block; font-size:10.5px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
@@ -2406,6 +2406,10 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
 .desk-movers{grid-template-columns:repeat(4,minmax(0,1fr));}
 @media (max-width:1000px){ .desk-movers{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media (max-width:720px){ .desk-movers{grid-template-columns:1fr;} }
+.mv-scroll{max-height:250px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding-right:6px; margin-right:-6px;}
+.mv-scroll::-webkit-scrollbar{width:6px;}
+.mv-scroll::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:3px;}
+.mv-more{font-size:10px; color:var(--muted); text-align:center; padding-top:6px; letter-spacing:.04em;}
 </style>
 
 <script>
@@ -2472,7 +2476,8 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
              '<div class="mv-px">'+cur+num(r.p,2,loc)+'</div><div class="mv-chg '+cls(r.c)+'">'+sgn(r.c,2)+'%</div></div>';
     }).join('');
     var dd = d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}) : '';
-    return '<div class="card"><h4>'+esc(title)+'<span class="asof">'+esc(dd)+'</span></h4>'+(rows || '<div class="news-empty">no data</div>')+'</div>';
+    var more = (list && list.length > 5) ? '<div class="mv-more">scroll for ' + (list.length - 5) + ' more ↓</div>' : '';
+    return '<div class="card"><h4>'+esc(title)+'<span class="asof">'+esc(dd)+'</span></h4>'+(rows ? '<div class="mv-scroll">'+rows+'</div>'+more : '<div class="news-empty">no data</div>')+'</div>';
   }
   function renderMovers(){
     var host = $('desk-movers'); if(!host) return;
