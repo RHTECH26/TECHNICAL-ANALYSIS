@@ -1,0 +1,44 @@
+name: Update Desk (prices, movers, news)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"      # every 30 minutes
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+# a new run waits for the previous one instead of running alongside it
+concurrency:
+  group: desk-news
+  cancel-in-progress: false
+
+jobs:
+  desk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy feedparser
+      - name: Read the previous Desk data (so stories from the last 24 hours are kept)
+        run: |
+          mkdir -p out
+          git fetch -q --depth=1 origin live-data 2>/dev/null && git show FETCH_HEAD:news.json > out/prev_news.json 2>/dev/null || echo '{}' > out/prev_news.json
+          git fetch -q --depth=1 origin live-data 2>/dev/null && git show FETCH_HEAD:desk.json > out/prev_desk.json 2>/dev/null || echo '{}' > out/prev_desk.json
+      - run: python scan_desk.py
+      - name: Publish to the live-data branch (one commit that is replaced every run)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          rm -f prev_news.json prev_desk.json
+          rm -rf .git
+          git init -q -b live-data
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add desk.json news.json
+          git commit -q -m "Desk data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" live-data
