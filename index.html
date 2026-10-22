@@ -1100,14 +1100,9 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }
     if(extra && extra.dates && extra.dates.length){
       var i = extra.dates.length-1;
-      tiles.push(['New 52W Highs', String(extra.newHighs[i]), extra.dates[i], null]);
-      tiles.push(['New 52W Lows', String(extra.newLows[i]), extra.dates[i], null]);
-      var net = extra.netHL[i];
-      tiles.push(['Net Breadth (H-L)', (net>0?'+':'')+net, extra.dates[i], net]);
+      tiles.push(['New 52W Highs / Lows', extra.newHighs[i]+' / '+extra.newLows[i], extra.dates[i], extra.newHighs[i]-extra.newLows[i]]);
     } else {
-      tiles.push(['New 52W Highs', '—', 'connect live data', null]);
-      tiles.push(['New 52W Lows', '—', 'connect live data', null]);
-      tiles.push(['Net Breadth (H-L)', '—', 'connect live data', null]);
+      tiles.push(['New 52W Highs / Lows', '—', 'connect live data', null]);
     }
     if(pct && pct.length){
       var latest = pct[pct.length-1], prevB = pct.length>1 ? pct[pct.length-2] : null;
@@ -2321,8 +2316,8 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
 .tilerow{gap:0; background:var(--surface);}
 .mtile{box-shadow:inset -1px -1px 0 var(--line);}
 /* Market Breadth summary tiles: 5 per row on laptops, one single row on large monitors, fewer on small screens */
-#breadth-tiles{grid-template-columns:repeat(5,minmax(0,1fr));}
-@media (min-width:1700px){ #breadth-tiles{grid-template-columns:repeat(9,minmax(0,1fr));} }
+#breadth-tiles{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (min-width:1700px){ #breadth-tiles{grid-template-columns:repeat(7,minmax(0,1fr));} }
 @media (min-width:721px) and (max-width:1000px){ #breadth-tiles{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media (max-width:720px){ #breadth-tiles{grid-template-columns:repeat(2,minmax(0,1fr));} }
 /* tablets */
