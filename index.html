@@ -1,4 +1,7 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Right Horizons Markets Screener</title>
+<script>try{var __z=localStorage.getItem("rh-zoom"); if(__z&&__z!=="auto"&&+__z>=0.5&&+__z<=2.5){document.documentElement.style.zoom=__z;}}catch(e){}</script>
 <script>try{var __t=localStorage.getItem("rh-theme"); if(__t==="light"||__t==="dark"){document.documentElement.setAttribute("data-theme",__t);}}catch(e){}</script>
 <style>
 :root{
@@ -215,6 +218,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <span class="tag">Global &amp; Indian technical research desk</span>
   </div>
   <div class="mast-right">
+    <select id="size-select" class="theme-btn hide-mobile" aria-label="Display size" title="Display size: Auto adapts to your screen; pick a fixed size if you prefer"><option value="auto">Size: Auto</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option></select>
     <button type="button" id="theme-toggle" class="theme-btn" aria-label="Switch theme">☀️ Light</button>
     <div class="snap">
       <div style="display:flex; align-items:center; gap:6px; justify-content:flex-end;"><span class="tm-dot" id="live-dot"></span><b id="live-status">Static preview</b></div>
@@ -306,7 +310,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       </div>
       <button class="echip" id="breadth-reset-zoom" title="Reset zoom/pan">Reset zoom</button>
     </div>
-    <div style="display:flex; align-items:center; gap:10px; margin:2px 0 12px; font-size:12px; color:var(--ink-soft);">
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; margin:2px 0 12px; font-size:12px; color:var(--ink-soft);">
       <span style="font-weight:600;">COT swing size (bars each side)</span>
       <select id="cot-swing" style="padding:6px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select>
       <span id="cot-status" class="mono" style="color:var(--muted);">COT data: loading…</span>
@@ -2000,7 +2004,10 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var dot = document.getElementById('live-dot'), lbl = document.getElementById('live-status');
     var anyLive = liveOK.sectors || liveOK.breadth || liveOK.nifty;
     if(dot) dot.classList.toggle('live', anyLive);
-    if(lbl) lbl.textContent = (anyLive ? 'Live data connected' : 'Static preview') + (missingData.length ? ' · missing: ' + missingData.join(', ') : '');
+    if(lbl){
+      lbl.textContent = (anyLive ? 'Live data connected' : 'Static preview') + (missingData.length ? ' · missing: ' + (missingData.length > 3 ? missingData.slice(0,3).join(', ') + ' +' + (missingData.length-3) + ' more' : missingData.join(', ')) : '');
+      lbl.title = missingData.length ? 'Missing data files: ' + missingData.join(', ') : '';
+    }
   }
   liveFetch('live.json').then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -3006,5 +3013,87 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   }
   btn.addEventListener('click',function(){ apply(cur()==='light'?'dark':'light'); });
   paint();
+  // display size: Auto follows the screen (CSS); a chosen size is remembered in this browser
+  var sz=document.getElementById('size-select');
+  if(sz){
+    var saved='auto'; try{ saved=localStorage.getItem('rh-zoom')||'auto'; }catch(e){}
+    if(!Array.prototype.some.call(sz.options,function(o){return o.value===saved;})) saved='auto';
+    sz.value=saved;
+    sz.addEventListener('change',function(){
+      try{ localStorage.setItem('rh-zoom',sz.value); }catch(e){}
+      if(sz.value==='auto') root.style.removeProperty('zoom'); else root.style.zoom=sz.value;
+      try{ window.dispatchEvent(new Event('resize')); }catch(e){}
+    });
+  }
 })();
 </script>
+
+<style id="rh-responsive">
+/* ===== Responsive layout: phones, tablets, laptops, large and extended monitors ===== */
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+/* use the width of the screen instead of a fixed 1220px column */
+body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
+.bento{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+.tilerow{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.gtm-scroll{max-height:max(480px, calc(100vh - 380px));}
+#panel-rs .rs-scroll{max-height:max(560px, calc(100vh - 330px));}
+.select-fit{max-width:100%;}
+.size-sel{min-width:0;}
+#size-select{padding-right:10px;}
+
+/* large and extended monitors: scale the whole page up (fonts, tables and charts together).
+   The "Size" menu in the header can override this. */
+@media (min-width:1900px){ html{zoom:1.12;} }
+@media (min-width:2300px){ html{zoom:1.3;} }
+@media (min-width:3000px){ html{zoom:1.6;} }
+
+.tilerow{gap:0; background:var(--surface);}
+.mtile{box-shadow:inset -1px -1px 0 var(--line);}
+/* tablets */
+@media (max-width:1100px){
+  .masthead{gap:12px;}
+  .card{padding:16px;}
+}
+
+/* phones */
+@media (max-width:720px){
+  .hide-mobile{display:none !important;}
+  body{padding-inline:10px; padding-block:14px 40px;}
+  .masthead{gap:10px; padding-bottom:12px; margin-bottom:12px;}
+  .brand{flex-wrap:wrap; gap:6px 10px;}
+  .brand .mark{font-size:18px;}
+  .brand .tag{align-self:flex-start; border-left:none; margin-left:0;}
+  .mast-right{width:100%; justify-content:space-between; gap:10px;}
+  .masthead .snap{text-align:right;}
+  nav.tabs{margin-bottom:16px; padding-bottom:6px; -webkit-overflow-scrolling:touch; scrollbar-width:thin;}
+  nav.tabs button{padding:10px 14px; font-size:13px;}
+  .subnav{gap:6px; margin-bottom:14px;}
+  .card{padding:12px; border-radius:8px;}
+  .take{padding:12px 14px;}
+  .tile{padding:14px;}
+  .mtile{padding:12px;}
+  .mtile .v{font-size:18px;}
+  .breadth-head .big{font-size:34px;}
+  .echip,.chip,.theme-btn{padding:8px 12px;}
+  .tm-datarow input[type="text"]{min-width:0; width:100%;}
+  table{font-size:12.5px;}
+  thead th{padding:9px 10px;}
+  tbody td{padding:8px 10px;}
+  #panel-rs thead th{height:36px; padding:0 10px;}
+  #panel-rs td{padding:8px 10px;}
+  #panel-rs tr.bmrow td{top:36px;}
+  /* filter boxes: two per row, full width inside their cell, and 16px text so phones do not zoom in on tap */
+  #panel-scanner label, #panel-rs label{flex:1 1 140px; min-width:130px;}
+  #panel-scanner label input, #panel-scanner label select, #panel-rs label input, #panel-rs label select{width:100% !important; box-sizing:border-box;}
+  input,select,textarea{font-size:16px !important;}
+  #panel-rs .rs-hero{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #panel-rs .rs-v{font-size:18px;}
+  #panel-rs .rs-scroll{max-height:72vh;}
+  .gtm-scroll{max-height:62vh;}
+  footer{flex-direction:column;}
+}
+@media (max-width:420px){
+  .mtile .k{font-size:9.5px;}
+  .brand .mark{font-size:16.5px;}
+}
+</style>
