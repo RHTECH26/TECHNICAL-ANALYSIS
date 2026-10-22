@@ -212,7 +212,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <div class="brand">
     <span class="dot"></span>
     <span class="mark">Right Horizons Markets Screener</span>
-    <span class="tag">a daily desk for an Indian equity PM</span>
+    <span class="tag">Global &amp; Indian technical research desk</span>
   </div>
   <div class="mast-right">
     <button type="button" id="theme-toggle" class="theme-btn" aria-label="Switch theme">☀️ Light</button>
@@ -272,7 +272,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <span><i style="background:var(--indigo)"></i>DII net (₹ Cr)</span>
     </div>
     <div class="chart-box" style="height:230px;"><canvas id="flowsChart"></canvas></div>
-    <div class="note">NSE provisional FII/DII cash-market figures, fetched daily by the GitHub Action when reachable; otherwise the last compiled week.</div>
+    
   </div>
 </section>
 
@@ -326,8 +326,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div id="breadth-chart-wrap">
       <div class="chart-box" style="height:120px;"><canvas id="breadthChart"></canvas></div>
     </div>
-    <div class="note" style="margin-top:0;" id="breadth-note">Top: ^CRSLDX (Nifty 500 index) daily close with its 200-day SMA overlaid. Bottom: the % of Nifty 500 constituents trading above their own 200-day SMA — below ~20% has historically marked broad-market bottoms, above ~85–90% has historically marked overheated tops. Backfilled from a static 20-year build, extended daily via <code>yfinance</code> / Yahoo Finance by the site's GitHub Action.</div>
-    <div class="note" style="margin-top:6px;">Scroll to zoom, drag to pan, double-click either chart to reset — or use the Reset zoom button above.</div>
+    <div id="breadth-note" hidden></div>
+    
   </div>
 
   <div class="card" id="cot-lookup" style="margin-top:16px;">
@@ -343,7 +343,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="cot-lookup-body"></tbody>
       </table>
     </div>
-    <div class="note" id="cot-lookup-note">Each stock's trend is re-computed for every past day using only the information that existed on that day (swing points are confirmed several bars late, so nothing is back-filled). Bullish = the stock's latest Dow structure is an uptrend, Bearish = a downtrend; Fresh CoT counts the stocks whose trend flipped on that very day. Uses today's index members for the whole history, so past days do not reflect stocks that were added to or dropped from the index later.</div>
+    
   </div>
 </section>
 
@@ -443,7 +443,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="brk-body"></tbody>
       </table>
     </div>
-    <div class="note" id="brk-note">Rules-based scan (not the ML breakout-probability model) — flags an ETF when today's close is a new 20-day high AND today's volume is at least 1.5x its trailing 20-day average. 52-week-high, RSI and 50/200-day-SMA trend are shown for context and aren't part of the flag itself. Live-updated daily by the site's GitHub Action; a ticker needs enough price history for a given check (e.g. 252 trading days for the 52-week-high and 200-day-SMA columns) or it shows "—" for that column instead of being dropped from the table.</div>
+    <div id="brk-note" hidden></div>
   </div>
 </section>
 
@@ -490,7 +490,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="trd-body"></tbody>
       </table>
     </div>
-    <div class="note" id="trd-note"><span class="cot-tfn">Daily</span> chart. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Uptrend = higher highs and higher lows; downtrend = lower highs and lower lows. Bullish change of trend: after a downtrend (lower low and lower high), price closes above the last lower high. Bearish change of trend: after an uptrend (higher high and higher low), price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Candles Ago counts candles of the chosen timeframe. Signals use closing prices only.<span class="cot-tfx"></span></div>
+    
     </div>
     <div id="cot-etf-view" style="display:none">
     <div class="tm-datarow">
@@ -532,7 +532,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="gcot-body"></tbody>
       </table>
     </div>
-    <div class="note" id="gcot-note"><span class="cot-tfn">Daily</span> chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Candles Ago counts candles of the chosen timeframe. Min avg volume uses the average-volume figure stored with each ETF in the Global ETF list; set it to 0 to see illiquid ETFs too.<span class="cot-tfx"></span></div>
+    
     </div>
   </div>
 </section>
@@ -585,7 +585,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="sr-body"></tbody>
       </table>
     </div>
-    <div class="note" id="sr-note">Daily chart, Yahoo Finance data, refreshed each morning. Resistance = the latest confirmed swing high and Support = the latest confirmed swing low (a high or low that is the highest or lowest of the chosen number of bars on each side of it; the same swings as the Dow Theory COT indicator). Dist to R % = how far the swing high is above the close; Dist to S % = how far the close is above the swing low. A small negative value means price has just pushed through the level. "Within" sets how close counts as near, and the tag AT marks a stock sitting within 0.5% of the level. Touches = how many swings in the last 250 bars sit at the same level (within half an ATR), so more touches means a stronger level. Age = trading days since the swing formed. Dow trend is the trend state at the last close. ETF prices are in each fund's own trading currency. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list; US ETFs are exported without an exchange prefix so TradingView picks the primary listing).</div>
+    
   </div>
 </section>
 
@@ -648,7 +648,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="bo-body"></tbody>
       </table>
     </div>
-    <div class="note" id="bo-note">Daily chart, Yahoo Finance data, refreshed each morning. A breakout is the first daily close above the latest confirmed swing high, using only the swing that was known before that bar. The swings are the same pivots as the Dow Theory COT indicator. Only moves that are still holding beyond the level today are listed. Level: "52-week high" = the break also made a new 250-day high; "Range high" = the level was the highest high of the previous 120 days; "Swing high" = any other swing level. Type: "Reversal" = the break flipped the Dow trend (a change of trend), "Continuation" = the break went with the existing trend. Volume x avg = volume on the break day versus the previous 20-day average (blank when the symbol has no volume data). Touches = other swings at the same level in the last 250 bars (within half an ATR), so more touches means a stronger level. Days ago counts trading days. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list).</div>
+    
   </div>
 </div>
   <div id="br-rv" style="display:none;">
@@ -709,7 +709,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="rv-body"></tbody>
       </table>
     </div>
-    <div class="note" id="rv-note">Daily chart, Yahoo Finance data, refreshed each morning. Support = the latest confirmed swing low, or any swing-low level that has been touched at least twice (the swings are the same pivots as the Dow Theory COT indicator). A reversal needs: (1) a real retest, meaning price had moved at least 2 ATR above the level before coming back to it; (2) a test bar whose low came within 0.4 ATR of the level (a wick up to 0.75 ATR below is allowed) and which closed at or above it; (3) a turn, meaning either a later close above the high of the test bar (Confirmed) or a test bar that closed in the upper 40% of its range (rejection candle); (4) price has lifted at least 1 ATR off the low and has not closed below the level since. SPRING = the wick went below the level and the bar still closed above it. Higher low = the support is above the previous swing low (an intact uptrend structure). Context: Pullback = the Dow trend was up before the test, Bounce = it was down. Reward : risk = distance to the next swing high above, divided by the distance down to just below support (support minus half an ATR); blank when there is no swing high above. Touches = swings at the same level in the last 250 bars. Volume at test = volume on the test bar versus the previous 20-day average. TradingView watchlist button: in TradingView open the watchlist panel, click the ⋯ menu next to the list name, choose Import list and pick the downloaded .txt file (up to 1,000 symbols per list).</div>
+    
   </div>
 </div>
 </section>
@@ -813,7 +813,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <tbody id="rs-body"></tbody>
     </table></div>
 
-    <div class="note">How to read this: <b>1D change</b> is the latest close against the close before it. <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
   </div>
 </section>
 
