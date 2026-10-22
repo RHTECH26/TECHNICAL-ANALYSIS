@@ -30,6 +30,7 @@ PREV_NEWS  = os.path.join(OUT_DIR, "prev_news.json")
 PREV_DESK  = os.path.join(OUT_DIR, "prev_desk.json")
 WINDOW_H   = 24
 MAX_ITEMS  = 700
+BLOCKED_SOURCES = {"SEBI"}          # sources that are never shown (older stories from them are dropped too)
 CHUNK      = 100
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
       "Accept": "application/rss+xml, application/xml, text/xml, text/csv, */*"}
@@ -168,7 +169,6 @@ FEEDS = [
     ("BusinessLine", "https://www.thehindubusinessline.com/economy/feeder/default.rss", "india", ["economy"], False),
     # ---- India: official sources
     ("RBI", "https://www.rbi.org.in/pressreleases_rss.xml", "india", ["economy"], False),
-    ("SEBI", "https://www.sebi.gov.in/sebirss.xml", "india", [], False),
     ("NSE announcements", "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml", "india", [], True),
     ("BSE announcements", "https://www.bseindia.com/data/xml/announcements.xml", "india", [], True),
     # ---- Global
@@ -306,6 +306,7 @@ def build_news(prev_items=None, feeds=FEEDS, fetch=fetch_feed):
         results = list(ex.map(fetch, feeds))
     merged, seen_link, seen_title = [], set(), set()
     pool = [it for items, _ in results for it in items] + list(prev_items or [])
+    pool = [it for it in pool if it.get("src") not in BLOCKED_SOURCES]
     pool.sort(key=lambda it: it["t"], reverse=True)
     for it in pool:
         if datetime.strptime(it["t"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) < cutoff:
