@@ -245,8 +245,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 <nav class="tabs" role="tablist" aria-label="Sections">
   <button role="tab" aria-selected="true" data-panel="desk">Desk</button>
   <button role="tab" aria-selected="false" data-panel="flows">Flows</button>
-  <button role="tab" aria-selected="false" data-panel="etfs">Indian ETF Heatmap</button>
-  <button role="tab" aria-selected="false" data-panel="global-etfs">Global ETF Heatmap</button>
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
   <button role="tab" aria-selected="false" data-panel="breakout">ETF Screener</button>
   <button role="tab" aria-selected="false" data-panel="cot">COT</button>
@@ -266,50 +264,38 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <p>A week of FII/DII cash-market net flows — where domestic vs. foreign money is leaning.</p>
       <span class="go">Open flows →</span>
     </button>
-    <button class="tile" data-goto="etfs">
-      <span class="num">02</span>
-      <h3>Indian ETF Heatmap</h3>
-      <p>All 98 NSE ETFs from the master sheet, one flat grid ranked by performance.</p>
-      <span class="go">Open heatmap →</span>
-    </button>
-    <button class="tile" data-goto="global-etfs">
-      <span class="num">03</span>
-      <h3>Global ETF Heatmap</h3>
-      <p>Top 100 of 966 global equity ETFs by performance over any date range, plus a searchable list of the full universe.</p>
-      <span class="go">Open heatmap →</span>
-    </button>
     <button class="tile" data-goto="breadth">
-      <span class="num">04</span>
+      <span class="num">02</span>
       <h3>Market Breadth</h3>
       <p>Live Nifty 500 index price plus the % of names trading above their 200-day SMA, a full daily series back to 2006.</p>
       <span class="go">Open breadth →</span>
     </button>
     <button class="tile" data-goto="breakout">
-      <span class="num">05</span>
+      <span class="num">03</span>
       <h3>ETF Screener</h3>
       <p>Rules-based daily scan of the global ETF universe: range breakout, MA crossover, volume confirmation, or narrow-range breakout mode.</p>
       <span class="go">Open ETF screener →</span>
     </button>
     <button class="tile" data-goto="cot">
-      <span class="num">06</span>
+      <span class="num">04</span>
       <h3>COT — Change of Trend</h3>
       <p>Dow Theory change of trend for Indian stocks or global ETFs on the 1-hour, daily, weekly or monthly chart: a close above the last lower high (bullish) or below the last higher low (bearish).</p>
       <span class="go">Open COT →</span>
     </button>
     <button class="tile" data-goto="rs">
-      <span class="num">07</span>
+      <span class="num">05</span>
       <h3>Relative Strength</h3>
       <p>Pick a market high date and low date, then see which ETFs or stocks have beaten the benchmark since each one, and how far they sit from their 52-week high.</p>
       <span class="go">Open relative strength →</span>
     </button>
     <button class="tile" data-goto="sr">
-      <span class="num">08</span>
+      <span class="num">06</span>
       <h3>S&amp;R</h3>
       <p>Indian stocks or global ETFs sitting right at a swing high (near resistance) or a swing low (near support).</p>
       <span class="go">Open S&amp;R →</span>
     </button>
     <button class="tile" data-goto="bo">
-      <span class="num">09</span>
+      <span class="num">07</span>
       <h3>Breakout / Reversal</h3>
       <p>Pick a setup for Indian stocks or global ETFs: a fresh close above a swing high (breakout) or a bounce from a support level (reversal), with level strength, volume and reward-to-risk.</p>
       <span class="go">Open Breakout / Reversal →</span>
@@ -327,85 +313,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     </div>
     <div class="chart-box" style="height:230px;"><canvas id="flowsChart"></canvas></div>
     <div class="note">NSE provisional FII/DII cash-market figures, fetched daily by the GitHub Action when reachable; otherwise the last compiled week.</div>
-  </div>
-</section>
-
-<!-- ================= ETFs ================= -->
-<section class="panel" id="panel-etfs">
-  <div class="card" style="margin-bottom:20px;">
-    <h4>Indian ETF universe — performance heatmap<span class="asof" id="tm-mode-label">98 ETFs · 52-week % change</span></h4>
-    <div class="tm-datarow">
-      <span class="tm-dot" id="tm-dot"></span>
-      <span id="tm-source-label">Static sheet — no live feed connected</span>
-    </div>
-    <div class="etf-chiprow" id="tm-range-chips" style="margin-bottom:14px;">
-      <button class="echip" aria-pressed="false" data-preset="1D">1D</button>
-      <button class="echip" aria-pressed="false" data-preset="1W">1W</button>
-      <button class="echip" aria-pressed="false" data-preset="1M">1M</button>
-      <button class="echip" aria-pressed="false" data-preset="3M">3M</button>
-      <button class="echip" aria-pressed="true" data-preset="1Y">1Y</button>
-    </div>
-    <div class="tm-controls">
-      <div class="tm-daterange" id="tm-daterange" style="display:none;">
-        <label>From <input type="date" id="tm-date-from"></label>
-        <label>To <input type="date" id="tm-date-to"></label>
-        <button id="tm-apply-range">Apply</button>
-        <button id="tm-reset-range" title="Back to the sheet's 52-week change">Reset</button>
-      </div>
-      <div class="tm-legend" id="tm-legend"></div>
-    </div>
-    <div class="tmroot" id="treemap"></div>
-    <div class="tm-tooltip" id="tm-tip"></div>
-    <div class="note" id="tm-note">All 98 ETFs from the NSE ETF master sheet, one flat grid of equal-size tiles, ranked by 365-day (52-week) % change (best to worst, left to right) — color reflects the actual % change, not the ranking: green above 0%, red below 0%, deeper the further from 0%. Hover any tile for its sub-category, 52-week high/low, 30-day &amp; 365-day change and volume. Live-updated daily by the site's GitHub Action; pick a From/To date and Apply to re-sort and re-color every tile by the % change between those two dates instead of the fixed 52-week figure.</div>
-  </div>
-
-</section>
-
-<!-- ================= GLOBAL ETFs ================= -->
-<section class="panel" id="panel-global-etfs">
-  <div class="card" style="margin-bottom:20px;">
-    <h4>Global ETF universe — top 100 performance heatmap<span class="asof" id="gtm-mode-label">966 ETFs · connect live data</span></h4>
-    <div class="tm-datarow">
-      <span class="tm-dot" id="gtm-dot"></span>
-      <span id="gtm-source-label">Static preview — no live feed connected</span>
-    </div>
-    <div class="etf-chiprow" id="gtm-cat-chips" style="margin:12px 0 14px;"></div>
-    <div class="etf-chiprow" id="gtm-range-chips" style="margin-bottom:14px;">
-      <button class="echip" aria-pressed="false" data-preset="1D">1D</button>
-      <button class="echip" aria-pressed="false" data-preset="1W">1W</button>
-      <button class="echip" aria-pressed="false" data-preset="1M">1M</button>
-      <button class="echip" aria-pressed="false" data-preset="3M">3M</button>
-      <button class="echip" aria-pressed="true" data-preset="1Y">1Y</button>
-    </div>
-    <div class="tm-controls">
-      <div class="tm-daterange" id="gtm-daterange" style="display:none;">
-        <label>From <input type="date" id="gtm-date-from"></label>
-        <label>To <input type="date" id="gtm-date-to"></label>
-        <button id="gtm-apply-range">Apply</button>
-        <button id="gtm-reset-range" title="Back to the trailing 52-week change">Reset</button>
-      </div>
-      <div class="tm-legend" id="gtm-legend"></div>
-    </div>
-    <div class="tmroot" id="global-treemap"></div>
-    <div class="tm-tooltip" id="gtm-tip"></div>
-    <div class="note" id="gtm-note">Top 100 of 966 global equity ETFs (US, London, Frankfurt, Paris, Tokyo, Zurich, Milan &amp; Madrid listings) by % change over the selected range, best to worst — color reflects the actual % change (green above 0%, red below 0%, deeper the further from 0%), not the ranking. Live-updated daily by the site's GitHub Action; defaults to the trailing 52 weeks until you pick a From/To date and Apply. Pick a category above to narrow the universe before ranking the top 100.</div>
-  </div>
-
-  <div class="card">
-    <h4>All 966 global ETFs<span class="asof" id="gtm-list-asof">search &amp; scroll</span></h4>
-    <input type="text" id="gtm-search" class="gtm-search-input" placeholder="Search by ETF name or ticker…" />
-    <div class="gtm-scroll">
-      <table>
-        <thead id="gtm-list-head">
-          <tr>
-            <th>ETF</th><th class="num sortable" data-key="price">Price (USD)</th><th class="num sortable" data-key="chg">Change</th>
-            <th class="num sortable" data-key="vol">Avg Daily Volume</th><th>Benchmark / Strategy</th>
-          </tr>
-        </thead>
-        <tbody id="gtm-list-body"></tbody>
-      </table>
-    </div>
-    <div class="note">The full 966-ETF universe from the uploaded sheet. Price and change need the live feed connected — until then this is name, ticker, volume and benchmark only.</div>
   </div>
 </section>
 
@@ -658,7 +565,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <tbody id="gcot-body"></tbody>
       </table>
     </div>
-    <div class="note" id="gcot-note"><span class="cot-tfn">Daily</span> chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Candles Ago counts candles of the chosen timeframe. Min avg volume uses the volume figure from the Global ETF Heatmap list; set it to 0 to see illiquid ETFs too.<span class="cot-tfx"></span></div>
+    <div class="note" id="gcot-note"><span class="cot-tfn">Daily</span> chart, Yahoo Finance data. Swing highs and lows are confirmed pivots: a high (or low) that is the highest (or lowest) of the chosen number of bars on each side of it, confirmed only after those bars have printed (same rule as the TradingView Dow Theory indicator). Bullish change of trend: after a downtrend, price closes above the last lower high. Bearish change of trend: after an uptrend, price closes below the last higher low. Stop Reference is the swing that came just before the break; the signal is dropped if price later closes back through it. Prices are in each ETF's own trading currency. Candles Ago counts candles of the chosen timeframe. Min avg volume uses the average-volume figure stored with each ETF in the Global ETF list; set it to 0 to see illiquid ETFs too.<span class="cot-tfx"></span></div>
     </div>
   </div>
 </section>
@@ -735,7 +642,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
         <select id="rs-show" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="all">All</option><option value="h">Beating benchmark since High date</option><option value="l">Beating benchmark since Low date</option><option value="both" selected>Beating on both</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sort by
-        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="chh">Since High</option><option value="chl" selected>Since Low</option><option value="off">Since 52-week high</option><option value="s">Symbol</option></select></label>
+        <select id="rs-sort" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="d1">1D change</option><option value="chh">Since High</option><option value="chl" selected>Since Low</option><option value="off">Since 52-week high</option><option value="s">Symbol</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Order
         <select id="rs-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="-1" selected>Highest first</option><option value="1">Lowest first</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;" id="rs-mktw">Market
@@ -761,7 +668,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <tbody id="rs-body"></tbody>
     </table></div>
 
-    <div class="note">How to read this: <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
+    <div class="note">How to read this: <b>1D change</b> is the latest close against the close before it. <b>Since High</b> is the change from the close on your High date to the latest close, and <b>Since Low</b> is the change from your Low date. <b>Since 52-wk high</b> is the latest close against its highest close in the past year (0% means it is at the high). <b>Beating</b> shows H, L or BOTH when the fund or stock has gained more than the benchmark since the High date, the Low date, or both; hover over it to see by how many points. Inside roughly the last 14 months the tab uses exact daily closes. Older dates use weekly closes (the week ending on the Friday on or before your date) for the funds and the benchmark alike, and the tab shows which week it used. Funds or stocks that did not exist yet on a date show a dash and cannot count as beating. The "Market episodes" buttons pick the benchmark's own highest close and the lowest close after it in that period. Global ETF prices are in each fund's own trading currency (mostly US dollars); Indian ones are in rupees. Prices are adjusted closes.</div>
   </div>
 </section>
 
@@ -982,7 +889,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     tabs.forEach(function(b){ b.setAttribute('aria-selected', b.dataset.panel===name?'true':'false'); });
     panels.forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+name); });
     if(name==='flows' && !window.__flowsDrawn){ drawFlows(); window.__flowsDrawn = true; }
-    if(name==='global-etfs' && !window.__globalTmDrawn){ renderGtmCatChips(); renderGlobalHeatmap(); renderGlobalList(); window.__globalTmDrawn = true; }
     if(name==='breadth' && !window.__breadthDrawn){ drawBreadth(); drawNiftyPrice(); window.__breadthDrawn = true; }
     if(name==='breakout' && !window.__breakoutDrawn){ renderBreakoutScanner(); window.__breakoutDrawn = true; }
   }
@@ -991,7 +897,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   // Re-draw whatever has already been drawn, so charts (which read their colours when they are created) follow a theme change.
   window.__rhRedrawThemed = function(){
     if(window.__flowsDrawn){ drawFlows(); }
-    if(window.__globalTmDrawn){ renderGtmCatChips(); renderGlobalHeatmap(); renderGlobalList(); }
     if(window.__breadthDrawn){ drawBreadth(); drawNiftyPrice(); }
     if(window.__breakoutDrawn){ renderBreakoutScanner(); }
   };
@@ -1043,548 +948,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     });
   }
 
-  // ---- ETF performance heatmap ----
-  // Value-based fill, not rank-based: color reflects the actual % change relative to 0,
-  // not where a tile sits in the sort order. Anything above 0% is green (greener the higher
-  // above 0 it is), anything below 0% is red (redder the lower below 0 it is) — so a page
-  // full of positive returns reads as all-green, not a green→red gradient regardless of sign.
-  var TM_RED = [196,58,52], TM_GRN = [40,150,80], TM_NEUTRAL = [82,86,94];
-  function tmColorByValue(pct, capPct){ // pct: the tile's actual % change; capPct: % at which the color is fully saturated
-    capPct = capPct || 20;
-    var t = Math.max(-1, Math.min(1, pct / capPct));
-    var target = t >= 0 ? TM_GRN : TM_RED, at = Math.abs(t);
-    var r = Math.round(TM_NEUTRAL[0]+(target[0]-TM_NEUTRAL[0])*at);
-    var g = Math.round(TM_NEUTRAL[1]+(target[1]-TM_NEUTRAL[1])*at);
-    var b = Math.round(TM_NEUTRAL[2]+(target[2]-TM_NEUTRAL[2])*at);
-    return r+','+g+','+b;
-  }
-
-  // Live-data hook: once connected, window.ETF_HISTORY holds
-  //   { "<SYMBOL>": [["YYYY-MM-DD", price], ...] }  (ascending by date, one row per trading day)
-  // for exactly the 98 symbols in TREE. Nothing here fabricates that series — until it's
-  // loaded, every tile keeps reading the static sheet's 365-day % change.
-  var TM_HISTORY = null; // set once a live source is connected
-  var TM_RANGE = null;   // {from:'YYYY-MM-DD', to:'YYYY-MM-DD'} once Apply is clicked
-  var TM_PRESET = '1Y';  // which quick-range chip is active, or null once a custom From/To is applied
-  var TM_PRESETS = {'1D':1, '1W':7, '1M':30, '3M':90, '1Y':365};
-  var TM_PRESET_LABELS = {'1D':'1-day', '1W':'1-week', '1M':'1-month', '3M':'3-month', '1Y':'1-year'};
-
-  function shiftDateStr(dateStr, days){
-    // Every date in this app is a plain "YYYY-MM-DD" calendar date with no time-of-day
-    // meaning. The old way of shifting one -- new Date(dateStr+'T00:00:00') then
-    // .toISOString() -- parses the input as LOCAL midnight in the viewer's own browser
-    // but formats the output in UTC. For anyone viewing from a timezone ahead of UTC
-    // (IST, UTC+5:30 -- this site's actual audience), local midnight is already 6:30pm
-    // UTC the PREVIOUS day, so subtracting 1 day and reading the result back in UTC
-    // silently lands 2 calendar days back, not 1. That's the real reason "1D" was
-    // landing on Monday instead of yesterday. Building and reading the date entirely in
-    // UTC (no local-timezone parsing anywhere in the chain) gives the same, correct
-    // result for every viewer regardless of where they are.
-    var p = dateStr.split('-');
-    var ms = Date.UTC(+p[0], +p[1]-1, +p[2]) + days*24*60*60*1000;
-    return new Date(ms).toISOString().slice(0,10);
-  }
-  function priceOnExactDate(series, dateStr){
-    // Strict lookup for "1D": returns a price only if this series has that EXACT calendar
-    // date, never the closest available day. Used so "1D" always means yesterday's real
-    // close vs the day before's -- if a ticker's data has a gap on either exact date, this
-    // returns null (shown as "no data") instead of silently reaching further back and
-    // comparing 2+ trading sessions while still calling it "1D".
-    if(!series || !series.length) return null;
-    for(var i=series.length-1;i>=0;i--){
-      if(series[i][0] === dateStr) return series[i][1];
-    }
-    return null;
-  }
-  function nearestPrice(series, dateStr){
-    if(!series || !series.length) return null;
-    var target = new Date(dateStr+'T00:00:00').getTime();
-    // Prefer the closest trading day ON OR BEFORE the target date. This matters most for
-    // the "1D" preset: its range is just "latest date minus 1 calendar day", so whenever
-    // the latest trading day is a Monday (or the day after a holiday), that lands on a
-    // Sunday/holiday with no data point of its own. A plain nearest-in-either-direction
-    // search then snaps FORWARD to the latest day itself (1 day away) instead of BACK to
-    // the prior Friday's close (2 days away) -- comparing today's price to today's price
-    // and showing 0% change for every single ticker, even ones that moved a lot. Only
-    // fall back to the single nearest point in either direction if nothing in the series
-    // is on or before the target (e.g. the target predates all available history).
-    var bestOnOrBefore = null, bestOnOrBeforeDiff = Infinity;
-    var bestAny = null, bestAnyDiff = Infinity;
-    for(var i=0;i<series.length;i++){
-      var t = new Date(series[i][0]+'T00:00:00').getTime();
-      var diff = Math.abs(t - target);
-      if(diff < bestAnyDiff){ bestAnyDiff = diff; bestAny = series[i][1]; }
-      if(t <= target && diff < bestOnOrBeforeDiff){ bestOnOrBeforeDiff = diff; bestOnOrBefore = series[i][1]; }
-    }
-    return bestOnOrBefore !== null ? bestOnOrBefore : bestAny;
-  }
-  // "1D" is pinned to TWO specific calendar dates -- yesterday and the weekday before that --
-  // not whichever dates happen to exist in a given ticker's series. Both are computed from
-  // the real current date (walking back over Sat/Sun) and cached for the session, so every
-  // ticker is judged against the exact same two days. A ticker missing a price on EITHER
-  // exact date shows "no data" rather than quietly reaching further back in its own series
-  // and mislabeling a 2+ session move as "1D". Every other range (1W/1M/3M/1Y, custom) still
-  // uses close-to-close via nearestPrice, unchanged.
-  var TM_ONE_DAY_DATE = null, TM_ONE_DAY_PREV_DATE = null;
-  function tmPrevWeekday(dateStr){
-    var d = shiftDateStr(dateStr, -1);
-    while([0, 6].indexOf(new Date(d + 'T00:00:00Z').getUTCDay()) >= 0){
-      d = shiftDateStr(d, -1);
-    }
-    return d;
-  }
-  function tmOneDayDate(){
-    if(!TM_ONE_DAY_DATE) TM_ONE_DAY_DATE = tmPrevWeekday(new Date().toISOString().slice(0, 10));
-    return TM_ONE_DAY_DATE;
-  }
-  function tmOneDayPrevDate(){
-    if(!TM_ONE_DAY_PREV_DATE) TM_ONE_DAY_PREV_DATE = tmPrevWeekday(tmOneDayDate());
-    return TM_ONE_DAY_PREV_DATE;
-  }
-  function rangeChangePct(d){
-    if(!TM_HISTORY || !TM_RANGE) return null;
-    var series = TM_HISTORY[d.t];
-    if(!series) return null;
-    if(TM_PRESET === '1D'){
-      var to = tmOneDayDate(), from = tmOneDayPrevDate();
-      var d1 = priceOnExactDate(series, to), d0 = priceOnExactDate(series, from);
-      if(d0===null || d1===null || d0===0) return null;
-      return (d1-d0)/d0*100;
-    }
-    var p0 = nearestPrice(series, TM_RANGE.from), p1 = nearestPrice(series, TM_RANGE.to);
-    if(p0===null || p1===null || p0===0) return null;
-    return (p1-p0)/p0*100;
-  }
-  function tmMetric(d){
-    var live = rangeChangePct(d);
-    // Once live data is connected AND a range has actually been applied (TM_RANGE, not
-    // just the default-highlighted TM_PRESET='1Y' chip before anything's been clicked --
-    // see the note in buildTreemap), a null means "this ticker has no data for the exact
-    // dates this range needs" (most commonly: a gap on yesterday's date for the strict
-    // "1D" preset) -- that must show as "no data", never silently fall back to the
-    // static sheet's 365-day change while still labeled "1D chg". The chg365 fallback is
-    // only for genuinely static/unconnected mode.
-    if(TM_HISTORY && TM_RANGE) return live;
-    return live===null ? d.chg365 : live;
-  }
-  function tmMetricLabel(){
-    // Only the default (no custom range) mode gets a "52-week chg" caption on each tile —
-    // once a From/To range is applied, the percentage speaks for itself and nothing repeats
-    // the date range underneath it.
-    if(TM_HISTORY && TM_PRESET) return TM_PRESET+' chg';
-    return TM_HISTORY && TM_RANGE ? '' : '52-week chg';
-  }
-  function tmLatestDate(){
-    var best = null;
-    for(var k in TM_HISTORY){
-      var s = TM_HISTORY[k];
-      if(s && s.length && (!best || s[s.length-1][0] > best)) best = s[s.length-1][0];
-    }
-    return best;
-  }
-  function tmRangeFromPreset(name){
-    if(name === '1D'){
-      return {from: tmOneDayPrevDate(), to: tmOneDayDate()};
-    }
-    var to = tmLatestDate();
-    if(!to) return null;
-    var days = TM_PRESETS[name];
-    var from = shiftDateStr(to, -days);
-    return {from:from, to:to};
-  }
-  function tmApplyPreset(name){
-    var range = tmRangeFromPreset(name);
-    if(!range) return;
-    TM_PRESET = name;
-    TM_RANGE = range;
-    var fromEl = document.getElementById('tm-date-from'), toEl = document.getElementById('tm-date-to');
-    if(fromEl) fromEl.value = range.from;
-    if(toEl) toEl.value = range.to;
-    document.querySelectorAll('#tm-range-chips .echip').forEach(function(b){
-      b.setAttribute('aria-pressed', b.dataset.preset === name);
-    });
-    renderTmLegend();
-    buildTreemap();
-  }
-  document.querySelectorAll('#tm-range-chips .echip').forEach(function(btn){
-    btn.addEventListener('click', function(){ tmApplyPreset(btn.dataset.preset); });
-  });
-
-  function buildTreemap(){
-    // A null tmMetric ("no data for this ticker at this exact range" -- see tmMetric)
-    // always sorts to the bottom, regardless of which end "worst" is on, rather than
-    // null coercing to 0 and landing in the middle of the ranking as if it were a flat,
-    // unremarkable change.
-    var items = TREE.slice().sort(function(a,b){
-      var va = tmMetric(a), vb = tmMetric(b);
-      if(va===null && vb===null) return 0;
-      if(va===null) return 1;
-      if(vb===null) return -1;
-      return vb - va;
-    });
-    var lbl = tmMetricLabel();
-    var html = items.map(function(d){
-      var val = tmMetric(d);
-      if(val===null){
-        return '<div class="tmcell" data-idx="'+d.__i+'" style="background:rgb('+TM_NEUTRAL.join(',')+'); opacity:0.55;">'+
-          '<div class="sym">'+d.t+'</div><div class="chg">—</div><div class="yr">no data</div></div>';
-      }
-      var rgb = tmColorByValue(val, 25);
-      return '<div class="tmcell" data-idx="'+d.__i+'" style="background:rgb('+rgb+');">'+
-        '<div class="sym">'+d.t+'</div><div class="chg">'+fmt(val)+'%</div>'+(lbl?'<div class="yr">'+lbl+'</div>':'')+'</div>';
-    }).join('');
-    document.getElementById('treemap').innerHTML = html;
-    wireTreemapTooltips();
-    // TM_RANGE is only set once a preset/Apply has actually been used (or live data
-    // has connected) -- TM_PRESET defaults to '1Y' from page load just to visually
-    // match the pre-highlighted chip, so it must NOT be trusted alone here. Checking
-    // TM_RANGE first avoids reading .from/.to off null on the very first render.
-    var tmRangeDesc = TM_RANGE
-      ? (TM_PRESET ? (TM_PRESET_LABELS[TM_PRESET]+' ('+TM_RANGE.from+' → '+TM_RANGE.to+')') : (TM_RANGE.from+' → '+TM_RANGE.to))
-      : null;
-    document.getElementById('tm-mode-label').textContent = TM_HISTORY && TM_RANGE
-      ? '98 ETFs · % change '+tmRangeDesc
-      : '98 ETFs · 52-week % change (sheet)';
-  }
-
-  function wireTreemapTooltips(){
-    var tip = document.getElementById('tm-tip');
-    document.querySelectorAll('#treemap .tmcell').forEach(function(el){
-      el.addEventListener('mousemove', function(ev){
-        var d = TREE[+el.dataset.idx], m = tmMetric(d);
-        var rangeLine = (TM_HISTORY && TM_RANGE)
-          ? (TM_RANGE.from+' → '+TM_RANGE.to+' change: '+(m===null ? '<b>no data for this range</b>' : ('<b class="'+(m>=0?'up':'down')+'">'+fmt(m)+'%</b>'))+'<br>')
-          : '';
-        tip.innerHTML = '<b>'+d.t+'</b><br>'+d.sub+'<br>'+rangeLine+
-          '30-day change: <b class="'+(d.chg30>=0?'up':'down')+'">'+fmt(d.chg30)+'%</b> · 365-day: <b class="'+(d.chg365>=0?'up':'down')+'">'+fmt(d.chg365)+'%</b><br>'+
-          '52-week range: ₹'+d.l52.toFixed(2)+' – ₹'+d.h52.toFixed(2)+'<br>Volume: '+d.vol.toLocaleString('en-IN');
-        tip.style.display = 'block';
-        tip.style.left = (ev.clientX+14)+'px';
-        tip.style.top = (ev.clientY+14)+'px';
-      });
-      el.addEventListener('mouseleave', function(){ tip.style.display='none'; });
-    });
-  }
-
-  function renderTmLegend(){
-    var cap = 25;
-    var grad = 'linear-gradient(90deg, rgb('+tmColorByValue(-cap,cap)+'), rgb('+tmColorByValue(0,cap)+'), rgb('+tmColorByValue(cap,cap)+'))';
-    document.getElementById('tm-legend').innerHTML =
-      '<span>-'+cap+'% or worse</span><div class="grad" style="background:'+grad+'"></div><span>+'+cap+'% or better (0% at center)</span>';
-  }
-
-  // ---- live-data connect + date-range controls ----
-  function connectLiveData(url, silent){
-    var label = document.getElementById('tm-source-label'), dot = document.getElementById('tm-dot');
-    if(!url){ if(!silent) label.textContent = 'Paste a JSON URL first'; return; }
-    if(!silent) label.textContent = 'Connecting…';
-    fetch(url).then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    }).then(function(data){
-      TM_HISTORY = data;
-      dot.classList.add('live');
-      label.textContent = 'Live data connected — pick a date range below';
-      document.getElementById('tm-daterange').style.display = 'flex';
-      var today = new Date().toISOString().slice(0,10);
-      document.getElementById('tm-date-to').value = document.getElementById('tm-date-to').value || today;
-    }).catch(function(err){
-      dot.classList.remove('live');
-      if(!silent){
-        label.textContent = 'Could not load that URL (this page runs sandboxed on claude.ai — open the exported HTML from your own GitHub Pages site for live fetches to work). '+err.message;
-      } // on silent auto-connect (e.g. previewing on claude.ai) just stay on the static-sheet fallback quietly
-    });
-  }
-  // Auto-connect on page load to the ETF data file published on the site's own domain — no
-  // URL shown to the user, quietly falls back to the static sheet if unreachable (e.g. this
-  // claude.ai preview, which is sandboxed and can't fetch anything external).
-  connectLiveData(LIVE_DATA_BASE + 'etf-history.json', true);
-  document.getElementById('tm-apply-range').addEventListener('click', function(){
-    var from = document.getElementById('tm-date-from').value, to = document.getElementById('tm-date-to').value;
-    if(!from || !to){ return; }
-    TM_RANGE = {from:from, to:to};
-    TM_PRESET = null;
-    document.querySelectorAll('#tm-range-chips .echip').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
-    renderTmLegend();
-    buildTreemap();
-  });
-  document.getElementById('tm-reset-range').addEventListener('click', function(){
-    TM_RANGE = null;
-    TM_PRESET = null;
-    document.querySelectorAll('#tm-range-chips .echip').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
-    renderTmLegend();
-    buildTreemap();
-  });
-
-  renderTmLegend();
-  buildTreemap();
-
-  // ---- Global ETF heatmap (top 100 of 966) + full searchable list ----
-  // No performance data exists in the source sheet at all — only name/ticker/volume/
-  // benchmark. Every price and % change here comes from the live feed
-  // (data/global-etf-history.json); until that's connected, the heatmap is empty and the
-  // list below shows name/ticker/volume/benchmark only.
-  var GTM_HISTORY = null;      // {"<TICKER>": [["YYYY-MM-DD", priceUSD], ...]}
-  var GTM_RANGE = null;        // {from, to} once Apply/a preset is picked; null = trailing 52 weeks
-  var GTM_PRESET = '1Y';       // which quick-range chip is active, or null once a custom From/To is applied
-  var GTM_PRESETS = {'1D':1, '1W':7, '1M':30, '3M':90, '1Y':365};
-  var GTM_PRESET_LABELS = {'1D':'1-day', '1W':'1-week', '1M':'1-month', '3M':'3-month', '1Y':'1-year'};
-  var GTM_TOP = [];            // last-rendered top-100 array, for tooltip lookups
-  var gtmActiveCat = 'all';
-  // Matches the 7 buckets classify_global_etf() assigns server-side, plus "Other" for
-  // whatever didn't clearly fit any of them — reusing the site's existing accent colors so
-  // no new palette is needed.
-  var GTM_CATEGORIES = ['Broad Market','Country & Regional','Sector','Thematic & Industry','Factor & Strategy','Fixed Income','Commodities','Other'];
+  // category colours (kept from the old Global ETF heatmap; the ETF Screener still uses them)
   var GTM_CAT_COLOR = {
     'Broad Market':'--saffron-deep', 'Country & Regional':'--indigo', 'Sector':'--violet',
     'Thematic & Industry':'--teal', 'Factor & Strategy':'--warn', 'Fixed Income':'--good',
     'Commodities':'--bad', 'Other':'--ink-soft'
   };
-  function gtmFiltered(){
-    return gtmActiveCat==='all' ? GLOBAL_ETFS : GLOBAL_ETFS.filter(function(d){ return d.cat===gtmActiveCat; });
-  }
-  function renderGtmCatChips(){
-    var counts = {};
-    GLOBAL_ETFS.forEach(function(d){ counts[d.cat] = (counts[d.cat]||0)+1; });
-    var chips = ['<button class="echip" aria-pressed="'+(gtmActiveCat==='all')+'" data-cat="all">All ('+GLOBAL_ETFS.length+')</button>']
-      .concat(GTM_CATEGORIES.filter(function(c){ return counts[c]; }).map(function(c){
-        return '<button class="echip" aria-pressed="'+(gtmActiveCat===c)+'" data-cat="'+c+'">'+
-          '<span class="cat-dot" style="background:'+tok(GTM_CAT_COLOR[c])+'"></span>'+c+' ('+counts[c]+')</button>';
-      }));
-    document.getElementById('gtm-cat-chips').innerHTML = chips.join('');
-    document.querySelectorAll('#gtm-cat-chips .echip').forEach(function(c){
-      c.addEventListener('click', function(){
-        gtmActiveCat = c.dataset.cat;
-        renderGtmCatChips();
-        renderGlobalHeatmap();
-        renderGlobalList();
-      });
-    });
-  }
-
-  function gtmLatestDate(){
-    var best = null;
-    for(var k in GTM_HISTORY){
-      var s = GTM_HISTORY[k];
-      if(s && s.length && (!best || s[s.length-1][0] > best)) best = s[s.length-1][0];
-    }
-    return best;
-  }
-  // "1D" is pinned to TWO specific calendar dates -- yesterday and the weekday before that --
-  // not whichever dates happen to exist in a given ticker's series. Both are computed from
-  // the real current date (walking back over Sat/Sun) and cached for the session, so every
-  // ticker is judged against the exact same two days. A ticker missing a price on EITHER
-  // exact date shows "no data" rather than quietly reaching further back in its own series
-  // and mislabeling a 2+ session move as "1D".
-  var GTM_ONE_DAY_DATE = null, GTM_ONE_DAY_PREV_DATE = null;
-  function gtmPrevWeekday(dateStr){
-    var d = shiftDateStr(dateStr, -1);
-    while([0, 6].indexOf(new Date(d + 'T00:00:00Z').getUTCDay()) >= 0){
-      d = shiftDateStr(d, -1);
-    }
-    return d;
-  }
-  function gtmOneDayDate(){
-    if(!GTM_ONE_DAY_DATE) GTM_ONE_DAY_DATE = gtmPrevWeekday(new Date().toISOString().slice(0, 10));
-    return GTM_ONE_DAY_DATE;
-  }
-  function gtmOneDayPrevDate(){
-    if(!GTM_ONE_DAY_PREV_DATE) GTM_ONE_DAY_PREV_DATE = gtmPrevWeekday(gtmOneDayDate());
-    return GTM_ONE_DAY_PREV_DATE;
-  }
-  function gtmDefaultRange(){
-    var to = gtmLatestDate();
-    if(!to) return null;
-    var from = shiftDateStr(to, -365);
-    return {from:from, to:to};
-  }
-  function gtmChangePct(ticker, range){
-    var series = GTM_HISTORY && GTM_HISTORY[ticker];
-    if(!series || !series.length || !range) return null;
-    if(GTM_PRESET === '1D'){
-      var to = gtmOneDayDate(), from = gtmOneDayPrevDate();
-      var d1 = priceOnExactDate(series, to), d0 = priceOnExactDate(series, from);
-      if(d0===null || d1===null || d0===0) return null;
-      return (d1-d0)/d0*100;
-    }
-    var p0 = nearestPrice(series, range.from), p1 = nearestPrice(series, range.to);
-    if(p0===null || p1===null || p0===0) return null;
-    return (p1-p0)/p0*100;
-  }
-  function gtmLatestPrice(ticker){
-    var series = GTM_HISTORY && GTM_HISTORY[ticker];
-    return series && series.length ? series[series.length-1][1] : null;
-  }
-  function gtmLabel(){
-    if(GTM_PRESET) return GTM_PRESET+' chg';
-    return GTM_RANGE ? '' : '52-week chg';
-  }
-  function gtmRangeFromPreset(name){
-    if(name === '1D'){
-      return {from: gtmOneDayPrevDate(), to: gtmOneDayDate()};
-    }
-    var to = gtmLatestDate();
-    if(!to) return null;
-    var days = GTM_PRESETS[name];
-    var from = shiftDateStr(to, -days);
-    return {from:from, to:to};
-  }
-  function gtmApplyPreset(name){
-    var range = gtmRangeFromPreset(name);
-    if(!range) return;
-    GTM_PRESET = name;
-    GTM_RANGE = range;
-    var fromEl = document.getElementById('gtm-date-from'), toEl = document.getElementById('gtm-date-to');
-    if(fromEl) fromEl.value = range.from;
-    if(toEl) toEl.value = range.to;
-    document.querySelectorAll('#gtm-range-chips .echip').forEach(function(b){
-      b.setAttribute('aria-pressed', b.dataset.preset === name);
-    });
-    renderGlobalHeatmap();
-    renderGlobalList();
-  }
-  document.querySelectorAll('#gtm-range-chips .echip').forEach(function(btn){
-    btn.addEventListener('click', function(){ gtmApplyPreset(btn.dataset.preset); });
-  });
-
-  function renderGlobalHeatmap(){
-    var dot = document.getElementById('gtm-dot'), label = document.getElementById('gtm-source-label');
-    var modeLbl = document.getElementById('gtm-mode-label'), note = document.getElementById('gtm-note');
-    var universe = gtmFiltered();
-    var catLabel = gtmActiveCat==='all' ? (universe.length+' ETFs') : (gtmActiveCat+' · '+universe.length+' ETFs');
-    if(!GTM_HISTORY){
-      dot.classList.remove('live');
-      label.textContent = 'Static preview — no live feed connected';
-      modeLbl.textContent = catLabel+' · connect live data';
-      document.getElementById('global-treemap').innerHTML = '<div class="gtm-empty">Connect live data to see the top-100 performance heatmap.</div>';
-      renderGtmLegend();
-      return;
-    }
-    dot.classList.add('live');
-    label.textContent = 'Live data connected — updated daily by the site\'s GitHub Action';
-    var range = GTM_RANGE || gtmDefaultRange();
-    var drWrap = document.getElementById('gtm-daterange');
-    if(drWrap && drWrap.style.display === 'none'){
-      drWrap.style.display = 'flex';
-      var fromEl = document.getElementById('gtm-date-from'), toEl = document.getElementById('gtm-date-to');
-      if(range && !fromEl.value) fromEl.value = range.from;
-      if(range && !toEl.value) toEl.value = range.to;
-    }
-    var scored = universe.map(function(d){ return {d:d, chg: gtmChangePct(d.t, range)}; })
-      .filter(function(x){ return x.chg !== null; });
-    scored.sort(function(a,b){ return b.chg - a.chg; });
-    var topN = Math.min(100, scored.length);
-    GTM_TOP = scored.slice(0, topN);
-    var lbl = gtmLabel();
-    document.getElementById('global-treemap').innerHTML = GTM_TOP.length ? GTM_TOP.map(function(x, i){
-      var rgb = tmColorByValue(x.chg, 15);
-      return '<div class="tmcell" data-idx="'+i+'" style="background:rgb('+rgb+');">'+
-        '<div class="sym">'+x.d.t+'</div><div class="chg">'+fmt(x.chg)+'%</div>'+(lbl?'<div class="yr">'+lbl+'</div>':'')+'</div>';
-    }).join('') : '<div class="gtm-empty">No ETFs with price history in this category yet.</div>';
-    wireGlobalTooltips();
-    renderGtmLegend();
-    var rangeDesc = GTM_PRESET ? (GTM_PRESET_LABELS[GTM_PRESET]+' ('+range.from+' → '+range.to+')')
-      : (GTM_RANGE ? (GTM_RANGE.from+' → '+GTM_RANGE.to) : 'trailing 52 weeks');
-    modeLbl.textContent = 'Top '+topN+' of '+catLabel+' · '+(GTM_PRESET || GTM_RANGE ? ('% change, '+rangeDesc) : 'trailing 52-week % change');
-    note.innerHTML = 'Top '+topN+' of '+universe.length+' '+(gtmActiveCat==='all' ? 'global equity ETFs (US, London, Frankfurt, Paris, Tokyo, Zurich, Milan &amp; Madrid listings)' : ('"'+gtmActiveCat+'" ETFs'))+' by % change over the selected range, best to worst — color reflects the actual % change (green above 0%, red below 0%), not the ranking. Live-updated daily by the site\'s GitHub Action; showing the '+rangeDesc+'. Use the 1D/1W/1M/3M/1Y chips above for a quick window, or pick an exact From/To date. Pick a category above to narrow the universe before ranking the top 100.';
-  }
-  function wireGlobalTooltips(){
-    var tip = document.getElementById('gtm-tip');
-    document.querySelectorAll('#global-treemap .tmcell').forEach(function(el){
-      el.addEventListener('mousemove', function(ev){
-        var x = GTM_TOP[+el.dataset.idx];
-        tip.innerHTML = '<b>'+x.d.t+'</b><br>'+x.d.n+'<br>'+
-          'Change: <b class="'+(x.chg>=0?'up':'down')+'">'+fmt(x.chg)+'%</b><br>'+
-          'Price: $'+(gtmLatestPrice(x.d.t)||0).toFixed(2)+'<br>'+
-          'Benchmark: '+x.d.bench+'<br>Avg daily volume: '+x.d.vol.toLocaleString('en-US');
-        tip.style.display = 'block';
-        tip.style.left = (ev.clientX+14)+'px';
-        tip.style.top = (ev.clientY+14)+'px';
-      });
-      el.addEventListener('mouseleave', function(){ tip.style.display='none'; });
-    });
-  }
-  function renderGtmLegend(){
-    var cap = 15;
-    var grad = 'linear-gradient(90deg, rgb('+tmColorByValue(-cap,cap)+'), rgb('+tmColorByValue(0,cap)+'), rgb('+tmColorByValue(cap,cap)+'))';
-    document.getElementById('gtm-legend').innerHTML = GTM_HISTORY
-      ? '<span>-'+cap+'% or worse</span><div class="grad" style="background:'+grad+'"></div><span>+'+cap+'% or better (0% at center)</span>'
-      : '';
-  }
-  document.getElementById('gtm-apply-range').addEventListener('click', function(){
-    var from = document.getElementById('gtm-date-from').value, to = document.getElementById('gtm-date-to').value;
-    if(!from || !to) return;
-    GTM_RANGE = {from:from, to:to};
-    GTM_PRESET = null;
-    document.querySelectorAll('#gtm-range-chips .echip').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
-    renderGlobalHeatmap();
-    renderGlobalList();
-  });
-  document.getElementById('gtm-reset-range').addEventListener('click', function(){
-    GTM_RANGE = null;
-    GTM_PRESET = null;
-    document.querySelectorAll('#gtm-range-chips .echip').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
-    renderGlobalHeatmap();
-    renderGlobalList();
-  });
-
-  var gtmSort = {key: null, dir: -1}; // dir: -1 = high-to-low / Z-to-A, 1 = low-to-high
-
-  function gtmSortValue(d, key, range){
-    if(key === 'price') return GTM_HISTORY ? gtmLatestPrice(d.t) : null;
-    if(key === 'chg') return range ? gtmChangePct(d.t, range) : null;
-    if(key === 'vol') return d.vol;
-    return null;
-  }
-
-  function renderGtmListHeadSort(){
-    document.querySelectorAll('#gtm-list-head th.sortable').forEach(function(th){
-      var key = th.getAttribute('data-key');
-      var base = th.getAttribute('data-label');
-      if(base === null){ base = th.textContent.trim(); th.setAttribute('data-label', base); }
-      th.textContent = base + (gtmSort.key === key ? (gtmSort.dir === 1 ? ' ▲' : ' ▼') : '');
-    });
-  }
-  document.querySelectorAll('#gtm-list-head th.sortable').forEach(function(th){
-    th.addEventListener('click', function(){
-      var key = th.getAttribute('data-key');
-      if(gtmSort.key === key){ gtmSort.dir *= -1; } else { gtmSort.key = key; gtmSort.dir = -1; }
-      renderGtmListHeadSort();
-      renderGlobalList();
-    });
-  });
-  renderGtmListHeadSort();
-
-  function renderGlobalList(){
-    var q = (document.getElementById('gtm-search').value || '').toLowerCase().trim();
-    var range = GTM_HISTORY ? (GTM_RANGE || gtmDefaultRange()) : null;
-    var rows = gtmFiltered().filter(function(d){
-      if(!q) return true;
-      return d.n.toLowerCase().indexOf(q) >= 0 || d.t.toLowerCase().indexOf(q) >= 0;
-    });
-    if(gtmSort.key){
-      var key = gtmSort.key, dir = gtmSort.dir;
-      rows = rows.slice().sort(function(a, b){
-        var va = gtmSortValue(a, key, range), vb = gtmSortValue(b, key, range);
-        var na = (va===null || va===undefined || isNaN(va));
-        var nb = (vb===null || vb===undefined || isNaN(vb));
-        if(na && nb) return 0;
-        if(na) return 1;   // rows with no value always sort last
-        if(nb) return -1;
-        return (va - vb) * dir;
-      });
-    }
-    document.getElementById('gtm-list-body').innerHTML = rows.map(function(d){
-      var price = GTM_HISTORY ? gtmLatestPrice(d.t) : null;
-      var chg = range ? gtmChangePct(d.t, range) : null;
-      return '<tr><td class="name"><span class="cat-dot" style="background:'+tok(GTM_CAT_COLOR[d.cat])+'" title="'+d.cat+'"></span>'+d.n+' <span class="tag mono">'+d.t+'</span></td>'+
-        '<td class="num mono">'+(price!==null ? '$'+price.toFixed(2) : '—')+'</td>'+
-        '<td class="num mono'+(chg!==null ? (chg>=0?' up':' down') : '')+'">'+(chg!==null ? fmt(chg)+'%' : '—')+'</td>'+
-        '<td class="num mono">'+d.vol.toLocaleString('en-US')+'</td>'+
-        '<td>'+d.bench+'</td></tr>';
-    }).join('');
-  }
-  document.getElementById('gtm-search').addEventListener('input', renderGlobalList);
 
   // ---- breakout screener (rules-based, two modes) ----
   // Mode 1, "volume" (labeled "Range Breakout"): new N-day high + volume confirmation (the
@@ -2678,17 +2047,6 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     }
   }).catch(function(){ /* keep the empty state until live data connects */ });
 
-  fetch(LIVE_DATA_BASE + 'global-etf-history.json').then(function(r){
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
-  }).then(function(data){
-    if(data && Object.keys(data).length){
-      GTM_HISTORY = data;
-      liveOK.globalEtfs = true; markLiveStatus();
-      if(window.__globalTmDrawn){ renderGlobalHeatmap(); renderGlobalList(); }
-    }
-  }).catch(function(){ /* keep the "connect live data" empty state showing */ });
-
   fetch(LIVE_DATA_BASE + 'breakout-scanner.json').then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
@@ -3384,19 +2742,22 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var hi=-1; for(var i=from;i<=n;i++){ var v=s.c[i]; if(v!=null&&v>hi) hi=v; }
     return hi;
   }
+  function prevClose(s,n){ var p=n-1; while(p>=0&&s.c[p]==null) p--; return p>=0?s.c[p]:null; }
   function metrics(it,hd,ld,u){
     var s=it.s, n=lastIdx(s.c); if(n<0) return null;
     var last=s.c[n], lastDate=s.d[n];
     var ph=priceItem(it,hd,u), pl=priceItem(it,ld,u);
     var hi=yearHigh(s,n,lastDate);
-    return {last:last,date:lastDate,chh:(ph>0)?(last/ph-1)*100:null,chl:(pl>0)?(last/pl-1)*100:null,off:hi>0?(last/hi-1)*100:null};
+    var pc=prevClose(s,n);
+    return {last:last,date:lastDate,d1:(pc>0)?(last/pc-1)*100:null,chh:(ph>0)?(last/ph-1)*100:null,chl:(pl>0)?(last/pl-1)*100:null,off:hi>0?(last/hi-1)*100:null};
   }
   function benchMetrics(hd,ld,u){
     var s=bench.s, n=lastIdx(s.c); if(n<0) return null;
     var last=s.c[n], lastDate=s.d[n];
     var h=priceBench(hd,u), l=priceBench(ld,u); if(!h||!l||!(h.p>0)||!(l.p>0)) return null;
     var hi=yearHigh(s,n,lastDate);
-    return {last:last,date:lastDate,chh:(last/h.p-1)*100,chl:(last/l.p-1)*100,phd:h.p,pld:l.p,hdUsed:h.d,ldUsed:l.d,off:hi>0?(last/hi-1)*100:null};
+    var pc=prevClose(s,n);
+    return {last:last,date:lastDate,d1:(pc>0)?(last/pc-1)*100:null,chh:(last/h.p-1)*100,chl:(last/l.p-1)*100,phd:h.p,pld:l.p,hdUsed:h.d,ldUsed:l.d,off:hi>0?(last/hi-1)*100:null};
   }
   function f1(v){ if(v==null) return '—'; var x=v.toFixed(2); if(parseFloat(x)===0) return '0.00'; return (v>0?'+':'')+x; }
   function money(cur,v){ return cur+v.toLocaleString(cur==='₹'?'en-IN':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -3442,7 +2803,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       return true;
     });
     var key=sortKey;
-    function val(r){ return key==='chh'?r.m.chh:key==='chl'?r.m.chl:key==='off'?r.m.off:r.it.t; }
+    function val(r){ return key==='d1'?r.m.d1:key==='chh'?r.m.chh:key==='chl'?r.m.chl:key==='off'?r.m.off:r.it.t; }
     rows.sort(function(a,b){
       var A=val(a),B=val(b);
       if(key==='s') return sortDir*(-1)*String(A).localeCompare(String(B));   // "Highest first" = A to Z for symbols
@@ -3463,7 +2824,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       heroCard('lo','Benchmark since Low date',f1(b.chl)+'%','from '+num(b.pld)+' on '+when('rs-ld',b.ldUsed),b.chl>=0?'rs-up':'rs-dn')+
       heroCard('both','Beating on both',nB+' <span class="sm">of '+total+'</span>','High only: '+(nH-nB)+' · Low only: '+(nL-nB));
   }
-  var COLS=[['s','Symbol','l'],['cmp','CMP',''],['off','Since 52-wk high',''],['chh','Since High',''],['chl','Since Low',''],['b','Beating','']];
+  var COLS=[['s','Symbol','l'],['cmp','CMP',''],['d1','1D change',''],['off','Since 52-wk high',''],['chh','Since High',''],['chl','Since Low',''],['b','Beating','']];
   function pctCell(v){
     if(v==null) return '<span class="sm">—</span>';
     return '<span class="mono chg '+(v>=0?'rs-up':'rs-dn')+'">'+f1(v)+'%</span>';
@@ -3476,7 +2837,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   function renderTable(u){
     var head='';
     COLS.forEach(function(c){
-      var k=({chh:1,chl:1,off:1,s:1})[c[0]]?c[0]:'';
+      var k=({d1:1,chh:1,chl:1,off:1,s:1})[c[0]]?c[0]:'';
       var on=k&&k===sortKey;
       head+='<th class="'+c[2]+(on?' on':'')+'" data-k="'+k+'" style="'+(k?'':'cursor:default')+'">'+c[1]+(on?'<span class="ar">'+(sortDir<0?'▼':'▲')+'</span>':'')+'</th>';
     });
@@ -3484,7 +2845,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     var b=bench.m;
     var html='<tr class="bmrow"><td class="l"><span class="nm">'+esc(bench.name)+'</span><span class="tag">BENCHMARK</span><span class="sub">'+b.date+'</span></td>'+
       '<td class="mono">'+num(b.last)+'</td>'+
-      '<td>'+offCell(b.off)+'</td><td>'+pctCell(b.chh)+'</td><td>'+pctCell(b.chl)+'</td><td></td></tr>';
+      '<td>'+pctCell(b.d1)+'</td><td>'+offCell(b.off)+'</td><td>'+pctCell(b.chh)+'</td><td>'+pctCell(b.chl)+'</td><td></td></tr>';
     var limit=+$('rs-rows').value||300, shown=view.slice(0,limit);
     shown.forEach(function(r){
       var m=r.m, it=r.it;
@@ -3492,9 +2853,9 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       var beat=(r.bh&&r.bl)?'<span class="pill both" title="'+tip+'">BOTH</span>':'<span class="pill'+(r.bh?' y':'')+'" title="'+tip+'">H</span><span class="pill'+(r.bl?' y':'')+'" title="'+tip+'">L</span>';
       html+='<tr><td class="l"><span class="nm">'+esc(it.t)+'</span><span class="sub">'+esc(it.n)+(it.cat?' · '+esc(it.cat):'')+'</span></td>'+
         '<td class="mono">'+money(it.cur,m.last)+'</td>'+
-        '<td>'+offCell(m.off)+'</td><td>'+pctCell(m.chh)+'</td><td>'+pctCell(m.chl)+'</td><td>'+beat+'</td></tr>';
+        '<td>'+pctCell(m.d1)+'</td><td>'+offCell(m.off)+'</td><td>'+pctCell(m.chh)+'</td><td>'+pctCell(m.chl)+'</td><td>'+beat+'</td></tr>';
     });
-    if(!shown.length) html+='<tr><td colspan="6"><div class="rs-empty">Nothing matches these filters. Try “Show: All”, a different date, or a smaller minimum volume.</div></td></tr>';
+    if(!shown.length) html+='<tr><td colspan="7"><div class="rs-empty">Nothing matches these filters. Try “Show: All”, a different date, or a smaller minimum volume.</div></td></tr>';
     $('rs-body').innerHTML=html;
     $('rs-count').textContent=view.length+' match'+(view.length>limit?' (showing the first '+limit+')':'');
   }
