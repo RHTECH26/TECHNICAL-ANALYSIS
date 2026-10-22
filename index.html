@@ -236,7 +236,23 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 
 <!-- ================= DESK ================= -->
 <section class="panel active" id="panel-desk">
-  <div class="tilerow" id="macro-tiles"></div>
+  <div class="tm-datarow" style="margin-bottom:12px;"><span class="tm-dot" id="desk-dot"></span><span id="desk-status">Loading the desk…</span></div>
+
+  <div class="tilerow" id="desk-markets"></div>
+  <div class="tilerow desk-two" id="desk-flows"></div>
+  <div class="desk-movers" id="desk-movers"></div>
+
+  <div class="card" id="desk-news">
+    <h4>News — last 24 hours<span class="asof" id="news-asof">loading…</span></h4>
+    <div class="tm-datarow"><span class="tm-dot" id="news-dot"></span><span id="news-status">Loading news…</span></div>
+    <div class="etf-chiprow" id="news-chips"><button type="button" class="echip" aria-pressed="true" data-f="all">All</button><button type="button" class="echip" aria-pressed="false" data-f="results">Results</button><button type="button" class="echip" aria-pressed="false" data-f="mgmt">Management commentary</button><button type="button" class="echip" aria-pressed="false" data-f="top">Top news</button><button type="button" class="echip" aria-pressed="false" data-f="economy">Economy</button><button type="button" class="echip" aria-pressed="false" data-f="sector">Sector</button><button type="button" class="echip" aria-pressed="false" data-f="country">Country</button><button type="button" class="echip" aria-pressed="false" data-f="global">Global</button><button type="button" class="echip" aria-pressed="false" data-f="india">Indian</button></div>
+    <div style="display:none; gap:10px; align-items:center; flex-wrap:wrap; margin:-4px 0 12px;" id="news-sub">
+      <select id="news-sector" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All sectors</option></select>
+      <select id="news-country" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All countries</option></select>
+    </div>
+    <input type="text" id="news-search" class="gtm-search-input" placeholder="Search headlines or sources…" />
+    <div class="news-scroll" id="news-list"></div>
+  </div>
 
   <div class="bento">
     <button class="tile" data-goto="flows">
@@ -797,13 +813,9 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 
   // ---- macro tiles (desk) ----
   function renderMacroTiles(){
-    var tilesHtml =
-      '<div class="mtile"><div class="k">India VIX</div><div class="v">'+MACRO.vix.v.toFixed(2)+'</div><div class="d '+(MACRO.vix.chg<0?'down':'up')+'">'+fmt(MACRO.vix.chg)+'% today</div></div>'+
-      '<div class="mtile"><div class="k">Nifty 50 fwd PE</div><div class="v">'+MACRO.pe.v.toFixed(1)+'x</div><div class="d">vs 5y median '+MACRO.pe.median5y.toFixed(1)+'x</div></div>'+
-      '<div class="mtile"><div class="k">USD/INR</div><div class="v">'+MACRO.usdinr.v.toFixed(2)+'</div><div class="d">interbank, '+MACRO.usdinr.asof+'</div></div>'+
-      '<div class="mtile"><div class="k">10Y G-Sec</div><div class="v">'+MACRO.gsec10y.v.toFixed(2)+'%</div><div class="d '+(MACRO.gsec10y.chg<0?'down':'up')+'">'+fmt(MACRO.gsec10y.chg)+'pp today</div></div>'+
-      '<div class="mtile"><div class="k">Brent crude</div><div class="v">$'+MACRO.brent.v.toFixed(2)+'</div><div class="d up">+$'+MACRO.brent.chg.toFixed(2)+' today</div></div>';
-    document.getElementById('macro-tiles').innerHTML = tilesHtml;
+    // the Desk page draws itself (see the Desk script at the end of the page); it only needs these two
+    window.__deskCtx = {macro: MACRO, flows: FLOWS};
+    if(window.__deskRender) window.__deskRender();
   }
   renderMacroTiles();
 
@@ -2443,4 +2455,205 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
   .mtile .k{font-size:9.5px;}
   .brand .mark{font-size:16.5px;}
 }
+/* ===== Desk page ===== */
+#desk-markets{grid-template-columns:repeat(5,minmax(0,1fr)); margin-bottom:14px;}
+@media (min-width:1700px){ #desk-markets{grid-template-columns:repeat(10,minmax(0,1fr));} }
+@media (min-width:721px) and (max-width:1000px){ #desk-markets{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:720px){ #desk-markets{grid-template-columns:repeat(2,minmax(0,1fr));} }
+.desk-two{grid-template-columns:repeat(2,minmax(0,1fr)); margin-bottom:14px;}
+@media (max-width:720px){ .desk-two{grid-template-columns:1fr;} }
+#desk-markets .mtile .v, #desk-flows .mtile .v{font-size:21px;}
+#desk-markets .mtile .d, #desk-flows .mtile .d{font-size:11.5px; font-variant-numeric:tabular-nums;}
+.mtile .sub{font-size:10.5px; color:var(--muted); margin-top:4px;}
+.adbar{display:flex; height:6px; border-radius:3px; overflow:hidden; margin-top:10px; background:var(--surface-3);}
+.adbar i{display:block; height:100%;}
+.desk-movers{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:14px; margin-bottom:14px;}
+.mv-row{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);}
+.mv-row:last-child{border-bottom:none;}
+.mv-sym{font-weight:700; color:var(--ink); font-size:13px;}
+.mv-name{display:block; font-size:10.5px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+.mv-px{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink-soft); text-align:right;}
+.mv-chg{font-family:"JetBrains Mono",monospace; font-size:12.5px; font-weight:700; min-width:64px; text-align:right;}
+.news-scroll{max-height:max(460px, calc(100vh - 380px)); overflow-y:auto; border:1px solid var(--line); border-radius:10px;}
+.news-row{display:grid; grid-template-columns:118px minmax(0,1fr); gap:14px; padding:11px 14px; border-bottom:1px solid var(--line);}
+.news-row:last-child{border-bottom:none;}
+.news-row:hover{background:var(--surface-2);}
+.news-time{font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--ink-soft); line-height:1.5;}
+.news-time small{display:block; color:var(--muted); font-size:10.5px;}
+.news-title{color:var(--ink); font-weight:600; font-size:13.5px; text-decoration:none; line-height:1.45;}
+.news-title:hover{color:var(--saffron); text-decoration:underline;}
+.news-meta{margin-top:5px; font-size:11px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center;}
+.news-src{font-weight:600; color:var(--ink-soft);}
+.news-tag{font-size:10px; padding:1px 7px; border-radius:99px; background:var(--surface-3); color:var(--ink-soft);}
+#desk-news{margin-bottom:16px;}
+.news-empty{padding:30px 14px; text-align:center; color:var(--muted); font-size:13px;}
+@media (max-width:720px){
+  .news-row{grid-template-columns:1fr; gap:4px; padding:10px 12px;}
+  .news-time{display:flex; gap:8px; align-items:baseline;} .news-time small{display:inline;}
+  .news-scroll{max-height:70vh;}
+  .mv-row{gap:8px;}
+}
 </style>
+
+<script>
+(function(){
+  var $ = function(i){ return document.getElementById(i); };
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  // desk.json and news.json are refreshed every 30 minutes by the "Update Desk" action and published to the live-data branch
+  var BASE = 'https://raw.githubusercontent.com/rhtech26/TECHNICAL-ANALYSIS/live-data/';
+  var desk = null, news = null, filter = 'all', q = '';
+  function getJSON(file){ return fetch(BASE + file + '?t=' + Date.now()).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }); }
+  function num(v, dec, loc){ return Number(v).toLocaleString(loc||'en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+  function sgn(v, dec, loc){ var s = num(Math.abs(v), dec, loc); return (v>0?'+':v<0?'−':'') + s; }
+  function cls(v){ return v>0 ? 'up' : v<0 ? 'down' : ''; }
+  function istTime(iso){ return new Date(iso).toLocaleString('en-GB', {timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', hour12:false}); }
+  function istDate(iso){ return new Date(iso).toLocaleString('en-GB', {timeZone:'Asia/Kolkata', day:'2-digit', month:'short'}); }
+  function ago(iso){
+    var m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
+    return m < 60 ? m + ' min ago' : Math.floor(m/60) + 'h ' + (m%60 ? (m%60) + 'm ' : '') + 'ago';
+  }
+
+  // ---- market tiles ----
+  function tile(label, value, change, tip){
+    return '<div class="mtile"'+(tip?' title="'+esc(tip)+'"':'')+'><div class="k">'+esc(label)+'</div><div class="v">'+value+'</div><div class="d">'+change+'</div></div>';
+  }
+  function quoteTile(qt){
+    if(qt.error) return tile(qt.label, '—', 'no data', '');
+    var indian = (qt.key==='nifty50' || qt.key==='nifty500' || qt.key==='usdinr'), loc = indian ? 'en-IN' : 'en-US';
+    if(qt.kind==='yield'){
+      var bp = (qt.chg||0)*100;
+      return tile(qt.label, num(qt.price,2)+'%', '<span class="'+cls(bp)+'">'+sgn(bp,1)+' bp</span>', 'as of '+qt.asof);
+    }
+    var pre = qt.kind==='usd' ? '$' : '';
+    return tile(qt.label, pre+num(qt.price, 2, loc), '<span class="'+cls(qt.pct)+'">'+sgn(qt.pct,2)+'%</span> · '+sgn(qt.chg, qt.price<100?3:2, loc), 'as of '+qt.asof);
+  }
+  function renderMarkets(){
+    var host = $('desk-markets'); if(!host) return;
+    var html = '';
+    if(desk && desk.quotes){
+      desk.quotes.forEach(function(qt){
+        html += quoteTile(qt);
+        if(qt.key==='usdinr'){}                      // keep the order: ... USD/INR, Gold, Silver, US 10Y, India 10Y
+      });
+      var ctx = window.__deskCtx, g = ctx && ctx.macro && ctx.macro.gsec10y;
+      html += g ? tile('India 10Y G-Sec', num(g.v,2)+'%', '<span class="'+cls(g.chg)+'">'+sgn((g.chg||0)*100,1)+' bp</span>', 'as of '+(g.asof||''))
+                : tile('India 10Y G-Sec','—','no data','');
+    } else {
+      html = '<div class="mtile" style="grid-column:1/-1"><div class="k">Markets</div><div class="d">Waiting for the first Desk update — run the "Update Desk" action once.</div></div>';
+    }
+    host.innerHTML = html;
+  }
+
+  // ---- FII / DII and Nifty 500 advances / declines ----
+  function renderFlows(){
+    var host = $('desk-flows'); if(!host) return;
+    var ctx = window.__deskCtx, fl = ctx && ctx.flows && ctx.flows.length ? ctx.flows[ctx.flows.length-1] : null;
+    var f = fl
+      ? tile('FII / DII cash — previous day (₹ cr)',
+          '<span class="'+cls(fl.fii)+'">FII '+sgn(fl.fii,0,'en-IN')+'</span> <span style="color:var(--muted)">|</span> <span class="'+cls(fl.dii)+'">DII '+sgn(fl.dii,0,'en-IN')+'</span>',
+          'net buy / sell · '+esc(fl.d)+' · net of both '+sgn(fl.fii+fl.dii,0,'en-IN'), '')
+      : tile('FII / DII cash — previous day (₹ cr)','—','no data','');
+    var n = desk && desk.nifty500, a = '';
+    if(n){
+      var tot = n.adv + n.dec + n.unch || 1;
+      a = '<div class="mtile"><div class="k">Nifty 500 — Advances / Declines</div>'+
+          '<div class="v"><span class="up">'+n.adv+'</span> <span style="color:var(--muted)">/</span> <span class="down">'+n.dec+'</span></div>'+
+          '<div class="d">unchanged '+n.unch+' · '+n.count+' stocks · '+esc(n.asof)+'</div>'+
+          '<div class="adbar"><i style="width:'+(n.adv/tot*100)+'%;background:var(--good)"></i><i style="width:'+(n.unch/tot*100)+'%;background:var(--line-strong)"></i><i style="width:'+(n.dec/tot*100)+'%;background:var(--bad)"></i></div></div>';
+    } else a = tile('Nifty 500 — Advances / Declines','—','no data','');
+    host.innerHTML = f + a;
+  }
+
+  // ---- top 5 gainers / losers ----
+  function moverCard(title, d, list, cur, loc){
+    var rows = (list||[]).map(function(r){
+      return '<div class="mv-row"><div class="mv-sym">'+esc(r.s)+'<span class="mv-name">'+esc(r.n)+'</span></div>'+
+             '<div class="mv-px">'+cur+num(r.p,2,loc)+'</div><div class="mv-chg '+cls(r.c)+'">'+sgn(r.c,2)+'%</div></div>';
+    }).join('');
+    return '<div class="card"><h4>'+esc(title)+'<span class="asof">'+esc(d||'')+'</span></h4>'+(rows || '<div class="news-empty">no data</div>')+'</div>';
+  }
+  function renderMovers(){
+    var host = $('desk-movers'); if(!host) return;
+    var n = desk && desk.nifty500, s = desk && desk.sp500;
+    host.innerHTML =
+      moverCard('Nifty 500 — top 5 gainers', n&&n.asof, n&&n.gainers, '₹', 'en-IN') +
+      moverCard('Nifty 500 — top 5 losers',  n&&n.asof, n&&n.losers,  '₹', 'en-IN') +
+      moverCard('S&P 500 — top 5 gainers',   s&&s.asof, s&&s.gainers, '$', 'en-US') +
+      moverCard('S&P 500 — top 5 losers',    s&&s.asof, s&&s.losers,  '$', 'en-US');
+  }
+
+  // ---- news ----
+  var TAG_LABEL = {results:'Results', mgmt:'Mgmt commentary', top:'Top news', economy:'Economy', sector:'Sector', country:'Country'};
+  function fresh(){ // only stories from the last 24 hours, even if the file itself is older
+    var cutoff = Date.now() - 24*3600*1000;
+    return (news && news.items || []).filter(function(it){ return new Date(it.t).getTime() >= cutoff; });
+  }
+  function passes(it){
+    var sec = $('news-sector').value, cty = $('news-country').value;
+    if(filter==='results' || filter==='mgmt' || filter==='top' || filter==='economy'){ if(it.tags.indexOf(filter)<0) return false; }
+    else if(filter==='sector'){ if(it.tags.indexOf('sector')<0) return false; if(sec && it.sectors.indexOf(sec)<0) return false; }
+    else if(filter==='country'){ if(it.tags.indexOf('country')<0) return false; if(cty && it.countries.indexOf(cty)<0) return false; }
+    else if(filter==='global'){ if(it.scope!=='global') return false; }
+    else if(filter==='india'){ if(it.scope!=='india') return false; }
+    if(q && (it.title+' '+it.src).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }
+  function fillSelects(items){
+    var secs = {}, ctys = {};
+    items.forEach(function(it){ it.sectors.forEach(function(x){ secs[x]=1; }); it.countries.forEach(function(x){ ctys[x]=1; }); });
+    function fill(id, first, obj){
+      var el = $(id), cur = el.value;
+      el.innerHTML = '<option value="">'+first+'</option>' + Object.keys(obj).sort().map(function(k){ return '<option>'+esc(k)+'</option>'; }).join('');
+      el.value = Object.keys(obj).indexOf(cur)>=0 ? cur : '';
+    }
+    fill('news-sector','All sectors',secs); fill('news-country','All countries',ctys);
+  }
+  function renderNews(){
+    var list = $('news-list'); if(!list) return;
+    if(!news){ list.innerHTML = '<div class="news-empty">No news yet — run the "Update Desk" action once.</div>'; return; }
+    var all = fresh(); fillSelects(all);
+    $('news-sub').style.display = (filter==='sector' || filter==='country') ? 'flex' : 'none';
+    $('news-sector').style.display = filter==='sector' ? '' : 'none';
+    $('news-country').style.display = filter==='country' ? '' : 'none';
+    var rows = all.filter(passes), html = '';
+    rows.slice(0,400).forEach(function(it){
+      var tags = it.tags.filter(function(t){ return TAG_LABEL[t]; }).map(function(t){ return '<span class="news-tag">'+TAG_LABEL[t]+'</span>'; }).join('');
+      html += '<div class="news-row"><div class="news-time">'+istTime(it.t)+'<small>'+istDate(it.t)+' · '+ago(it.t)+'</small></div>'+
+              '<div><a class="news-title" href="'+esc(it.link)+'" target="_blank" rel="noopener noreferrer">'+esc(it.title)+'</a>'+
+              '<div class="news-meta"><span class="news-src">'+esc(it.src)+'</span><span>'+(it.scope==='india'?'India':'Global')+'</span>'+tags+'</div></div></div>';
+    });
+    list.innerHTML = html || '<div class="news-empty">No stories match this filter in the last 24 hours.</div>';
+    var srcs = news.sources || [], ok = srcs.filter(function(s){ return s.ok; }).length;
+    var stale = (Date.now() - new Date(news.updated).getTime()) > 3*3600*1000;
+    $('news-asof').textContent = 'updated ' + news.updated_ist;
+    $('news-status').textContent = rows.length + ' of ' + all.length + ' stories · ' + ok + ' of ' + srcs.length + ' sources reachable' + (stale ? ' · NEWS IS OVER 3 HOURS OLD — check the "Update Desk" action' : '');
+    $('news-dot').className = 'tm-dot' + (stale ? '' : ' live');
+    $('news-status').title = srcs.filter(function(s){ return !s.ok; }).map(function(s){ return s.name + ': ' + (s.error||'failed'); }).join('\n');
+  }
+
+  function renderStatus(){
+    var el = $('desk-status'), dot = $('desk-dot'); if(!el) return;
+    if(desk){ el.textContent = 'Desk updated ' + desk.updated_ist + ' · refreshes every 30 minutes'; dot.className = 'tm-dot live'; }
+    else { el.textContent = 'Desk data not found yet — run the "Update Desk" action in GitHub (Actions tab).'; dot.className = 'tm-dot'; }
+  }
+  function renderAll(){ renderStatus(); renderMarkets(); renderFlows(); renderMovers(); renderNews(); }
+  window.__deskRender = renderAll;
+
+  function load(){
+    getJSON('desk.json').then(function(j){ desk = j; }).catch(function(){}).then(function(){ renderAll(); });
+    getJSON('news.json').then(function(j){ news = j; }).catch(function(){}).then(function(){ renderNews(); });
+  }
+  document.querySelectorAll('#news-chips .echip').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('#news-chips .echip').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true'); filter = b.dataset.f; renderNews();
+    });
+  });
+  $('news-sector').addEventListener('change', renderNews);
+  $('news-country').addEventListener('change', renderNews);
+  $('news-search').addEventListener('input', function(){ q = this.value.toLowerCase().trim(); renderNews(); });
+  load();
+  setInterval(function(){ if(!document.hidden) load(); }, 5*60*1000);       // re-read the files every 5 minutes while the page is open
+  setInterval(function(){ if(!document.hidden && news) renderNews(); }, 60*1000);   // keeps "x min ago" and the 24-hour cut-off current
+})();
+</script>
