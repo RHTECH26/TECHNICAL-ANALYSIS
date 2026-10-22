@@ -136,6 +136,10 @@ def run_timeframe(tf, etfs):
     cfg = TIMEFRAMES[tf]
     variants = {str(L): [] for L in SWING_OPTIONS}
     loaded = []   # (etf, dates, h, l, c)
+    # is some major market (Asia, Europe or the US) in session? Then the latest candle is still forming and every
+    # signal is based on the live price; it becomes final after each exchange's close.
+    now_utc = datetime.now(timezone.utc)
+    market_open = now_utc.weekday() < 5 and 0 <= now_utc.hour < 21
     failed = 0
     for i in range(0, len(etfs), CHUNK):
         part = etfs[i: i + CHUNK]
@@ -186,6 +190,7 @@ def run_timeframe(tf, etfs):
         "updated": ist.strftime("%d %b %Y, %H:%M IST"),
         "scanned": scanned,
         "failed": failed,
+        "market_open": market_open,
         "params": {"timeframe": tf, "swing_bars": DEFAULT_SWING, "options": SWING_OPTIONS, "max_days": cfg["max_bars"]},
         "results": variants[str(DEFAULT_SWING)],
         "variants": variants,

@@ -1489,7 +1489,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   }
   function header(j,tf){
     $('gcot-asof').textContent='updated '+j.updated;
-    $('gcot-source-label').textContent='Live scan — '+j.scanned+' ETFs scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped (no data / stale)':'');
+    $('gcot-source-label').textContent='Live scan — '+j.scanned+' ETFs scanned on the '+TFN[tf]+' chart (Dow swings, '+((j.params&&j.params.options)||[]).join('/')+' bars each side)'+(j.failed?' · '+j.failed+' skipped (no data / stale)':'')+(j.market_open?' · LIVE price (markets open) - signals are final only after each close':'');
     $('gcot-dot').className='tm-dot live';
   }
   function load(tf){
@@ -2403,6 +2403,9 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
   .news-scroll{max-height:70vh;}
   .mv-row{gap:8px;}
 }
+.desk-movers{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:1000px){ .desk-movers{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .desk-movers{grid-template-columns:1fr;} }
 </style>
 
 <script>
@@ -2465,19 +2468,24 @@ body{padding-inline:max(clamp(12px,2vw,40px), calc((100% - 2200px)/2));}
   // ---- top 5 gainers / losers ----
   function moverCard(title, d, list, cur, loc){
     var rows = (list||[]).map(function(r){
-      return '<div class="mv-row"><div class="mv-sym">'+esc(r.s)+'<span class="mv-name">'+esc(r.n)+'</span></div>'+
+      return '<div class="mv-row"><div class="mv-sym">'+esc(r.s)+'<span class="mv-name">'+esc(r.n)+(r.m ? ' · '+esc(r.m) : '')+'</span></div>'+
              '<div class="mv-px">'+cur+num(r.p,2,loc)+'</div><div class="mv-chg '+cls(r.c)+'">'+sgn(r.c,2)+'%</div></div>';
     }).join('');
-    return '<div class="card"><h4>'+esc(title)+'<span class="asof">'+esc(d||'')+'</span></h4>'+(rows || '<div class="news-empty">no data</div>')+'</div>';
+    var dd = d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}) : '';
+    return '<div class="card"><h4>'+esc(title)+'<span class="asof">'+esc(dd)+'</span></h4>'+(rows || '<div class="news-empty">no data</div>')+'</div>';
   }
   function renderMovers(){
     var host = $('desk-movers'); if(!host) return;
-    var n = desk && desk.nifty500, s = desk && desk.sp500;
+    var n = desk && desk.nifty500, s = desk && desk.sp500, ie = desk && desk.india_etf, ge = desk && desk.global_etf;
     host.innerHTML =
-      moverCard('Nifty 500 — top 5 gainers', n&&n.asof, n&&n.gainers, '₹', 'en-IN') +
-      moverCard('Nifty 500 — top 5 losers',  n&&n.asof, n&&n.losers,  '₹', 'en-IN') +
-      moverCard('S&P 500 — top 5 gainers',   s&&s.asof, s&&s.gainers, '$', 'en-US') +
-      moverCard('S&P 500 — top 5 losers',    s&&s.asof, s&&s.losers,  '$', 'en-US');
+      moverCard('Nifty 500 — top 10 gainers', n&&n.asof, n&&n.gainers, '₹', 'en-IN') +
+      moverCard('Nifty 500 — top 10 losers',  n&&n.asof, n&&n.losers,  '₹', 'en-IN') +
+      moverCard('S&P 500 — top 10 gainers',   s&&s.asof, s&&s.gainers, '$', 'en-US') +
+      moverCard('S&P 500 — top 10 losers',    s&&s.asof, s&&s.losers,  '$', 'en-US') +
+      moverCard('Indian ETFs — top 10 gainers', ie&&ie.asof, ie&&ie.gainers, '₹', 'en-IN') +
+      moverCard('Indian ETFs — top 10 losers',  ie&&ie.asof, ie&&ie.losers,  '₹', 'en-IN') +
+      moverCard('Global ETFs — top 10 gainers', ge&&ge.asof, ge&&ge.gainers, '', 'en-US') +
+      moverCard('Global ETFs — top 10 losers',  ge&&ge.asof, ge&&ge.losers,  '', 'en-US');
   }
 
   // ---- news ----

@@ -2,7 +2,8 @@
 """
 Desk data for the Desk page of index.html.  Writes two small files into ./out :
 
-  out/desk.json   market prices + change, top-5 gainers / losers (Nifty 500, S&P 500), Nifty 500 advances / declines
+  out/desk.json   market prices + change, top-10 gainers / losers (Nifty 500, S&P 500, Indian ETFs, Global ETFs),
+                  Nifty 500 advances / declines
   out/news.json   market news from public RSS feeds, the last 24 hours only, tagged so the page can filter them
 
 The workflow publishes both files to the "live-data" branch (one commit that is replaced every run, so the
@@ -21,6 +22,12 @@ import pandas as pd
 import yfinance as yf
 
 try:
+    from curl_cffi import requests as cffi_requests      # makes Yahoo accept many requests from a GitHub runner
+    SESSION = cffi_requests.Session(impersonate="chrome")
+except ImportError:
+    SESSION = None
+
+try:
     import feedparser
 except ImportError:                      # the workflow installs it; the message below shows if it is missing
     feedparser = None
@@ -30,6 +37,10 @@ PREV_NEWS  = os.path.join(OUT_DIR, "prev_news.json")
 PREV_DESK  = os.path.join(OUT_DIR, "prev_desk.json")
 WINDOW_H   = 24
 MAX_ITEMS  = 700
+TOP_N      = 10                       # rows in every gainers / losers list
+MIN_VOL_GLOBAL = int(os.environ.get("MIN_VOL_GLOBAL", 100000))   # global ETFs below this average volume are ignored (stale, wide-spread prices)
+MIN_VOL_INDIA  = int(os.environ.get("MIN_VOL_INDIA", 5000))
+INDEX_FILE = "index.html"
 BLOCKED_SOURCES = {"SEBI"}          # sources that are never shown (older stories from them are dropped too)
 CHUNK      = 100
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -91,7 +102,7 @@ def nifty500_members():
     for r in rows:
         sym = col(r, "symbol").upper()
         if sym and not sym.startswith("DUMMY"):
-            out.append((sym + ".NS", sym, col(r, "company name", "name") or sym))
+            out.append((sym + ".NS", sym, col(r, "company name", "name") or sym, ""))
     return list(dict.fromkeys(out))
 
 
@@ -112,40 +123,95 @@ def sp500_members():
     for r in csv.DictReader(io.StringIO(text.lstrip("\ufeff"))):
         sym = col(r, "symbol").upper()
         if sym:
-            out.append((sym.replace(".", "-"), sym, col(r, "security", "name") or sym))
+            out.append((sym.replace(".", "-"), sym, col(r, "security", "name") or sym, ""))
     if len(out) < 400:
         raise RuntimeError("S&P 500 list looks incomplete")
     return list(dict.fromkeys(out))
 
 
-def movers(members, label):
-    rows = []
-    for i in range(0, len(members), CHUNK):
-        part = members[i:i + CHUNK]
-        try:
-            data = yf.download([m[0] for m in part], period="10d", interval="1d", group_by="ticker",
-                               auto_adjust=False, threads=True, progress=False)
-        except Exception as e:
-            print(f"  {label}: chunk failed:", e)
+MARKET_NAMES = {"TO": "Canada", "KS": "Korea", "DE": "Germany", "AX": "Australia", "T": "Japan", "L": "UK", "SA": "Brazil",
+                "HK": "Hong Kong", "SW": "Switzerland", "PA": "France", "NZ": "New Zealand", "MX": "Mexico", "SI": "Singapore",
+                "BK": "Thailand", "CO": "Denmark", "TW": "Taiwan", "MI": "Italy", "WA": "Poland", "MC": "Spain", "AS": "Netherlands",
+                "ST": "Sweden", "OL": "Norway", "HE": "Finland", "VI": "Austria", "IR": "Ireland", "JO": "South Africa", "TA": "Israel"}
+
+
+def page_list(var_name):
+    html_text = open(INDEX_FILE, encoding="utf-8").read()
+    m = re.search(r"var\s+%s\s*=\s*(\[.*?\]);\s*\n" % var_name, html_text, re.S)
+    if not m:
+        raise RuntimeError("could not find %s inside index.html" % var_name)
+    return json.loads(m.group(1))
+
+
+def global_etf_members():
+    out = []
+    for a in page_list("GLOBAL_ETFS"):
+        t = str(a.get("t", "")).strip()
+        if not t or a.get("vol", 0) < MIN_VOL_GLOBAL:
             continue
-        for ysym, sym, name in part:
+        suf = t.rsplit(".", 1)[1] if "." in t else ""
+        if suf == "NS":                       # Indian-listed ETFs have their own list
+            continue
+        out.append((t, t, a.get("n", t), MARKET_NAMES.get(suf, "Other") if suf else "US"))
+    return list(dict.fromkeys(out))
+
+
+def india_etf_members():
+    out = []
+    for a in page_list("TREE"):
+        t = str(a.get("t", "")).strip()
+        if t and a.get("vol", 0) >= MIN_VOL_INDIA:
+            out.append((t + ".NS", t, a.get("sub") or t, "India"))
+    return list(dict.fromkeys(out))
+
+
+def download_daily(tickers, session=None, tries=3, batch_label=""):
+    kw = dict(period="10d", interval="1d", group_by="ticker", auto_adjust=False, threads=(session is None), progress=False)
+    if session is not None:
+        kw["session"] = session
+    for attempt in range(tries):
+        try:
+            data = yf.download(tickers, **kw)
+            if data is not None and len(data):
+                return data
+        except Exception as e:
+            print(f"  {batch_label} download attempt {attempt + 1} failed: {type(e).__name__}")
+        time.sleep(4 * (attempt + 1))
+    return None
+
+
+def movers(members, label, session=None, chunk=CHUNK, pause=1.0, max_age_days=3, min_rows=50):
+    """members: (yahoo symbol, display symbol, name, market-or-empty). Returns top gainers / losers + advance / decline counts."""
+    rows = []
+    for i in range(0, len(members), chunk):
+        part = members[i:i + chunk]
+        data = download_daily([m[0] for m in part], session=session, batch_label=label)
+        if data is None:
+            print(f"  {label}: chunk {i // chunk + 1} gave no data")
+            continue
+        for m in part:
+            ysym, sym, name = m[0], m[1], m[2]
             try:
                 last, prev, dt = last_two(data[ysym]["Close"])
                 if prev > 0:
-                    rows.append((sym, name, last, last - prev, (last / prev - 1) * 100, pd.Timestamp(dt)))
+                    rows.append((sym, name, last, last - prev, (last / prev - 1) * 100, pd.Timestamp(dt), m[3] if len(m) > 3 else ""))
             except Exception:
                 continue
-        time.sleep(1)
-    if len(rows) < 50:
-        raise RuntimeError(f"{label}: too little price data ({len(rows)} stocks)")
+        time.sleep(pause)
+    if len(rows) < min_rows:
+        raise RuntimeError(f"{label}: too little price data ({len(rows)} rows)")
     newest = max(r[5] for r in rows)
-    rows = [r for r in rows if (newest - r[5]).days <= 3]         # drop stale / suspended stocks
-    pack = lambda r: {"s": r[0], "n": r[1], "p": round(r[2], 2), "d": round(r[3], 2), "c": round(r[4], 2)}
+    rows = [r for r in rows if (newest - r[5]).days <= max_age_days]     # drop stale / suspended / not-yet-open markets
+    def pack(r):
+        d = {"s": r[0], "n": r[1], "p": round(r[2], 2), "d": round(r[3], 2), "c": round(r[4], 2)}
+        if r[6]:
+            d["m"] = r[6]
+        return d
     ordered = sorted(rows, key=lambda r: r[4])
     return {"asof": newest.strftime("%Y-%m-%d"), "count": len(rows),
             "adv": sum(1 for r in rows if r[4] > 0), "dec": sum(1 for r in rows if r[4] < 0),
             "unch": sum(1 for r in rows if r[4] == 0),
-            "gainers": [pack(r) for r in ordered[::-1][:5]], "losers": [pack(r) for r in ordered[:5]]}
+            "gainers": [pack(r) for r in ordered[::-1][:TOP_N]], "losers": [pack(r) for r in ordered[:TOP_N]]}
 
 
 # ============================================================== 3. news
@@ -346,10 +412,17 @@ def main():
             raise RuntimeError("no quote came back")
     except Exception as e:
         print("quotes skipped:", e); desk["quotes"] = prev_desk.get("quotes", [])
-    for key, label, loader in (("nifty500", "Nifty 500", nifty500_members), ("sp500", "S&P 500", sp500_members)):
+    groups = (
+        ("nifty500",  "Nifty 500",   nifty500_members,  dict()),
+        ("sp500",     "S&P 500",     sp500_members,     dict(session=SESSION, chunk=50, pause=1.5)),
+        ("india_etf", "Indian ETFs", india_etf_members, dict(min_rows=20)),
+        ("global_etf","Global ETFs", global_etf_members, dict(session=SESSION, chunk=50, pause=1.5, max_age_days=0, min_rows=50)),
+    )
+    for key, label, loader, kw in groups:
         try:
-            desk[key] = movers(loader(), label)
-            print(f"{label}: {desk[key]['count']} stocks | adv {desk[key]['adv']} dec {desk[key]['dec']} | top gainer {desk[key]['gainers'][0]['s']} {desk[key]['gainers'][0]['c']}%")
+            desk[key] = movers(loader(), label, **kw)
+            g = desk[key]["gainers"][0]
+            print(f"{label}: {desk[key]['count']} rows | adv {desk[key]['adv']} dec {desk[key]['dec']} | top gainer {g['s']} {g['c']}% ({desk[key]['asof']})")
         except Exception as e:
             print(f"{label} movers skipped:", e)
             if key in prev_desk:
