@@ -691,6 +691,10 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     </div>
 
     <div style="display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-end; margin:14px 0 4px;">
+      <label id="rs-idxw" style="display:none; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Index
+        <select id="rs-index" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All NSE stocks</option></select></label>
+      <label id="rs-secw" style="display:none; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sector / theme
+        <select id="rs-sector" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All sectors &amp; themes</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show
         <select id="rs-show" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="all">All</option><option value="h">Beating benchmark since High date</option><option value="l">Beating benchmark since Low date</option><option value="both" selected>Beating on both</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sort by
@@ -1948,6 +1952,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   var LONGFILE={global:'data/rs_long_global.json',inetf:'data/rs_long_inetf.json',istock:'data/rs_long_istock.json'};
   var cache={}, benchFile=null, started=false, bench=null, view=[], sortKey='chl', sortDir=-1;
   var LONG={}, DAILY_START={}, longPending=false, readyMsg='';
+  var GROUPS=null, groupSets={};      // NSE index / sector membership for the Indian Stocks filters (data/rs_groups.json)
 
   function getJSON(urls){
     var p=Promise.reject();
@@ -2056,6 +2061,31 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   function money(cur,v){ return cur+v.toLocaleString(cur==='₹'?'en-IN':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function num(v){ return v.toLocaleString('en-US',{maximumFractionDigits:2}); }
 
+
+  // ---- Indian Stocks: NSE index and sector / theme filters ----
+  function loadGroups(){
+    if(GROUPS!==null) return Promise.resolve(GROUPS);
+    return getJSON(['data/rs_groups.json']).then(function(j){ GROUPS=j; groupSets={}; fillGroupSelects(); return GROUPS; })
+                                          .catch(function(){ GROUPS=false; return GROUPS; });
+  }
+  function fillGroupSelects(){
+    if(!GROUPS||!GROUPS.groups) return;
+    function opts(kind, first, sortAlpha){
+      var g=GROUPS.groups.filter(function(x){ return x.kind===kind; });
+      if(sortAlpha) g.sort(function(a,b){ return a.label.localeCompare(b.label); });
+      return '<option value="">'+first+'</option>'+g.map(function(x){ return '<option value="'+x.id+'">'+esc(x.label)+' ('+x.n+')</option>'; }).join('');
+    }
+    var a=$('rs-index'), b=$('rs-sector'), ia=a.value, ib=b.value;
+    a.innerHTML=opts('index','All NSE stocks',false);
+    b.innerHTML=opts('sector','All sectors &amp; themes',true);
+    a.value=ia; b.value=ib;
+  }
+  function groupSet(id){
+    if(!id||!GROUPS||!GROUPS.groups) return null;
+    if(!groupSets[id]){ var g=GROUPS.groups.filter(function(x){ return x.id===id; })[0]; groupSets[id]=g?new Set(g.symbols):null; }
+    return groupSets[id];
+  }
+
   // ---- compute + render ----
   function compute(){
     var u=$('rs-uni').value, uni=cache[u]; if(!uni||!bench) return;
@@ -2078,10 +2108,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     if(hd>ld){ /* allowed: just a note in the help line */ }
     bench.m=bm; setStatus(readyMsg,true);
     var mkt=$('rs-mkt').value, cat=$('rs-cat').value, vol=+$('rs-vol').value||0, q=$('rs-search').value.toLowerCase().trim();
+    var iset=u==='istock'?groupSet($('rs-index').value):null, sset=u==='istock'?groupSet($('rs-sector').value):null;
     var show=$('rs-show').value, all=[], nH=0, nL=0, nB=0, total=0;
     uni.items.forEach(function(it){
       if(u==='global'){ if(mkt&&it.mkt!==mkt) return; if(cat&&it.cat!==cat) return; if(it.vol<vol) return; }
       if(u==='inetf'){ if(cat&&it.cat!==cat) return; if(it.vol<vol) return; }
+      if(u==='istock'){ if(iset&&!iset.has(it.t)) return; if(sset&&!sset.has(it.t)) return; }
       var m=metrics(it,hd,ld,u); if(!m) return;
       if(m.chh==null&&m.chl==null) return;               // did not exist on either date
       total++;
@@ -2192,6 +2224,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     $('rs-mktw').style.display=u==='global'?'':'none';
     $('rs-catw').style.display=u==='istock'?'none':'';
     $('rs-volw').style.display=u==='istock'?'none':'';
+    $('rs-idxw').style.display=u==='istock'?'flex':'none';
+    $('rs-secw').style.display=u==='istock'?'flex':'none';
     var cs=$('rs-cat');
     if(u==='inetf'){ cs.innerHTML='<option value="">All</option><option>Broad Market</option><option>Factor &amp; Strategy</option><option>Sector &amp; Thematic</option>'; }
     else if(u==='global'){ cs.innerHTML=GLOBAL_CAT_HTML; }
@@ -2217,7 +2251,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       $('rs-asof').textContent=(uni.updated?'updated '+uni.updated+' · ':'')+'latest close '+last;
       readyMsg=uni.items.length.toLocaleString('en-US')+' '+(u==='istock'?'stocks':'ETFs')+' with recent price history · benchmark '+bench.name+(DAILY_START[u]?' · exact daily closes from '+DAILY_START[u]+', weekly before that':'');
       setStatus(readyMsg,true);
-      compute();
+      if(u==='istock'){
+        loadGroups().then(function(g){
+          if(g===false){ readyMsg+=' · Index / sector filters are not available yet — run the "Update Relative Strength Data" action'; setStatus(readyMsg,true); }
+          compute();
+        });
+      } else compute();
     }).catch(function(){
       setStatus(u==='istock'?'data/rs_stocks.json not found — run the "Update Relative Strength Data" action first':('data/'+(u==='global'?'global-etf-history.json':'etf-history.json')+' not found — run the "Update ETF data" action first'),false);
     });
@@ -2230,7 +2269,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   $('rs-uni').addEventListener('change',function(){ applyUniverseUI(); refresh(false); });
   $('rs-bench').addEventListener('change',function(){ refresh(true); });
   ['rs-hd','rs-ld'].forEach(function(id){ $(id).addEventListener('change',function(){ dateHelp(); compute(); }); });
-  ['rs-show','rs-mkt','rs-cat','rs-rows'].forEach(function(id){ $(id).addEventListener('change',compute); });
+  ['rs-show','rs-mkt','rs-cat','rs-rows','rs-index','rs-sector'].forEach(function(id){ $(id).addEventListener('change',compute); });
   ['rs-vol','rs-search'].forEach(function(id){ $(id).addEventListener('input',compute); });
   $('rs-sort').addEventListener('change',function(){ sortKey=this.value; compute(); });
   $('rs-dir').addEventListener('change',function(){ sortDir=+this.value; compute(); });
