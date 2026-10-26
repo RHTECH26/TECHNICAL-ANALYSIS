@@ -387,6 +387,10 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <select id="trd-swing" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="3">3 (short term)</option><option value="5" selected>5 (swing)</option><option value="8">8 (primary)</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Direction
         <select id="trd-dir" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All</option><option value="Bullish">Bullish (down → up)</option><option value="Bearish">Bearish (up → down)</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Index
+        <select id="trd-index" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All NSE stocks</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Sector / theme
+        <select id="trd-sector" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All sectors &amp; themes</option></select></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (candles)
         <input type="number" id="trd-days" value="10" min="0" max="200" step="1" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
       <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Max move beyond level (%)
@@ -1384,12 +1388,36 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
            '1M':' The current month is still forming, so a signal can fire on an unfinished monthly candle and reverse before it closes.'};
   var view=$('cot-stock-view');
   function url(tf){ return tf==='1D'?'data/dow_trend.json':'data/dow_trend_'+tf+'.json'; }
+  // ---- NSE index / sector membership for the Index and Sector / theme boxes (data/rs_groups.json) ----
+  var GR=null, grSets={};
+  function fillGroups(){
+    if(!GR||!GR.groups) return;
+    function opts(kind, first, alpha){
+      var g=GR.groups.filter(function(x){ return x.kind===kind; });
+      if(alpha) g.sort(function(a,b){ return a.label.localeCompare(b.label); });
+      return '<option value="">'+first+'</option>'+g.map(function(x){ return '<option value="'+x.id+'">'+esc(x.label)+' ('+x.n+')</option>'; }).join('');
+    }
+    var a=$('trd-index'), b=$('trd-sector'), ia=a.value, ib=b.value;
+    a.innerHTML=opts('index','All NSE stocks',false); b.innerHTML=opts('sector','All sectors &amp; themes',true);
+    a.value=ia; b.value=ib;
+  }
+  function loadGroups(){
+    if(GR!==null) return; GR=false;
+    fetch('data/rs_groups.json?t='+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ GR=j; grSets={}; fillGroups(); render(); })
+      .catch(function(){ GR=false; $('trd-index').title=$('trd-sector').title='The index lists are not built yet: run the "Update Relative Strength Data" action in GitHub.'; });
+  }
+  function gset(id){
+    if(!id||!GR||!GR.groups) return null;
+    if(!grSets[id]){ var g=GR.groups.filter(function(x){ return x.id===id; })[0]; grSets[id]=g?new Set(g.symbols):null; }
+    return grSets[id];
+  }
   function rows(){
     if(!TRD) return [];
     var dir=$('trd-dir').value, dy=+$('trd-days').value, ex=+$('trd-ext').value, q=$('trd-search').value.toLowerCase();
+    var iset=gset($('trd-index').value), sset=gset($('trd-sector').value);
     var src=(TRD.variants&&TRD.variants[$('trd-swing').value])||TRD.results;
     var r=src.filter(function(x){
-      return (!dir||x.direction===dir) && x.days_since<=dy && Math.abs(x.pct_from_level)<=ex && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1;
+      return (!dir||x.direction===dir) && x.days_since<=dy && Math.abs(x.pct_from_level)<=ex && (x.symbol+' '+x.name).toLowerCase().indexOf(q)>-1 && (!iset||iset.has(x.symbol)) && (!sset||sset.has(x.symbol));
     });
     r.sort(function(a,b){
       var A=a[sortKey], B=b[sortKey], c;
@@ -1423,6 +1451,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     $('trd-dot').className='tm-dot live';
   }
   function load(tf){
+    loadGroups();
     if(tf!==curTF){ curTF=tf; applyTF(tf); }
     if(cache[tf]){ TRD=cache[tf]; header(TRD,tf); render(); return; }
     TRD=null; render();
@@ -1435,7 +1464,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       $('trd-source-label').textContent=url(tf)+' not found — run the "Update Dow Trend Change Scan" action first';
     });
   }
-  ['trd-swing','trd-dir','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
+  ['trd-swing','trd-dir','trd-index','trd-sector','trd-days','trd-ext','trd-search'].forEach(function(id){ $(id).addEventListener('input',render); });
   $('trd-head').addEventListener('click',function(e){
     var th=e.target.closest('th'); if(!th||!th.dataset.key) return;
     asc=(sortKey===th.dataset.key)?!asc:true; sortKey=th.dataset.key; render();
