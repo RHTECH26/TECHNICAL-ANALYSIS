@@ -14,9 +14,8 @@ Rules (the same as the Pine Script strategy "COT + Relative Strength Backtest"):
         -> filled at the next day's OPEN
   SELL  when the WEEKLY COT turns bearish (weekly close below the last weekly higher low, last CLOSED week)
         -> filled at the open of the day after the first trading day of the new week (as the Pine strategy does)
-  SELL  also when the holding UNDERPERFORMS the benchmark on BOTH sides: since the benchmark's latest swing high AND since its latest
-        swing low it has gained less than the benchmark (the same two measures that allowed the buy). This exit does not wait for a weekly
-        COT sell. -> filled at the next day's open.
+  (Optional, OFF by default: set MP_RS_EXIT=1 to also sell when the holding lags the benchmark on BOTH sides, since its swing high AND
+        swing low, without waiting for a weekly COT sell, at the next day's open.)
 
 Portfolio: every new position is POSITION_PCT % (5%) of the portfolio value on the day it is bought, paid from cash; no cap on
 the number of holdings (the cash decides). Costs are charged on both sides.
@@ -61,7 +60,7 @@ CFG = dict(
     swap_min_days=int(os.environ.get("MP_SWAP_MIN_DAYS", 30)),        # a holding must be at least this old (calendar days) to be swapped out
     swap_gap_days=int(os.environ.get("MP_SWAP_GAP_DAYS", 5)),         # at most one swap in this many trading days
     one_per_theme=None,                                               # ETF portfolios: one holding per theme (None = decided per portfolio)
-    rs_exit=os.environ.get("MP_RS_EXIT", "1") != "0",                 # sell at the next open when the holding lags the benchmark on BOTH sides
+    rs_exit=os.environ.get("MP_RS_EXIT", "0") == "1",                 # OFF by default. When on: sell at the next open if the holding lags the benchmark on BOTH sides
     rs_exit_edge=float(os.environ.get("MP_RS_EXIT_EDGE", 0.0)),       # lagging = excess return below this many percentage points, since the swing high AND the swing low
     rs_exit_days=int(os.environ.get("MP_RS_EXIT_DAYS", 1)),           # for this many closes in a row
     cost_pct=float(os.environ.get("MP_COST_PCT", 0.10)),    # per side: brokerage, taxes and slippage
@@ -713,6 +712,8 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
     if variants:
         marked = False
         for label, ov in VARIANTS:
+            if "rs_exit" in ov and not cfg.get("rs_exit"):
+                continue                                    # nothing to compare when the relative strength exit is off
             v = _variant_summary(label, ov, cfg, stocks, cal, bench_off)
             same = (bool(cfg.get("half_positions")) == ov["half_positions"] and bool(cfg.get("swap")) == ov["swap"]
                     and bool(cfg.get("rs_exit")) == bool(ov.get("rs_exit", cfg.get("rs_exit"))))

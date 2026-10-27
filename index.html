@@ -786,7 +786,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 
   <div class="card" id="mp-variants-card">
-    <h4>Effect of the cash-use rules and the relative strength exit<span class="asof">the same strategy with the rules on and off</span></h4>
+    <h4>Effect of the cash-use rules<span class="asof">the same strategy with the rules on and off</span></h4>
     <div class="gtm-scroll" style="max-height:none;"><table class="mp-table" id="mp-variants"></table></div>
   </div>
 
@@ -3009,10 +3009,11 @@ html[data-locked="1"]{overflow:hidden;}
       ['Median holding (days)', T.median_hold_days, null, 'i'], ['Longest losing streak (trades)', T.max_consecutive_losses, null, 'i'], ['Average money invested', T.avg_exposure, null, 'l0'],
       ['Churn ratio (annual turnover)', T.churn_ratio, null, 'l0'], ['Money bought per year (% of average value)', T.bought_total_pct, null, 'l0'],
       [NOUN+'s held: average', T.avg_positions, null, 'n1'], [NOUN+'s held: most at one time', T.max_positions_held, null, 'i'], ['Exits by stop-loss', T.stop_loss_exits, null, 'i'],
-      ['Exits by relative strength (lagging on both sides)', T.rs_exits, null, 'i'], ['Exits by swapping out the weakest holding', T.swap_exits, null, 'i'], ['Half positions bought', T.partial_buys, null, 'i'], ['Top-ups of half positions', T.topups, null, 'i'],
+      ['Exits by swapping out the weakest holding', T.swap_exits, null, 'i'], ['Half positions bought', T.partial_buys, null, 'i'], ['Top-ups of half positions', T.topups, null, 'i'],
       ['Buy signals skipped: no cash left', T.cash_skips, null, 'i']
     ];
     if(D.config.one_per_theme) rows.push(['Buy signals skipped: theme already held', T.theme_skips, null, 'i']);
+    if(D.config.rs_exit) rows.splice(rows.findIndex(function(r){ return r[0] === 'Exits by swapping out the weakest holding'; }), 0, ['Exits by relative strength (lagging on both sides)', T.rs_exits, null, 'i']);
     function f(v,k){ if(v==null) return '—'; if(k==='p') return '<span class="'+cls(v)+'">'+pc(v)+'</span>'; if(k==='l') return pl(v,1); if(k==='l0') return pl(v,0); if(k==='n') return n2(v); if(k==='n1') return n2(v,1); if(k==='i') return Math.round(v).toLocaleString('en-IN'); return esc(v); }
     var html = '<thead><tr><th class="l">Metric</th><th>Model portfolio</th><th>'+esc(name)+'</th></tr></thead><tbody>';
     rows.forEach(function(r){ html += r.length===1 ? '<tr class="grp"><td colspan="3">'+r[0]+'</td></tr>' : '<tr><td class="l">'+r[0]+'</td><td>'+f(r[1],r[3])+'</td><td>'+f(r[2],r[3])+'</td></tr>'; });
@@ -3023,9 +3024,11 @@ html[data-locked="1"]{overflow:hidden;}
     var V = D.variants || [], card = $('mp-variants-card');
     if(!V.length){ card.style.display = 'none'; return; }
     card.style.display = '';
-    var html = '<thead><tr><th class="l">Rules</th><th>CAGR</th><th>Max drawdown</th><th>Sharpe</th><th>Churn ratio</th><th>Trades</th><th>Relative strength exits</th><th>Swaps</th><th>Half positions</th><th>Average cash</th></tr></thead><tbody>';
+    var anyRs = V.some(function(v){ return v.rs_exit; });
+    card.querySelector('h4').firstChild.nodeValue = anyRs ? 'Effect of the cash-use rules and the relative strength exit' : 'Effect of the cash-use rules';
+    var html = '<thead><tr><th class="l">Rules</th><th>CAGR</th><th>Max drawdown</th><th>Sharpe</th><th>Churn ratio</th><th>Trades</th>'+(anyRs?'<th>Relative strength exits</th>':'')+'<th>Swaps</th><th>Half positions</th><th>Average cash</th></tr></thead><tbody>';
     V.forEach(function(v){
-      html += '<tr'+(v.current?' class="tot"':'')+'><td class="l">'+esc(v.label)+(v.current?' <span class="mp-pill" style="margin-left:6px">used above</span>':'')+'</td><td class="'+cls(v.cagr)+'">'+pc(v.cagr)+'</td><td>'+pc(v.max_drawdown,1)+'</td><td>'+n2(v.sharpe)+'</td><td>'+pl(v.churn,0)+'</td><td>'+v.trades+'</td><td>'+(v.rs_exit ? v.rs_exits : '—')+'</td><td>'+v.swaps+'</td><td>'+v.partial_buys+' bought, '+v.topups+' topped up</td><td>'+pl(v.avg_cash,1)+'</td></tr>';
+      html += '<tr'+(v.current?' class="tot"':'')+'><td class="l">'+esc(v.label)+(v.current?' <span class="mp-pill" style="margin-left:6px">used above</span>':'')+'</td><td class="'+cls(v.cagr)+'">'+pc(v.cagr)+'</td><td>'+pc(v.max_drawdown,1)+'</td><td>'+n2(v.sharpe)+'</td><td>'+pl(v.churn,0)+'</td><td>'+v.trades+'</td>'+(anyRs?'<td>'+(v.rs_exit ? v.rs_exits : '—')+'</td>':'')+'<td>'+v.swaps+'</td><td>'+v.partial_buys+' bought, '+v.topups+' topped up</td><td>'+pl(v.avg_cash,1)+'</td></tr>';
     });
     $('mp-variants').innerHTML = html + '</tbody>';
   }
