@@ -17,12 +17,12 @@ Rules (the same as the Pine Script strategy "COT + Relative Strength Backtest"):
   (Optional, OFF by default: set MP_RS_EXIT=1 to also sell when the holding lags the benchmark on BOTH sides, since its swing high AND
         swing low, without waiting for a weekly COT sell, at the next day's open.)
 
-Portfolio: every new position is POSITION_PCT % (5%) of the portfolio value on the day it is bought, paid from cash; no cap on
-the number of holdings (the cash decides). Costs are charged on both sides.
+Portfolio: every new position is POSITION_PCT % of the portfolio value on the day it is bought, paid from cash. Stocks: 5% each and no cap
+(the cash decides). The two ETF portfolios: at most 10 holdings of 10% each. Costs are charged on both sides.
   - Stop-loss: a holding bought while its WEEKLY COT is already bearish gets a STOP_PCT % (25%) stop-loss from its buy price.
-  - Half positions: when the cash left is between 2.5% and 5% of the portfolio value, a half position is bought and topped up to 5% later
+  - Half positions (OFF by default, MP_HALF_POSITIONS=1 turns it on): when the cash left is between 2.5% and 5% of the portfolio value, a half position is bought and topped up to 5% later
     (never while it is below its buy price or while its weekly COT is bearish).
-  - Swap: when there is no cash for a new signal, the weakest holding is sold if the new signal's relative strength leads it by at least
+  - Swap (OFF by default, MP_SWAP=1 turns it on): when there is no cash for a new signal, the weakest holding is sold if the new signal's relative strength leads it by at least
     SWAP_MARGIN points (holding at least SWAP_MIN_DAYS old, at most one swap every SWAP_GAP_DAYS trading days).
   - One holding per theme (the two ETF portfolios): funds that track the same index family count as one theme, so overlapping funds
     do not fill the portfolio with the same bet. The strongest signal of a theme is bought first.
@@ -53,9 +53,9 @@ CFG = dict(
     min_mcap_cr=float(os.environ.get("MP_MIN_MCAP_CR", 0)),         # optional market cap filter in rupees crore (0 = off, the default)
     stop_pct=float(os.environ.get("MP_STOP_PCT", 25.0)),            # stop-loss from the buy price (0 = off)
     stop_only_under_weekly_sell=os.environ.get("MP_STOP_ALWAYS", "0") != "1",
-    half_positions=os.environ.get("MP_HALF_POSITIONS", "1") != "0",   # spare cash between 2.5% and 5% buys a half position, topped up later
+    half_positions=os.environ.get("MP_HALF_POSITIONS", "0") == "1",   # OFF by default. When on: spare cash between 2.5% and 5% buys a half position, topped up later
     half_min_frac=float(os.environ.get("MP_HALF_MIN_FRAC", 0.5)),
-    swap=os.environ.get("MP_SWAP", "1") != "0",                       # no cash for a new signal: sell the weakest holding if the new one is clearly stronger
+    swap=os.environ.get("MP_SWAP", "0") == "1",                       # OFF by default. When on: no cash for a new signal sells the weakest holding if the new one is clearly stronger
     swap_margin=float(os.environ.get("MP_SWAP_MARGIN", 10.0)),        # new signal must lead the weakest holding by this many percentage points
     swap_min_days=int(os.environ.get("MP_SWAP_MIN_DAYS", 30)),        # a holding must be at least this old (calendar days) to be swapped out
     swap_gap_days=int(os.environ.get("MP_SWAP_GAP_DAYS", 5)),         # at most one swap in this many trading days
@@ -288,7 +288,7 @@ def simulate(stocks, cal, cfg, bench_off=0):
     sell_amt = np.zeros(nd)
     npos = np.zeros(nd, int)
     trades = []
-    counters = {"swaps": 0, "partial_buys": 0, "topups": 0, "cash_skips": 0, "theme_skips": 0}
+    counters = {"swaps": 0, "partial_buys": 0, "topups": 0, "cash_skips": 0, "theme_skips": 0, "slot_skips": 0}
     last_swap = -10 ** 6
 
     def sell(i, d, px, why):
@@ -322,12 +322,13 @@ def simulate(stocks, cal, cfg, bench_off=0):
         # 2) buys at today's open, strongest relative strength first
         cands = [(i, e) for i, e in buys.get(d, []) if i not in pos and Oc[i, d] == Oc[i, d]]
         cands.sort(key=lambda t: -t[1]["score"])
-        for i, e in cands:
+        for ci, (i, e) in enumerate(cands):
             th = stocks[i].theme if theme_on else None
             if th is not None and th_count.get(th, 0) > 0:
                 counters["theme_skips"] += 1                       # this theme is already held (one holding per theme)
                 continue
             if cap_n is not None and len(pos) >= cap_n:
+                counters["slot_skips"] += len(cands) - ci          # the portfolio is full: the rest of today's signals are skipped
                 break
             eq_open = equity_at_open(d)
             target = eq_open * pos_pct
@@ -609,8 +610,8 @@ FULL_TOL = 0.97                  # cash within 3% of the target size buys a full
 PORTFOLIOS = {
     # one benchmark each, with NO silent fallback to another index: if it cannot be downloaded the portfolio is not built and the log says so
     "stocks":     dict(label="Stocks (Nifty 500)", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], one_per_theme=False),
-    "global_etf": dict(label="Global ETFs (US-listed)", noun="ETF", currency="USD", capital=1e6, bench=["ACWI"], one_per_theme=True, min_vol=200000),
-    "india_etf":  dict(label="Indian ETFs", noun="ETF", currency="INR", capital=1e7, bench=["^CRSLDX"], one_per_theme=True, min_vol=5000),
+    "global_etf": dict(label="Global ETFs (US-listed)", noun="ETF", currency="USD", capital=1e6, bench=["ACWI"], one_per_theme=True, min_vol=200000, position_pct=10.0, max_positions=10),
+    "india_etf":  dict(label="Indian ETFs", noun="ETF", currency="INR", capital=1e7, bench=["^CRSLDX"], one_per_theme=True, min_vol=5000, position_pct=10.0, max_positions=10),
 }
 BENCH_NAMES = {"^CRSLDX": "Nifty 500", "ACWI": "MSCI ACWI (ACWI ETF)"}
 OUT_DIR = os.environ.get("MP_OUT_DIR", "data")
@@ -626,6 +627,10 @@ def cfg_for(pid):
     c = dict(CFG)
     c["capital"] = float(os.environ["MP_CAPITAL"]) if "MP_CAPITAL" in os.environ else meta["capital"]
     c["one_per_theme"] = (os.environ["MP_ONE_PER_THEME"] != "0") if "MP_ONE_PER_THEME" in os.environ else meta["one_per_theme"]
+    if "MP_POSITION_PCT" not in os.environ and "position_pct" in meta:
+        c["position_pct"] = meta["position_pct"]              # ETFs: each holding 10% of the portfolio
+    if "MP_MAX_POSITIONS" not in os.environ and "max_positions" in meta:
+        c["max_positions"] = meta["max_positions"]            # ETFs: at most 10 holdings
     if pid != "stocks":
         c["min_mcap_cr"] = 0
     return c

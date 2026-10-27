@@ -3012,6 +3012,7 @@ html[data-locked="1"]{overflow:hidden;}
       ['Exits by swapping out the weakest holding', T.swap_exits, null, 'i'], ['Half positions bought', T.partial_buys, null, 'i'], ['Top-ups of half positions', T.topups, null, 'i'],
       ['Buy signals skipped: no cash left', T.cash_skips, null, 'i']
     ];
+    if(D.config.max_positions) rows.push(['Buy signals skipped: portfolio full (' + D.config.max_positions + ' holdings)', T.slot_skips, null, 'i']);
     if(D.config.one_per_theme) rows.push(['Buy signals skipped: theme already held', T.theme_skips, null, 'i']);
     if(D.config.rs_exit) rows.splice(rows.findIndex(function(r){ return r[0] === 'Exits by swapping out the weakest holding'; }), 0, ['Exits by relative strength (lagging on both sides)', T.rs_exits, null, 'i']);
     function f(v,k){ if(v==null) return '—'; if(k==='p') return '<span class="'+cls(v)+'">'+pc(v)+'</span>'; if(k==='l') return pl(v,1); if(k==='l0') return pl(v,0); if(k==='n') return n2(v); if(k==='n1') return n2(v,1); if(k==='i') return Math.round(v).toLocaleString('en-IN'); return esc(v); }
@@ -3079,6 +3080,8 @@ html[data-locked="1"]{overflow:hidden;}
     var o = D.open, G = D.pnl, avg = o.length ? o.reduce(function(a,b){ return a+b.r; },0)/o.length : 0, capK = (D.config.capital || 1e7)/100;
     var pctPos = D.config.position_pct, valueNow = D.pf[D.pf.length-1]*capK, oneBuy = pctPos ? valueNow*pctPos/100 : null;
     var canFund = (oneBuy && G) ? Math.floor(G.cash/oneBuy + 1e-9) : null;
+    var slots = D.config.max_positions ? Math.max(0, D.config.max_positions - o.length) : null;       // free places when the portfolio has a cap
+    if(slots != null) canFund = canFund == null ? slots : Math.min(canFund, slots);
     $('mp-live-asof').textContent = 'close of ' + D.asof;
     $('mp-live-sum').innerHTML = '<span>'+NOUN+'s held <b>'+o.length+'</b></span><span>Invested value <b>'+(G?cr(G.invested):'—')+'</b></span><span>Current value of holdings <b>'+(G?cr(G.market_value):'—')+'</b></span>' +
       '<span>Cash <b>'+(G?cr(G.cash):'—')+' ('+pl(D.cash_pct,1)+')</b></span><span>Average return since entry <b class="'+cls(avg)+'">'+pc(avg,1)+'</b></span>' +
@@ -3096,7 +3099,7 @@ html[data-locked="1"]{overflow:hidden;}
     }
     $('mp-open').innerHTML = html + '</tbody>';
     var sig = D.signals || [];
-    $('mp-sig-note').textContent = sig.length ? (canFund != null ? '· cash can fund ' + canFund + ' new buy' + (canFund===1?'':'s') + ' of ' + cr(oneBuy) + ' (' + pctPos + '% of portfolio value) each, strongest relative strength first' : '· strongest relative strength first') : '';
+    $('mp-sig-note').textContent = sig.length ? (canFund != null ? '· room for ' + canFund + ' new buy' + (canFund===1?'':'s') + ' of ' + cr(oneBuy) + ' (' + pctPos + '% of portfolio value) each' + (slots != null ? ' · ' + o.length + ' of ' + D.config.max_positions + ' places used' : '') + ', strongest relative strength first' : '· strongest relative strength first') : '';
     var showCap = sig.some(function(x){ return x.mcap != null; });
     var h2 = '<thead><tr><th class="l">'+NOUN+'</th>'+(showCap?'<th>Market cap</th>':'')+'<th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Stop-loss</th></tr></thead><tbody>';
     sig.forEach(function(x,i){
