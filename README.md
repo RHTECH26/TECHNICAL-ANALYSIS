@@ -112,3 +112,6 @@ data-quality issue in the source sheet rather than a bug in the page.
 
 If you ask Claude for further changes to the dashboard, re-export `index.html` and
 push it over the existing one — the data pipeline is unaffected.
+
+
+                                                     
