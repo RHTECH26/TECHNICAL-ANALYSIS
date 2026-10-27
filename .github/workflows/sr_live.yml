@@ -1,0 +1,49 @@
+name: Update S&R + Breakout / Reversal (live)
+
+on:
+  schedule:
+    - cron: "15 5,7,9 * * 1-5"   # 10:45 AM, 12:45 PM and 2:45 PM IST, Mon-Fri (during the NSE session: live prices)
+    - cron: "15 12 * * 1-5"      # 5:45 PM IST, Mon-Fri (after the close: final numbers)
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+# only one of these runs at a time; a newer one waits its turn
+concurrency:
+  group: sr-live
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90          # a run that takes longer than this is stuck, so it is stopped instead of blocking the next ones
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl
+      - name: Scan Indian stocks
+        run: python scan_sr.py stocks
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          mkdir -p /tmp/keep
+          cp -f data/sr_stocks.json data/bo_stocks.json /tmp/keep/ 2>/dev/null || true
+          cp -f data/rv_stocks.json /tmp/keep/ 2>/dev/null || true
+          git add data/sr_stocks.json data/bo_stocks.json 2>/dev/null || true
+          git add data/rv_stocks.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -q -m "Update S&R and Breakout / Reversal (live)"
+          for attempt in 1 2 3 4 5; do
+            git push && break
+            echo "Push attempt $attempt failed - taking the latest main and re-applying the new data..."
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            cp -f /tmp/keep/*.json data/ 2>/dev/null || true
+            git add data/sr_stocks.json data/bo_stocks.json 2>/dev/null || true
+            git add data/rv_stocks.json 2>/dev/null || true
+            git diff --staged --quiet || git commit -q -m "Update S&R and Breakout / Reversal (live)"
+            sleep 5
+          done
