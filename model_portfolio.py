@@ -28,7 +28,7 @@ Usage:  python model_portfolio.py                 (both)       python model_port
 Writes data/mp_long.json and data/mp_short.json (read by the Model Portfolio tab of index.html).
 NOTE: uses TODAY's Nifty 500 members for the whole history (survivorship bias).
 """
-import csv, json, math, os, re, sys, time
+import copy, csv, json, math, os, re, sys, time
 from datetime import datetime, timezone, timedelta
 
 import numpy as np
@@ -219,9 +219,11 @@ def stock_signals(sym, name, df, bench_dates, bclose, ph_anchor, pl_anchor, cfg,
 
 
 # ====================================================================== portfolio simulation
-def simulate(stocks, cal, cfg, bench_off=0):
+def simulate(stocks, cal, cfg, bench_off=0, plan=False):
     """cal: DatetimeIndex of benchmark trading days from the start date (bench_off = its position in the full benchmark calendar).
-    Returns equity, exposure, trades, open positions, next-session signals, cash (index units) and daily flows / counters."""
+    Returns equity, exposure, trades, open positions, next-session signals, cash (index units) and daily flows / counters.
+    With plan=True one extra, unrecorded day is run after the last close (prices = the last close): the orders the model would
+    place at the next open are returned in flows["plan"]."""
     cost = cfg["cost_pct"] / 100.0
     pos_pct = cfg["position_pct"] / 100.0
     cap_n = cfg["max_positions"] if cfg["max_positions"] and cfg["max_positions"] > 0 else None
@@ -232,12 +234,14 @@ def simulate(stocks, cal, cfg, bench_off=0):
     theme_on = bool(cfg.get("one_per_theme"))
     nd = len(cal)
     ns = len(stocks)
-    Oc = np.full((ns, nd), np.nan)
-    Lc = np.full((ns, nd), np.nan)
-    Cc = np.full((ns, nd), np.nan)
-    Wc = np.zeros((ns, nd), np.int8)             # weekly COT state on each day (1 up, -1 down)
-    Sc = np.full((ns, nd), np.nan)               # relative strength score at each close
-    Bc = np.zeros((ns, nd), bool)                # lagging the benchmark on both sides at each close
+    nd1 = nd + (1 if plan else 0)                # the extra column is the next session (planning only)
+    cal_x = cal.append(pd.DatetimeIndex([cal[-1] + pd.offsets.BDay(1)])) if plan else cal         # the calendar including the next session
+    Oc = np.full((ns, nd1), np.nan)
+    Lc = np.full((ns, nd1), np.nan)
+    Cc = np.full((ns, nd1), np.nan)
+    Wc = np.zeros((ns, nd1), np.int8)            # weekly COT state on each day (1 up, -1 down)
+    Sc = np.full((ns, nd1), np.nan)              # relative strength score at each close
+    Bc = np.zeros((ns, nd1), bool)               # lagging the benchmark on both sides at each close
     rs_exit_on, rs_exit_days = bool(cfg.get("rs_exit")), max(1, int(cfg.get("rs_exit_days", 1)))
     for i, s in enumerate(stocks):
         idx = np.searchsorted(cal.values, s.dates)
@@ -251,6 +255,12 @@ def simulate(stocks, cal, cfg, bench_off=0):
         bb = s.rs_bad[bench_off: bench_off + nd]
         Bc[i, : len(bb)] = bb
     Cf = pd.DataFrame(Cc.T).ffill().to_numpy().T                         # last known close
+    if plan:                                                              # the next session: opens at the last close
+        Oc[:, nd] = Cf[:, nd]
+        Lc[:, nd] = Cf[:, nd]
+        Wc[:, nd] = Wc[:, nd - 1]
+        Sc[:, nd] = Sc[:, nd - 1]
+        Bc[:, nd] = Bc[:, nd - 1]
     Of = np.where(np.isnan(Oc), Cf, Oc)
 
     # execution schedules: calendar-day -> list of buys; stock -> weekly sells
@@ -259,6 +269,8 @@ def simulate(stocks, cal, cfg, bench_off=0):
     for i, s in enumerate(stocks):
         for e in s.entries:
             if e["exec_bar"] is None:
+                if plan:
+                    buys.setdefault(nd, []).append((i, e))          # signal on the last close: placed at the next open
                 continue
             d = s.dates[e["exec_bar"]]
             di = np.searchsorted(cal.values, d)
@@ -267,6 +279,8 @@ def simulate(stocks, cal, cfg, bench_off=0):
         ex = []
         for x in s.exits:
             if x["exec_bar"] is None:
+                if plan:
+                    ex.append((int(np.searchsorted(cal.values, x["date"])), nd))
                 continue
             fd = np.searchsorted(cal.values, x["date"])
             ed = np.searchsorted(cal.values, s.dates[x["exec_bar"]])
@@ -277,12 +291,14 @@ def simulate(stocks, cal, cfg, bench_off=0):
     cash = 100.0
     pos = {}                         # stock index -> dict
     th_count = {}                    # theme -> holdings
-    eq = np.zeros(nd)
-    invested = np.zeros(nd)
-    buy_amt = np.zeros(nd)
-    sell_amt = np.zeros(nd)
-    npos = np.zeros(nd, int)
+    eq = np.zeros(nd1)
+    invested = np.zeros(nd1)
+    buy_amt = np.zeros(nd1)
+    sell_amt = np.zeros(nd1)
+    npos = np.zeros(nd1, int)
     trades = []
+    plan_buys, plan_topups, plan_sells, plan_skipped = [], [], [], []
+    snapshot = None
     counters = {"swaps": 0, "partial_buys": 0, "topups": 0, "cash_skips": 0, "theme_skips": 0, "slot_skips": 0}
     last_swap = -10 ** 6
 
@@ -294,13 +310,20 @@ def simulate(stocks, cal, cfg, bench_off=0):
         sell_amt[d] += proceeds
         if theme_on and stocks[i].theme is not None:
             th_count[stocks[i].theme] = th_count.get(stocks[i].theme, 1) - 1
-        trades.append(_trade(stocks[i], p, cal[d], px, proceeds, why))
+        if plan and d == nd:
+            eq_ref = cash - proceeds + sum(q["shares"] * Of[j, d] for j, q in pos.items()) + p["shares"] * Of[i, d]
+            plan_sells.append({"i": i, "w": p["shares"] * Of[i, d] / eq_ref * 100 if eq_ref else 0.0, "r": (px / (p["entry_px"] * (1 + cost)) - 1) * 100,
+                               "why": why})
+            return
+        trades.append(_trade(stocks[i], p, cal_x[d], px, proceeds, why))
         trades[-1]["th"] = stocks[i].theme
 
     def equity_at_open(d):
         return cash + sum(q["shares"] * Of[j, d] for j, q in pos.items())
 
-    for d in range(nd):
+    for d in range(nd1):
+        if plan and d == nd:                      # keep the real state: the next session is only a plan
+            snapshot = (copy.deepcopy(pos), cash, dict(th_count), dict(counters), last_swap)
         # 1) sales at today's open: weekly COT sells, and stops that the stock gapped below
         for i in list(pos):
             p = pos[i]
@@ -338,7 +361,7 @@ def simulate(stocks, cal, cfg, bench_off=0):
                     best = None
                     need = (half_frac if half_on else FULL_TOL) * target
                     for jj, q in pos.items():
-                        if (cal[d] - cal[q["entry_d"]]).days < swap_min_days or Oc[jj, d] != Oc[jj, d]:
+                        if (cal_x[d] - cal[q["entry_d"]]).days < swap_min_days or Oc[jj, d] != Oc[jj, d]:
                             continue
                         sc = Sc[jj, d - 1]
                         if sc != sc or e["score"] - sc < swap_margin:
@@ -372,6 +395,11 @@ def simulate(stocks, cal, cfg, bench_off=0):
                       "stop": px * (1 - stop_pct / 100.0) if use_stop else None, "under_weekly_sell": under_weekly_sell, "partial": partial}
             if th is not None:
                 th_count[th] = th_count.get(th, 0) + 1
+            if plan and d == nd:
+                plan_buys.append({"i": i, "w": amount / eq_open * 100, "amount": amount, "half": bool(partial), "uws": bool(under_weekly_sell), "score": e["score"]})
+        if plan and d == nd:
+            bought = {b["i"] for b in plan_buys}
+            plan_skipped = [{"i": i, "score": e["score"]} for i, e in cands if i not in bought]
         # 3) top up half positions with spare cash (never a position below its buy price, never while its weekly COT is bearish)
         if half_on and cash > 0:
             partials = [j for j, q in pos.items() if q.get("partial") and q["entry_d"] < d and not q.get("rs_flag")]
@@ -398,6 +426,8 @@ def simulate(stocks, cal, cfg, bench_off=0):
                 cash -= amount
                 buy_amt[d] += amount
                 counters["topups"] += 1
+                if plan and d == nd:
+                    plan_topups.append({"i": j, "w": amount / eq_open * 100, "amount": amount})
                 if q["shares"] * Of[j, d] >= 0.98 * target:
                     q["partial"] = False
         # 4) stops hit during the day: sold at the stop price
@@ -405,6 +435,8 @@ def simulate(stocks, cal, cfg, bench_off=0):
             p = pos[i]
             if p["stop"] is not None and Lc[i, d] == Lc[i, d] and Lc[i, d] <= p["stop"]:
                 sell(i, d, p["stop"], "Stop-loss %d%%" % stop_pct)
+        if plan and d == nd:
+            break                                  # the planning day ends here: nothing is marked or recorded
         # 5) relative strength exit: lagging the benchmark on both sides at this close -> sold at the next open
         if rs_exit_on:
             for j, q in pos.items():
@@ -417,6 +449,9 @@ def simulate(stocks, cal, cfg, bench_off=0):
         invested[d] = mv / eq[d] * 100 if eq[d] else 0
         npos[d] = len(pos)
 
+    if plan:
+        pos, cash, th_count, counters, last_swap = snapshot[0], snapshot[1], snapshot[2], snapshot[3], snapshot[4]
+        eq, invested, buy_amt, sell_amt, npos = eq[:nd], invested[:nd], buy_amt[:nd], sell_amt[:nd], npos[:nd]
     last_d = nd - 1
     opens = []
     for i, p in pos.items():
@@ -442,7 +477,14 @@ def simulate(stocks, cal, cfg, bench_off=0):
                             "mcap": None if e.get("mcap") is None else round(e["mcap"]), "uws": e.get("wk", 0) == -1,
                             "theme_held": bool(theme_on and s.theme in held_themes)})
     nxt.sort(key=lambda x: -x["score"])
-    return eq, invested, trades, opens, nxt, float(cash), {"buy": buy_amt, "sell": sell_amt, "npos": npos, "counters": counters}
+    plan_out = None
+    if plan:
+        swap_for = {}
+        for sl in plan_sells:
+            if sl["why"].startswith("Swapped for "):
+                swap_for[sl["i"]] = sl["why"][len("Swapped for "):]
+        plan_out = {"buys": plan_buys, "topups": plan_topups, "sells": plan_sells, "skipped": plan_skipped, "swap_for": swap_for}
+    return eq, invested, trades, opens, nxt, float(cash), {"buy": buy_amt, "sell": sell_amt, "npos": npos, "counters": counters, "plan": plan_out}
 
 
 def theme_of(txt):
@@ -662,7 +704,7 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
         stocks.append(st)
     cal = bench_close.index[bench_close.index >= pd.Timestamp(cfg["start"])]
     bench_off = int(np.searchsorted(bdates, np.datetime64(cal[0])))
-    eq, invested, trades, opens, nxt, cash_units, flows = simulate(stocks, cal, cfg, bench_off)
+    eq, invested, trades, opens, nxt, cash_units, flows = simulate(stocks, cal, cfg, bench_off, plan=True)
     ch, churn_year = churn_stats(flows, eq, cal)
     cash_pct = round(cash_units / float(eq[-1]) * 100, 2)
 
@@ -709,6 +751,19 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
         o["val"] = round(o["val"] * k)
         o["pnl"] = o["val"] - o["cost"]
 
+    # ---- the orders for the next session open (same rules as the portfolio), in the portfolio's currency ----
+    pl = flows.get("plan") or {}
+    swap_for = pl.get("swap_for", {})
+    plan_json = {
+        "date": str((cal[-1] + pd.offsets.BDay(1)).date()),
+        "buys": [{"s": stocks[b["i"]].sym, "n": stocks[b["i"]].name, "w": round(float(b["w"]), 1), "amount": round(float(b["amount"]) * k),
+                  "half": bool(b["half"]), "uws": bool(b["uws"])} for b in sorted(pl.get("buys", []), key=lambda b: -b["score"])],
+        "topups": [{"s": stocks[t["i"]].sym, "n": stocks[t["i"]].name, "w": round(float(t["w"]), 1), "amount": round(float(t["amount"]) * k)} for t in pl.get("topups", [])],
+        "sells": [{"s": stocks[x["i"]].sym, "n": stocks[x["i"]].name, "w": round(float(x["w"]), 1), "r": round(float(x["r"]), 1), "swap_for": swap_for.get(x["i"])}
+                  for x in sorted(pl.get("sells", []), key=lambda x: -x["w"])],
+        "skipped": [{"s": stocks[x["i"]].sym, "n": stocks[x["i"]].name} for x in sorted(pl.get("skipped", []), key=lambda x: -x["score"])][:20],
+    }
+
     # ---- what the two cash-use rules change: the same strategy run with and without them ----
     var_out = []
     if variants:
@@ -740,7 +795,7 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
         "metrics": {"portfolio": clean(ps), "benchmark": clean(bs), "relative": clean(rel), "trades": clean(ts), "churn_by_year": churn_year},
         "pnl": {k_: (round(v, 2) if isinstance(v, float) else v) for k_, v in pnl.items()},
         "variants": [{k_: (round(v, 3) if isinstance(v, float) else v) for k_, v in x.items()} for x in var_out],
-        "cash_pct": cash_pct, "open": opens, "signals": nxt[:30], "trades": trades,
+        "cash_pct": cash_pct, "open": opens, "signals": nxt[:30], "plan": plan_json, "trades": trades,
     }
 
 
