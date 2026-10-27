@@ -26,7 +26,7 @@ CHUNK         = 100
 # signal may have fired and still be listed. "1D" keeps the original output file name so
 # nothing that already reads it breaks; the others get a suffix.
 TIMEFRAMES = {
-    "1H": {"interval": "1h",  "period": "730d", "min_bars": 300, "max_bars": 100},
+    "1H": {"interval": "1h",  "period": "90d",  "min_bars": 200, "max_bars": 100},   # ~600 hourly bars is plenty to find swings and a fresh signal
     "1D": {"interval": "1d",  "period": "3y",   "min_bars": 120, "max_bars": 60},
     "1W": {"interval": "1wk", "period": "10y",  "min_bars": 60,  "max_bars": 26},
     "1M": {"interval": "1mo", "period": "max",  "min_bars": 36,  "max_bars": 12},
@@ -164,6 +164,7 @@ def analyse(dates, high, low, close, L, max_bars):
 
 def run_timeframe(tf, universe):
     cfg = TIMEFRAMES[tf]
+    t_start = time.time()
     variants = {str(L): [] for L in SWING_OPTIONS}
     scanned, failed = 0, 0
     # was the NSE session open when this scan started? Then the latest candle is still forming and
@@ -221,6 +222,7 @@ def run_timeframe(tf, universe):
     path = out_path(OUT_FILE, tf)
     with open(path, "w") as f:
         json.dump(payload, f, separators=(",", ":"))
+    print(f"[{tf}] took {(time.time() - t_start) / 60:.1f} min")
     print(f"[{tf}] done. scanned={scanned} failed={failed} signals(default)={len(payload['results'])} -> {path}")
 
 

@@ -1479,6 +1479,14 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.href=URL.createObjectURL(new Blob([list.join(',')],{type:'text/plain'}));
     a.download='cot-stocks-'+curTF.toLowerCase()+'-'+(($('trd-dir').value||'all').toLowerCase())+'.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
+  // keep the numbers fresh while the page stays open: re-check the scan file every 5 minutes (only while this view is on screen)
+  setInterval(function(){
+    var tf=curTF; if(!tf || document.hidden || !view.offsetParent) return;
+    fetch(url(tf),{cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      if(cache[tf] && j.updated===cache[tf].updated) return;
+      cache[tf]=j; if(curTF===tf){ TRD=j; header(j,tf); render(); }
+    }).catch(function(){});
+  }, 5*60*1000);
   window.COT_STOCK={load:load};
 })();
 </script>
@@ -1575,6 +1583,13 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.href=URL.createObjectURL(new Blob([list.join(',')],{type:'text/plain'}));
     a.download='cot-etfs-'+curTF.toLowerCase()+'-'+(($('gcot-dir').value||'all').toLowerCase())+'.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
+  setInterval(function(){
+    var tf=curTF; if(!tf || document.hidden || !view.offsetParent) return;
+    fetch(url(tf),{cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      if(cache[tf] && j.updated===cache[tf].updated) return;
+      cache[tf]=j; if(curTF===tf){ G=j; header(j,tf); render(); }
+    }).catch(function(){});
+  }, 5*60*1000);
   window.COT_ETF={load:load};
 })();
 </script>
@@ -1710,6 +1725,14 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.download = 'sr-' + uni() + '-' + (mode()==='res' ? 'near-resistance' : 'near-support') + '.txt';
     document.body.appendChild(a); a.click(); a.remove();
   });
+  // keep the numbers fresh while the page stays open: re-check the scan file every 5 minutes (only while this view is on screen)
+  setInterval(function(){
+    var u = uni(); if(!D[u] || loading[u] || document.hidden || !$('sr-body').offsetParent) return;
+    fetch('data/sr_'+u+'.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      if(!D[u] || j.updated === D[u].updated) return;
+      D[u] = j; if(uni()===u){ status(u); render(); }
+    }).catch(function(){});
+  }, 5*60*1000);
   document.querySelectorAll('[data-panel="sr"],[data-goto="sr"]').forEach(function(b){ b.addEventListener('click', setUni); });
 })();
 </script>
@@ -1839,6 +1862,14 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.download = 'breakout-' + uni() + '-' + (dir()==='up' ? 'above-swing-high' : 'below-swing-low') + '.txt';
     document.body.appendChild(a); a.click(); a.remove();
   });
+  // keep the numbers fresh while the page stays open: re-check the scan file every 5 minutes (only while this view is on screen)
+  setInterval(function(){
+    var u = uni(); if(!D[u] || loading[u] || document.hidden || !$('bo-body').offsetParent) return;
+    fetch('data/bo_'+u+'.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      if(!D[u] || j.updated === D[u].updated) return;
+      D[u] = j; if(uni()===u){ status(u); render(); }
+    }).catch(function(){});
+  }, 5*60*1000);
   document.querySelectorAll('[data-panel="bo"],[data-goto="bo"]').forEach(function(b){ b.addEventListener('click', setUni); });
 })();
 </script>
@@ -1999,7 +2030,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 
   function getJSON(urls){
     var p=Promise.reject();
-    urls.forEach(function(u){ p=p.catch(function(){ return fetch(u).then(function(r){ if(!r.ok) throw 0; return r.json(); }); }); });
+    urls.forEach(function(u){ p=p.catch(function(){ return fetch(u, window.__rsFresh ? {cache:'reload'} : undefined).then(function(r){ if(!r.ok) throw 0; return r.json(); }); }); });
     return p;
   }
   function toSeries(pairs){
@@ -2294,6 +2325,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       $('rs-asof').textContent=(uni.updated?'updated '+uni.updated+' · ':'')+'latest close '+last;
       readyMsg=uni.items.length.toLocaleString('en-US')+' '+(u==='istock'?'stocks':'ETFs')+' with recent price history · benchmark '+bench.name+(DAILY_START[u]?' · exact daily closes from '+DAILY_START[u]+', weekly before that':'');
       setStatus(readyMsg,true);
+      rememberTag(u);
       if(u==='istock'){
         loadGroups().then(function(g){
           if(g===false){ readyMsg+=' · Index / sector filters are not available yet — run the "Update Relative Strength Data" action'; setStatus(readyMsg,true); }
@@ -2339,6 +2371,23 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     a.href=URL.createObjectURL(new Blob([list.join(',')],{type:'text/plain'}));
     a.download='relative-strength-'+u+'.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
+  // ---- keep the numbers fresh while the page stays open ----
+  // every 10 minutes a tiny HEAD request checks whether the price files were replaced; if so, the data is loaded again
+  var fileTags={};
+  function tagOf(file){
+    return fetch(file,{method:'HEAD',cache:'no-cache'}).then(function(r){ return r.ok ? ((r.headers.get('etag')||'')+(r.headers.get('last-modified')||'')) : ''; }).catch(function(){ return ''; });
+  }
+  function dataFiles(u){ return [u==='global'?'data/global-etf-history.json':u==='inetf'?'data/etf-history.json':'data/rs_stocks.json','data/rs_benchmarks.json']; }
+  function rememberTag(u){ Promise.all(dataFiles(u).map(tagOf)).then(function(t){ fileTags[u]=t.join('|'); }); }
+  setInterval(function(){
+    if(document.hidden || !started || !$('panel-rs').classList.contains('active')) return;
+    var u=$('rs-uni').value, before=fileTags[u]; if(!before) return;
+    Promise.all(dataFiles(u).map(tagOf)).then(function(t){
+      var now=t.join('|'); if(!now || now===before) return;
+      fileTags[u]=now; delete cache[u]; benchFile=null; window.__rsFresh=true; refresh(false);
+      setTimeout(function(){ window.__rsFresh=false; },20000);
+    });
+  }, 10*60*1000);
   document.querySelectorAll('[data-panel="rs"],[data-goto="rs"]').forEach(function(b){ b.addEventListener('click',start); });
 })();
 </script>
