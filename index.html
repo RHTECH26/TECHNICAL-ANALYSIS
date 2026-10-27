@@ -751,9 +751,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <div class="card">
     <h4>Model Portfolio — COT + Relative Strength<span class="asof" id="mp-asof"></span></h4>
     <div class="mp-seg" id="mp-switch" style="margin:10px 0 2px;">
-      <button type="button" class="echip" data-p="stocks" aria-pressed="true">Stocks (Nifty 500)</button>
-      <button type="button" class="echip" data-p="global_etf" aria-pressed="false">Global ETFs (US)</button>
-      <button type="button" class="echip" data-p="india_etf" aria-pressed="false">Indian ETFs</button>
+      <button type="button" class="echip" data-p="long" aria-pressed="true">Long term</button>
+      <button type="button" class="echip" data-p="short" aria-pressed="false">Short term</button>
     </div>
     <div class="tm-datarow"><span class="tm-dot" id="mp-dot"></span><span id="mp-status">Open this tab to load the portfolio…</span></div>
     <div class="mp-config" id="mp-config"></div>
@@ -781,7 +780,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 
   <div class="card">
-    <h4>Ratios<span class="asof">portfolio vs benchmark</span></h4>
+    <h4>Ratios</h4>
     <div class="gtm-scroll" style="max-height:none;"><table class="mp-table" id="mp-ratios"></table></div>
   </div>
 
@@ -791,7 +790,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 
   <div class="card">
-    <h4>Returns by year and month<span class="asof">price returns</span></h4>
+    <h4>Returns by year and month</h4>
     <div class="gtm-scroll" style="max-height:none;"><table class="mp-table" id="mp-years"></table></div>
     <div class="mp-sub" style="margin-top:16px;">Portfolio monthly returns</div>
     <div class="gtm-scroll" style="max-height:none;"><table class="mp-table mp-heat" id="mp-months"></table></div>
@@ -2872,7 +2871,7 @@ html[data-locked="1"]{overflow:hidden;}
 (function(){
   var $ = function(i){ return document.getElementById(i); };
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  var D = null, PID = 'stocks', CACHE = {}, CUR = 'INR', SYM = '₹', NOUN = 'Stock', loaded = false, rangeY = 0, logScale = false, valueMode = false, cMain = null, cDD = null, cInv = null, tradeLimit = 200;
+  var D = null, PID = 'long', CACHE = {}, CUR = 'INR', SYM = '₹', NOUN = 'Stock', loaded = false, rangeY = 0, logScale = false, valueMode = false, cMain = null, cDD = null, cInv = null, tradeLimit = 200;
   function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
   function rgba(hex, a){ var m = /^#?([0-9a-f]{6})$/i.exec(hex||''); if(!m) return hex; var n = parseInt(m[1],16); return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
   function ok(v){ return v!=null && isFinite(v); }
@@ -2894,44 +2893,29 @@ html[data-locked="1"]{overflow:hidden;}
 
   // ---- header, KPIs ----
   function renderTop(){
-    var c = D.config, m = D.metrics, P = m.portfolio, B = m.benchmark, T = m.trades, R = m.relative;
+    var c = D.config, m = D.metrics, P = m.portfolio, B = m.benchmark, T = m.trades, R = m.relative, bn = (c.benchmark || 'Nifty 500');
     $('mp-asof').textContent = 'as of ' + D.asof + ' close · updated ' + D.updated;
     $('mp-status').textContent = 'Backtest from ' + c.start + ' · ' + (D.trades.length) + ' closed trades · ' + D.open.length + ' open positions';
     $('mp-dot').className = 'tm-dot live';
-    $('mp-config').innerHTML = [
-      'Strategy: COT buy + relative strength, weekly COT sell',
-      'Benchmark: ' + (c.benchmark || 'Nifty 500'),
-      'Universe: ' + c.universe,
-      (c.position_pct ? 'Each buy = ' + c.position_pct + '% of portfolio value, paid from cash' + (c.max_positions ? ', max ' + c.max_positions + ' ' + NOUN.toLowerCase() + 's' : ', no cap on the number of ' + NOUN.toLowerCase() + 's') : 'Equal weight · max ' + c.max_positions + ' positions'),
-      (c.min_mcap_cr ? 'Market cap above ₹' + Math.round(c.min_mcap_cr).toLocaleString('en-IN') + ' Cr' : ''),
-      (c.stop_pct ? c.stop_pct + '% stop-loss ' + (c.stop_only_under_weekly_sell ? 'when bought under a weekly sell' : 'on every buy') : ''),
-      (c.half_positions ? 'Half positions: spare cash of 2.5% to 5% buys a half position, topped up later' : ''),
-      (c.swap ? 'Swap: no cash for a new signal sells the weakest holding if the new one leads by ' + c.swap_margin + '+ points' : ''),
-      (c.rs_exit ? 'Relative strength exit: sold at the next open when it lags the benchmark since both its swing high and swing low' + (c.rs_exit_edge ? ' (by more than ' + Math.abs(c.rs_exit_edge) + ' points)' : '') + (c.rs_exit_days > 1 ? ' for ' + c.rs_exit_days + ' closes in a row' : '') + ', even without a weekly COT sell' : ''),
-      (c.one_per_theme ? 'One holding per theme' : ''),
-      'Costs ' + c.cost_pct + '% per side',
-      'Risk-free rate ' + c.rf_pct + '%',
-      (c.capital ? 'Notional capital ' + cr(c.capital) : ''),
-      'Price returns, no dividends'
-    ].filter(Boolean).map(function(t){ return '<span class="mp-pill">'+esc(t)+'</span>'; }).join('');
+    $('mp-config').innerHTML = '';
     function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">'+k+'</div><div class="v '+(vc||'')+'">'+v+'</div><div class="d">'+sub+'</div></div>'; }
     $('mp-kpis').innerHTML =
-      tile('CAGR', pc(P.cagr), (c.benchmark||'Nifty 500')+' '+pc(B.cagr), cls(P.cagr-B.cagr)) +
-      tile('Total return', pc(P.total_return,1), (c.benchmark||'Nifty 500')+' '+pc(B.total_return,1), cls(P.total_return-B.total_return)) +
-      tile('Max drawdown', pc(P.max_drawdown,1), (c.benchmark||'Nifty 500')+' '+pc(B.max_drawdown,1), cls(P.max_drawdown-B.max_drawdown)) +
-      tile('Sharpe', n2(P.sharpe), (c.benchmark||'Nifty 500')+' '+n2(B.sharpe), cls(P.sharpe-B.sharpe)) +
-      tile('Sortino', n2(P.sortino), (c.benchmark||'Nifty 500')+' '+n2(B.sortino), cls(P.sortino-B.sortino)) +
+      tile('CAGR', pc(P.cagr), bn+' '+pc(B.cagr), cls(P.cagr-B.cagr)) +
+      tile('Total return', pc(P.total_return,1), bn+' '+pc(B.total_return,1), cls(P.total_return-B.total_return)) +
+      tile('Max drawdown', pc(P.max_drawdown,1), bn+' '+pc(B.max_drawdown,1), cls(P.max_drawdown-B.max_drawdown)) +
+      tile('Sharpe', n2(P.sharpe), bn+' '+n2(B.sharpe), cls(P.sharpe-B.sharpe)) +
+      tile('Sortino', n2(P.sortino), bn+' '+n2(B.sortino), cls(P.sortino-B.sortino)) +
       tile('Win rate', pl(T.win_rate,1), T.trades+' trades · avg hold '+Math.round(T.avg_hold_days)+' days', '') +
       tile('Profit factor', n2(T.profit_factor), 'payoff ratio '+n2(T.payoff_ratio), '') +
-      tile('Beta / Alpha', n2(R.beta)+' / '+pc(R.alpha,1), 'vs '+(c.benchmark||'Nifty 500'), cls(R.alpha)) +
-      tile('Churn ratio', ok(T.churn_ratio) ? Math.round(T.churn_ratio)+'% a year' : '—', 'portfolio turnover: smaller of buys and sells ÷ average value', '') +
-      tile(NOUN+'s held', D.open.length+' now', 'average '+n2(T.avg_positions,1)+' · most '+(T.max_positions_held||'—')+' · '+(T.stop_loss_exits||0)+' stop-loss exits', '');
+      tile('Beta / Alpha', n2(R.beta)+' / '+pc(R.alpha,1), 'vs '+bn, cls(R.alpha)) +
+      tile('Churn ratio', ok(T.churn_ratio) ? Math.round(T.churn_ratio)+'% a year' : '—', '', '') +
+      tile(NOUN+'s held', D.open.length+' now', 'average '+n2(T.avg_positions,1)+' · most '+(T.max_positions_held||'—'), '');
   }
 
   function renderPnl(){
     var G = D.pnl, el = $('mp-pnl');
     if(!G){ el.innerHTML = ''; $('mp-pnl-title').textContent = ''; return; }
-    $('mp-pnl-title').textContent = 'Profit and loss on a notional ' + cr(G.capital) + ' (realised = closed trades, unrealised = open positions at the latest close)';
+    $('mp-pnl-title').textContent = 'Profit and loss on ' + cr(G.capital);
     function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">'+k+'</div><div class="v '+(vc||'')+'">'+v+'</div><div class="d">'+sub+'</div></div>'; }
     el.innerHTML =
       tile('Total gain / loss', cr(G.total,true), pc(G.total_pct,1)+' · portfolio worth '+cr(G.current_value), cls(G.total)) +
@@ -3008,13 +2992,8 @@ html[data-locked="1"]{overflow:hidden;}
       ['Best trade', T.best_trade, null, 'p'], ['Worst trade', T.worst_trade, null, 'p'], ['Average holding (days)', T.avg_hold_days, null, 'i'],
       ['Median holding (days)', T.median_hold_days, null, 'i'], ['Longest losing streak (trades)', T.max_consecutive_losses, null, 'i'], ['Average money invested', T.avg_exposure, null, 'l0'],
       ['Churn ratio (annual turnover)', T.churn_ratio, null, 'l0'], ['Money bought per year (% of average value)', T.bought_total_pct, null, 'l0'],
-      [NOUN+'s held: average', T.avg_positions, null, 'n1'], [NOUN+'s held: most at one time', T.max_positions_held, null, 'i'], ['Exits by stop-loss', T.stop_loss_exits, null, 'i'],
-      ['Exits by swapping out the weakest holding', T.swap_exits, null, 'i'], ['Half positions bought', T.partial_buys, null, 'i'], ['Top-ups of half positions', T.topups, null, 'i'],
-      ['Buy signals skipped: no cash left', T.cash_skips, null, 'i']
+      [NOUN+'s held: average', T.avg_positions, null, 'n1'], [NOUN+'s held: most at one time', T.max_positions_held, null, 'i']
     ];
-    if(D.config.max_positions) rows.push(['Buy signals skipped: portfolio full (' + D.config.max_positions + ' holdings)', T.slot_skips, null, 'i']);
-    if(D.config.one_per_theme) rows.push(['Buy signals skipped: theme already held', T.theme_skips, null, 'i']);
-    if(D.config.rs_exit) rows.splice(rows.findIndex(function(r){ return r[0] === 'Exits by swapping out the weakest holding'; }), 0, ['Exits by relative strength (lagging on both sides)', T.rs_exits, null, 'i']);
     function f(v,k){ if(v==null) return '—'; if(k==='p') return '<span class="'+cls(v)+'">'+pc(v)+'</span>'; if(k==='l') return pl(v,1); if(k==='l0') return pl(v,0); if(k==='n') return n2(v); if(k==='n1') return n2(v,1); if(k==='i') return Math.round(v).toLocaleString('en-IN'); return esc(v); }
     var html = '<thead><tr><th class="l">Metric</th><th>Model portfolio</th><th>'+esc(name)+'</th></tr></thead><tbody>';
     rows.forEach(function(r){ html += r.length===1 ? '<tr class="grp"><td colspan="3">'+r[0]+'</td></tr>' : '<tr><td class="l">'+r[0]+'</td><td>'+f(r[1],r[3])+'</td><td>'+f(r[2],r[3])+'</td></tr>'; });
@@ -3022,7 +3001,7 @@ html[data-locked="1"]{overflow:hidden;}
   }
 
   function renderVariants(){
-    var V = D.variants || [], card = $('mp-variants-card');
+    var V = [], card = $('mp-variants-card');
     if(!V.length){ card.style.display = 'none'; return; }
     card.style.display = '';
     var anyRs = V.some(function(v){ return v.rs_exit; });
@@ -3077,35 +3056,30 @@ html[data-locked="1"]{overflow:hidden;}
 
   // ---- live portfolio ----
   function renderLive(){
-    var o = D.open, G = D.pnl, avg = o.length ? o.reduce(function(a,b){ return a+b.r; },0)/o.length : 0, capK = (D.config.capital || 1e7)/100;
-    var pctPos = D.config.position_pct, valueNow = D.pf[D.pf.length-1]*capK, oneBuy = pctPos ? valueNow*pctPos/100 : null;
-    var canFund = (oneBuy && G) ? Math.floor(G.cash/oneBuy + 1e-9) : null;
-    var slots = D.config.max_positions ? Math.max(0, D.config.max_positions - o.length) : null;       // free places when the portfolio has a cap
-    if(slots != null) canFund = canFund == null ? slots : Math.min(canFund, slots);
+    var o = D.open, G = D.pnl, avg = o.length ? o.reduce(function(a,b){ return a+b.r; },0)/o.length : 0;
     $('mp-live-asof').textContent = 'close of ' + D.asof;
     $('mp-live-sum').innerHTML = '<span>'+NOUN+'s held <b>'+o.length+'</b></span><span>Invested value <b>'+(G?cr(G.invested):'—')+'</b></span><span>Current value of holdings <b>'+(G?cr(G.market_value):'—')+'</b></span>' +
       '<span>Cash <b>'+(G?cr(G.cash):'—')+' ('+pl(D.cash_pct,1)+')</b></span><span>Average return since entry <b class="'+cls(avg)+'">'+pc(avg,1)+'</b></span>' +
       '<span>Selling at the next open <b>'+o.filter(function(x){ return x.exit_next; }).length+'</b></span>';
-    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>CMP</th><th>Return</th><th>Invested value</th><th>Current value</th><th>Unrealised gain / loss</th><th>Weight</th><th>Stop-loss</th><th>Days held</th><th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Weekly COT</th></tr></thead><tbody>';
+    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>CMP</th><th>Return</th><th>Invested value</th><th>Current value</th><th>Unrealised gain / loss</th><th>Weight</th><th>Stop-loss</th><th>Days held</th><th>COT buy level</th><th>Weekly COT</th></tr></thead><tbody>';
     o.forEach(function(x){
-      html += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.exit_next?'<span class="mp-badge">'+(x.exit_why==='rs'?'RS EXIT':'SELL')+' NEXT OPEN</span>':'')+(x.half?'<span class="mp-pill" style="margin-left:6px">half position</span>':'')+'<span class="nm">'+esc(x.n)+(x.th?' · theme: '+esc(x.th):'')+'</span></td><td>'+dshort(x.ed)+'</td><td>'+SYM+inr(x.ep)+'</td><td>'+SYM+inr(x.cmp)+'</td><td class="'+cls(x.r)+'">'+pc(x.r)+'</td>' +
+      html += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.exit_next?'<span class="mp-badge">SELL NEXT OPEN</span>':'')+'<span class="nm">'+esc(x.n)+'</span></td><td>'+dshort(x.ed)+'</td><td>'+SYM+inr(x.ep)+'</td><td>'+SYM+inr(x.cmp)+'</td><td class="'+cls(x.r)+'">'+pc(x.r)+'</td>' +
         '<td>'+(x.cost!=null?cr(x.cost):'—')+'</td><td>'+(x.val!=null?cr(x.val):'—')+'</td><td class="'+cls(x.pnl)+'">'+rs0(x.pnl)+'</td><td>'+pl(x.w,1)+'</td>' +
-        '<td'+(x.uws?' title="Bought while the weekly COT was already bearish"':'')+'>'+(x.stop!=null?SYM+inr(x.stop):'—')+'</td><td>'+x.h+'</td><td>'+SYM+inr(x.lvl)+'</td><td class="'+cls(x.exH)+'">'+(x.exH==null?'—':sg(x.exH,1)+' pts')+'</td><td class="'+cls(x.exL)+'">'+(x.exL==null?'—':sg(x.exL,1)+' pts')+'</td><td class="'+(x.wk==='UP'?'up':x.wk==='DOWN'?'down':'')+'">'+x.wk+'</td></tr>';
+        '<td>'+(x.stop!=null?SYM+inr(x.stop):'—')+'</td><td>'+x.h+'</td><td>'+SYM+inr(x.lvl)+'</td><td class="'+(x.wk==='UP'?'up':x.wk==='DOWN'?'down':'')+'">'+x.wk+'</td></tr>';
     });
-    if(!o.length) html += '<tr><td colspan="15" class="l" style="color:var(--muted);">No open positions.</td></tr>';
+    if(!o.length) html += '<tr><td colspan="13" class="l" style="color:var(--muted);">No open positions.</td></tr>';
     else if(o[0].cost != null){
       var tc = o.reduce(function(a,b){ return a+b.cost; },0), tv = o.reduce(function(a,b){ return a+b.val; },0), tp = o.reduce(function(a,b){ return a+b.pnl; },0), tw = o.reduce(function(a,b){ return a+b.w; },0);
-      html += '<tr class="tot"><td class="l">Total</td><td></td><td></td><td></td><td class="'+cls(tp)+'">'+pc(tc ? tp/tc*100 : null)+'</td><td>'+cr(tc)+'</td><td>'+cr(tv)+'</td><td class="'+cls(tp)+'">'+rs0(tp)+'</td><td>'+pl(tw,1)+'</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+      html += '<tr class="tot"><td class="l">Total</td><td></td><td></td><td></td><td class="'+cls(tp)+'">'+pc(tc ? tp/tc*100 : null)+'</td><td>'+cr(tc)+'</td><td>'+cr(tv)+'</td><td class="'+cls(tp)+'">'+rs0(tp)+'</td><td>'+pl(tw,1)+'</td><td></td><td></td><td></td><td></td></tr>';
     }
     $('mp-open').innerHTML = html + '</tbody>';
     var sig = D.signals || [];
-    $('mp-sig-note').textContent = sig.length ? (canFund != null ? '· room for ' + canFund + ' new buy' + (canFund===1?'':'s') + ' of ' + cr(oneBuy) + ' (' + pctPos + '% of portfolio value) each' + (slots != null ? ' · ' + o.length + ' of ' + D.config.max_positions + ' places used' : '') + ', strongest relative strength first' : '· strongest relative strength first') : '';
-    var showCap = sig.some(function(x){ return x.mcap != null; });
-    var h2 = '<thead><tr><th class="l">'+NOUN+'</th>'+(showCap?'<th>Market cap</th>':'')+'<th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Stop-loss</th></tr></thead><tbody>';
-    sig.forEach(function(x,i){
-      h2 += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.theme_held?'<span class="mp-pill" style="margin-left:6px">theme already held</span>':(canFund!=null && i>=canFund?'<span class="mp-pill" style="margin-left:6px">no cash left</span>':''))+'<span class="nm">'+esc(x.n)+(x.th?' · theme: '+esc(x.th):'')+'</span></td>'+(showCap?'<td>'+(x.mcap!=null?SYM+Math.round(x.mcap).toLocaleString('en-IN')+' Cr':'—')+'</td>':'')+'<td>'+SYM+inr(x.lvl)+'</td><td class="up">'+sg(x.exH,1)+' pts</td><td class="up">'+sg(x.exL,1)+' pts</td><td>'+(x.uws && D.config.stop_pct ? D.config.stop_pct+'% below the buy price (weekly COT is bearish)' : '—')+'</td></tr>';
+    $('mp-sig-note').textContent = '';
+    var h2 = '<thead><tr><th class="l">'+NOUN+'</th><th>COT buy level</th><th>Stop-loss</th></tr></thead><tbody>';
+    sig.forEach(function(x){
+      h2 += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span><span class="nm">'+esc(x.n)+'</span></td><td>'+SYM+inr(x.lvl)+'</td><td>'+(x.uws && D.config.stop_pct ? D.config.stop_pct+'% below buy' : '—')+'</td></tr>';
     });
-    if(!sig.length) h2 += '<tr><td colspan="'+(showCap?6:5)+'" class="l" style="color:var(--muted);">No new buy signals today.</td></tr>';
+    if(!sig.length) h2 += '<tr><td colspan="3" class="l" style="color:var(--muted);">No new buy signals today.</td></tr>';
     $('mp-signals').innerHTML = h2 + '</tbody>';
   }
 
@@ -3121,11 +3095,11 @@ html[data-locked="1"]{overflow:hidden;}
   }
   function renderTrades(){
     var rows = filtered(), shown = rows.slice(0, tradeLimit);
-    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>Sold</th><th>Sell price</th><th>Return</th><th>Realised gain / loss</th><th>Days</th><th>Weight at entry</th><th>Exit</th></tr></thead><tbody>';
+    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>Sold</th><th>Sell price</th><th>Return</th><th>Realised gain / loss</th><th>Days</th><th>Weight at entry</th></tr></thead><tbody>';
     shown.forEach(function(t){
-      html += '<tr><td class="l"><span class="sym">'+esc(t.s)+'</span><span class="nm">'+esc(t.n)+'</span></td><td>'+dshort(t.ed)+'</td><td>'+SYM+inr(t.ep)+'</td><td>'+dshort(t.xd)+'</td><td>'+SYM+inr(t.xp)+'</td><td class="'+cls(t.r)+'">'+pc(t.r)+'</td><td class="'+cls(t.pnl)+'">'+(t.pnl!=null?rs0(t.pnl):'—')+'</td><td>'+t.h+'</td><td>'+pl(t.w,1)+'</td><td>'+esc(t.why)+'</td></tr>';
+      html += '<tr><td class="l"><span class="sym">'+esc(t.s)+'</span><span class="nm">'+esc(t.n)+'</span></td><td>'+dshort(t.ed)+'</td><td>'+SYM+inr(t.ep)+'</td><td>'+dshort(t.xd)+'</td><td>'+SYM+inr(t.xp)+'</td><td class="'+cls(t.r)+'">'+pc(t.r)+'</td><td class="'+cls(t.pnl)+'">'+(t.pnl!=null?rs0(t.pnl):'—')+'</td><td>'+t.h+'</td><td>'+pl(t.w,1)+'</td></tr>';
     });
-    if(!shown.length) html += '<tr><td colspan="10" class="l" style="color:var(--muted);">No trades match.</td></tr>';
+    if(!shown.length) html += '<tr><td colspan="9" class="l" style="color:var(--muted);">No trades match.</td></tr>';
     $('mp-trades').innerHTML = html + '</tbody>';
     var w = rows.filter(function(t){ return t.r>0; }).length;
     var tot = rows.reduce(function(a,t){ return a + (t.pnl||0); }, 0);
@@ -3197,8 +3171,8 @@ html[data-locked="1"]{overflow:hidden;}
   var prevRedraw = window.__rhRedrawThemed;
   window.__rhRedrawThemed = function(){ if(prevRedraw) prevRedraw(); if(D) drawCharts(); };
   // first load when the tab is opened; then re-check every 15 minutes while it is on screen
-  var saved = 'stocks'; try{ saved = localStorage.getItem('rh-mp') || 'stocks'; }catch(e){}
-  if(!/^(stocks|global_etf|india_etf)$/.test(saved)) saved = 'stocks';
+  var saved = 'long'; try{ saved = localStorage.getItem('rh-mp') || 'long'; }catch(e){}
+  if(!/^(long|short)$/.test(saved)) saved = 'long';
   PID = saved;
   document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.addEventListener('click', function(){ loaded = true; load(b.dataset.p); }); });
   document.querySelectorAll('[data-panel="mp"],[data-goto="mp"]').forEach(function(b){ b.addEventListener('click', function(){ if(!loaded){ loaded = true; load(PID); } else if(D) setTimeout(drawCharts, 50); }); });

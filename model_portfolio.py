@@ -1,37 +1,32 @@
 #!/usr/bin/env python3
 """
-Model portfolios: the COT + Relative Strength strategy run as THREE separate portfolios, each compared with its own benchmark.
+Model portfolios on the Nifty 500 stocks, built with the COT + Relative Strength strategy and compared with the Nifty 500 index:
 
-  stocks      Nifty 500 stocks (INR)              benchmark Nifty 500
-  global_etf  US-listed ETFs from your list (USD) benchmark MSCI ACWI (the ACWI ETF), always; only funds with average volume above 200,000
-  india_etf   Indian-listed ETFs (INR)            benchmark Nifty 500; only funds with average volume above 5,000
+  long   Long term:  holds until the weekly COT turns bearish. No half positions, no swapping, no relative strength exit.
+  short  Short term: the same buys, but it also sells at the next open when a holding lags the Nifty 500 on BOTH sides (since the
+         benchmark's latest swing high AND swing low), uses spare cash for half positions, and swaps the weakest holding for a clearly
+         stronger new signal.
 
-Rules (the same as the Pine Script strategy "COT + Relative Strength Backtest"):
+Rules shared by both (the same as the Pine Script strategy "COT + Relative Strength Backtest"):
   BUY   when the daily Dow Theory COT turns bullish (close above the last lower high) AND
         1) relative strength: since the benchmark's latest confirmed swing high AND since its latest confirmed swing low,
-           it has gained more than the benchmark (swings known on that day only: no look-ahead)
+           the stock has gained more than the benchmark (swings known on that day only: no look-ahead)
         2) COT buy level: the level broken now is higher than the level broken by its previous COT buy signal
-        -> filled at the next day's OPEN
+        -> filled at the next day's OPEN, 5% of the portfolio value, paid from cash, no cap on the number of stocks
   SELL  when the WEEKLY COT turns bearish (weekly close below the last weekly higher low, last CLOSED week)
         -> filled at the open of the day after the first trading day of the new week (as the Pine strategy does)
-  (Optional, OFF by default: set MP_RS_EXIT=1 to also sell when the holding lags the benchmark on BOTH sides, since its swing high AND
-        swing low, without waiting for a weekly COT sell, at the next day's open.)
+  STOP  a stock bought while its WEEKLY COT is already bearish gets a 25% stop-loss from its buy price (the weekly sell cannot protect it)
+Short term only:
+  RS EXIT  lagging the benchmark on both sides at a close -> sold at the next open, even without a weekly COT sell
+  HALF     spare cash of 2.5% to 5% of the portfolio value buys a half position, topped up to 5% later (never below its buy price or while
+           its weekly COT is bearish)
+  SWAP     no cash for a new signal: the weakest holding is sold if the new signal leads it by at least 10 points (holding at least 30 days
+           old, at most one swap every 5 trading days)
+Costs are charged on both sides. Prices are split-adjusted, not dividend-adjusted (price returns, like a TradingView chart).
 
-Portfolio: every new position is POSITION_PCT % of the portfolio value on the day it is bought, paid from cash. Stocks: 5% each and no cap
-(the cash decides). The two ETF portfolios: at most 10 holdings of 10% each. Costs are charged on both sides.
-  - Stop-loss: a holding bought while its WEEKLY COT is already bearish gets a STOP_PCT % (25%) stop-loss from its buy price.
-  - Half positions (OFF by default, MP_HALF_POSITIONS=1 turns it on): when the cash left is between 2.5% and 5% of the portfolio value, a half position is bought and topped up to 5% later
-    (never while it is below its buy price or while its weekly COT is bearish).
-  - Swap (OFF by default, MP_SWAP=1 turns it on): when there is no cash for a new signal, the weakest holding is sold if the new signal's relative strength leads it by at least
-    SWAP_MARGIN points (holding at least SWAP_MIN_DAYS old, at most one swap every SWAP_GAP_DAYS trading days).
-  - One holding per theme (the two ETF portfolios): funds that track the same index family count as one theme, so overlapping funds
-    do not fill the portfolio with the same bet. The strongest signal of a theme is bought first.
-If more signals appear than the cash can fund, the ones that beat the benchmark by the most are taken first.
-Prices are split-adjusted, not dividend-adjusted (price returns, like a TradingView chart).
-
-Usage:  python model_portfolio.py                    (all three)     python model_portfolio.py stocks india_etf
-Writes data/mp_stocks.json, data/mp_global_etf.json, data/mp_india_etf.json (read by the Model Portfolio tab of index.html).
-NOTE: stocks use TODAY's Nifty 500 members and ETFs use today's lists for the whole history (survivorship bias).
+Usage:  python model_portfolio.py                 (both)       python model_portfolio.py long
+Writes data/mp_long.json and data/mp_short.json (read by the Model Portfolio tab of index.html).
+NOTE: uses TODAY's Nifty 500 members for the whole history (survivorship bias).
 """
 import csv, json, math, os, re, sys, time
 from datetime import datetime, timezone, timedelta
@@ -608,12 +603,14 @@ def download(tickers, start, chunk=100):
 FULL_TOL = 0.97                  # cash within 3% of the target size buys a full position
 
 PORTFOLIOS = {
-    # one benchmark each, with NO silent fallback to another index: if it cannot be downloaded the portfolio is not built and the log says so
-    "stocks":     dict(label="Stocks (Nifty 500)", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], one_per_theme=False),
-    "global_etf": dict(label="Global ETFs (US-listed)", noun="ETF", currency="USD", capital=1e6, bench=["ACWI"], one_per_theme=True, min_vol=200000, position_pct=10.0, max_positions=10),
-    "india_etf":  dict(label="Indian ETFs", noun="ETF", currency="INR", capital=1e7, bench=["^CRSLDX"], one_per_theme=True, min_vol=5000, position_pct=10.0, max_positions=10),
+    "long": dict(label="Long term", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], universe="nifty500", one_per_theme=False,
+                 description="Long term: buys on a COT signal with relative strength, and holds until the weekly COT turns bearish",
+                 rules=dict(half_positions=False, swap=False, rs_exit=False)),
+    "short": dict(label="Short term", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], universe="nifty500", one_per_theme=False,
+                  description="Short term: also sells at the next open when the stock lags the Nifty 500 since both its swing high and swing low; spare cash buys half positions and the weakest holding is swapped for a clearly stronger signal",
+                  rules=dict(half_positions=True, swap=True, rs_exit=True)),
 }
-BENCH_NAMES = {"^CRSLDX": "Nifty 500", "ACWI": "MSCI ACWI (ACWI ETF)"}
+BENCH_NAMES = {"^CRSLDX": "Nifty 500"}
 OUT_DIR = os.environ.get("MP_OUT_DIR", "data")
 VARIANTS = [("Neither cash rule", dict(half_positions=False, swap=False)),
             ("Half positions only", dict(half_positions=True, swap=False)),
@@ -626,13 +623,13 @@ def cfg_for(pid):
     meta = PORTFOLIOS[pid]
     c = dict(CFG)
     c["capital"] = float(os.environ["MP_CAPITAL"]) if "MP_CAPITAL" in os.environ else meta["capital"]
-    c["one_per_theme"] = (os.environ["MP_ONE_PER_THEME"] != "0") if "MP_ONE_PER_THEME" in os.environ else meta["one_per_theme"]
-    if "MP_POSITION_PCT" not in os.environ and "position_pct" in meta:
-        c["position_pct"] = meta["position_pct"]              # ETFs: each holding 10% of the portfolio
-    if "MP_MAX_POSITIONS" not in os.environ and "max_positions" in meta:
-        c["max_positions"] = meta["max_positions"]            # ETFs: at most 10 holdings
-    if pid != "stocks":
-        c["min_mcap_cr"] = 0
+    c["one_per_theme"] = False
+    # the rules of each portfolio (an MP_* setting in the workflow overrides them for both)
+    rules = dict(meta["rules"])
+    for key, env in (("half_positions", "MP_HALF_POSITIONS"), ("swap", "MP_SWAP"), ("rs_exit", "MP_RS_EXIT")):
+        if env in os.environ:
+            rules[key] = os.environ[env] == "1"
+    c.update(rules)
     return c
 
 
@@ -805,39 +802,14 @@ def load_shares(symbols, max_age_days=30):
     return out
 
 
-def page_list(var_name):
-    """The ETF lists live inside index.html (GLOBAL_ETFS and TREE)."""
-    text = open("index.html", encoding="utf-8").read()
-    m = re.search(r"var\s+%s\s*=\s*(\[.*?\]);\s*\n" % var_name, text, re.S)
-    if not m:
-        raise RuntimeError("could not find %s inside index.html" % var_name)
-    return json.loads(m.group(1))
-
-
-def build_universe(pid):
-    """(yahoo ticker, symbol, name, theme) for every fund / stock of one portfolio."""
-    meta = PORTFOLIOS[pid]
-    out = []
-    if pid == "stocks":
-        for sym, name in load_members():
-            out.append((sym + ".NS", sym, name, None))
-    elif pid == "india_etf":
-        for a in page_list("TREE"):
-            t = str(a.get("t", "")).strip().upper()
-            if t and a.get("vol", 0) >= meta["min_vol"]:
-                nm = a.get("sub") or t
-                out.append((t + ".NS", t, nm, theme_of(nm)))
-    elif pid == "global_etf":
-        for a in page_list("GLOBAL_ETFS"):
-            t = str(a.get("t", "")).strip()
-            if not t or "." in t or a.get("vol", 0) < meta["min_vol"]:          # US-listed (USD) funds only: no exchange suffix
-                continue
-            out.append((t, t, a.get("n", t), theme_of(a.get("bench") or a.get("n") or t)))
+def build_universe():
+    """(yahoo ticker, symbol, name, theme) for every Nifty 500 stock."""
     seen, res = set(), []
-    for u in out:
-        if u[0] not in seen:
-            seen.add(u[0])
-            res.append(u)
+    for sym, name in load_members():
+        yt = sym + ".NS"
+        if yt not in seen:
+            seen.add(yt)
+            res.append((yt, sym, name, None))
     return res
 
 
@@ -860,46 +832,45 @@ def get_benchmark(tickers, cache):
     raise RuntimeError("could not download a benchmark index (%s)" % ", ".join(tickers))
 
 
-def build_one(pid, bench_cache):
+def build_one(pid, bench_cache, frames_cache):
     meta, cfg = PORTFOLIOS[pid], cfg_for(pid)
     print(f"\n===== {meta['label']} =====", flush=True)
     bench, bname = get_benchmark(meta["bench"], bench_cache)
-    uni = build_universe(pid)
-    print("Universe:", len(uni), meta["noun"].lower() + "s")
-    frames_y = download([u[0] for u in uni], CFG["warmup"])
-    names, themes, frames = {}, {}, {}
-    for yt, sym, nm, th in uni:
-        if yt in frames_y:
-            frames[sym], names[sym], themes[sym] = frames_y[yt], nm, th
-    if len(frames) < (50 if pid == "stocks" else 15):
-        raise RuntimeError("too little price data came back (%d)" % len(frames))
-    shares = load_shares(list(frames)) if (pid == "stocks" and cfg["min_mcap_cr"] > 0) else {}
-    if pid == "stocks":
-        universe_text = f"today's Nifty 500 members ({len(frames)} stocks checked), past index changes not reflected"
-    elif pid == "india_etf":
-        universe_text = f"Indian-listed ETFs from your list with average volume above {meta['min_vol']:,} ({len(frames)} funds), one holding per theme"
-    else:
-        universe_text = f"US-listed ETFs (USD) from your list with average volume above {meta['min_vol']:,} shares ({len(frames)} funds), one holding per theme"
-    payload = run(frames, names, bench, cfg, shares, themes, dict(meta, universe=universe_text))
+    if meta["universe"] not in frames_cache:                       # both portfolios use the same stocks: download them once
+        uni = build_universe()
+        print("Universe:", len(uni), "stocks")
+        frames_y = download([u[0] for u in uni], CFG["warmup"])
+        names, frames = {}, {}
+        for yt, sym, nm, th in uni:
+            if yt in frames_y:
+                frames[sym], names[sym] = frames_y[yt], nm
+        if len(frames) < 50:
+            raise RuntimeError("too little price data came back (%d)" % len(frames))
+        frames_cache[meta["universe"]] = (frames, names)
+    frames, names = frames_cache[meta["universe"]]
+    shares = load_shares(list(frames)) if cfg["min_mcap_cr"] > 0 else {}
+    universe_text = f"today's Nifty 500 members ({len(frames)} stocks checked), past index changes not reflected"
+    payload = run(frames, names, bench, cfg, shares, None, dict(meta, universe=universe_text))
     payload["config"]["benchmark"] = bname
+    payload["config"]["description"] = meta["description"]
     path = os.path.join(OUT_DIR, f"mp_{pid}.json")
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(path, "w") as f:
         json.dump(payload, f, separators=(",", ":"))
     m = payload["metrics"]
     print(f"Done {meta['label']}: {len(payload['trades'])} closed trades, {len(payload['open'])} open | CAGR {m['portfolio']['cagr']}% vs {m['benchmark']['cagr']}% "
-          f"| max DD {m['portfolio']['max_drawdown']}% | churn {m['trades']['churn_ratio']:.0f}% a year | swaps {m['trades']['swaps']} | half positions {m['trades']['partial_buys']} "
-          f"| size {os.path.getsize(path) // 1024} KB")
+          f"| max DD {m['portfolio']['max_drawdown']}% | churn {m['trades']['churn_ratio']:.0f}% a year | RS exits {m['trades']['rs_exits']} | swaps {m['trades']['swaps']} "
+          f"| half positions {m['trades']['partial_buys']} | size {os.path.getsize(path) // 1024} KB")
 
 
 def main(argv=None):
     if yf is None:
         raise SystemExit("yfinance is not installed")
     pids = [a for a in (argv if argv is not None else sys.argv[1:]) if a in PORTFOLIOS] or list(PORTFOLIOS)
-    cache, failed = {}, []
+    bench_cache, frames_cache, failed = {}, {}, []
     for pid in pids:
         try:
-            build_one(pid, cache)
+            build_one(pid, bench_cache, frames_cache)
         except Exception as e:
             failed.append(pid)
             print(f"!! {PORTFOLIOS[pid]['label']} failed: {type(e).__name__}: {e}")
