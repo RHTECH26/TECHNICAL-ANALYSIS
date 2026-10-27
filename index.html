@@ -750,9 +750,16 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 <section class="panel" id="panel-mp">
   <div class="card">
     <h4>Model Portfolio — COT + Relative Strength<span class="asof" id="mp-asof"></span></h4>
+    <div class="mp-seg" id="mp-switch" style="margin:10px 0 2px;">
+      <button type="button" class="echip" data-p="stocks" aria-pressed="true">Stocks (Nifty 500)</button>
+      <button type="button" class="echip" data-p="global_etf" aria-pressed="false">Global ETFs (US)</button>
+      <button type="button" class="echip" data-p="india_etf" aria-pressed="false">Indian ETFs</button>
+    </div>
     <div class="tm-datarow"><span class="tm-dot" id="mp-dot"></span><span id="mp-status">Open this tab to load the portfolio…</span></div>
     <div class="mp-config" id="mp-config"></div>
     <div class="tilerow" id="mp-kpis"></div>
+    <div class="mp-sub" id="mp-pnl-title" style="margin-top:18px;"></div>
+    <div class="tilerow" id="mp-pnl"></div>
     <div class="mp-bar">
       <div class="mp-seg" id="mp-range">
         <button type="button" class="echip" data-r="1" aria-pressed="false">1Y</button>
@@ -760,16 +767,27 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <button type="button" class="echip" data-r="5" aria-pressed="false">5Y</button>
         <button type="button" class="echip" data-r="0" aria-pressed="true">Since 2015</button>
       </div>
-      <button type="button" class="echip" id="mp-log" aria-pressed="false">Log scale</button>
+      <div class="mp-seg">
+        <button type="button" class="echip" id="mp-mode-idx" aria-pressed="true">Indexed to 100</button>
+        <button type="button" class="echip" id="mp-mode-val" aria-pressed="false">Portfolio value (₹)</button>
+        <button type="button" class="echip" id="mp-log" aria-pressed="false">Log scale</button>
+      </div>
     </div>
     <div class="chart-box" style="height:360px; position:relative;"><canvas id="mp-chart"></canvas></div>
     <div class="mp-sub">Drawdown from the previous peak</div>
     <div class="chart-box" style="height:150px; position:relative;"><canvas id="mp-dd"></canvas></div>
+    <div class="mp-sub">Money invested in stocks and cash</div>
+    <div class="chart-box" style="height:170px; position:relative;"><canvas id="mp-inv"></canvas></div>
   </div>
 
   <div class="card">
     <h4>Ratios<span class="asof">portfolio vs benchmark</span></h4>
     <div class="gtm-scroll" style="max-height:none;"><table class="mp-table" id="mp-ratios"></table></div>
+  </div>
+
+  <div class="card" id="mp-variants-card">
+    <h4>Effect of the cash-use rules and the relative strength exit<span class="asof">the same strategy with the rules on and off</span></h4>
+    <div class="gtm-scroll" style="max-height:none;"><table class="mp-table" id="mp-variants"></table></div>
   </div>
 
   <div class="card">
@@ -791,7 +809,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <div class="card">
     <h4>Historical trades<span class="asof" id="mp-trades-count"></span></h4>
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-      <input type="text" id="mp-search" class="gtm-search-input" placeholder="Search by symbol or company…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <input type="text" id="mp-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
       <select id="mp-result" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All trades</option><option value="w">Winners</option><option value="l">Losers</option></select>
       <select id="mp-year" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="">All years</option></select>
       <button type="button" class="echip" id="mp-csv" style="white-space:nowrap;">⬇ Trades (CSV)</button>
@@ -2632,9 +2650,12 @@ html[data-locked="1"]{overflow:hidden;}
 .mp-live-sum{display:flex; flex-wrap:wrap; gap:18px; margin:6px 0 12px; font-size:13px; color:var(--ink-soft);}
 .mp-live-sum b{color:var(--ink); font-variant-numeric:tabular-nums;}
 .mp-badge{display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.06em; padding:2px 7px; border-radius:99px; background:var(--bad); color:#fff; margin-left:6px;}
-#mp-kpis{grid-template-columns:repeat(4,minmax(0,1fr)); margin-top:4px;}
-@media (min-width:1700px){ #mp-kpis{grid-template-columns:repeat(8,minmax(0,1fr));} }
+#mp-kpis{grid-template-columns:repeat(5,minmax(0,1fr)); margin-top:4px;}
+@media (min-width:1700px){ #mp-kpis{grid-template-columns:repeat(10,minmax(0,1fr));} }
 @media (max-width:720px){ #mp-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .mp-table td, .mp-table th{padding:7px 8px;} }
+#mp-pnl{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:720px){ #mp-pnl{grid-template-columns:repeat(2,minmax(0,1fr));} }
+.mp-table tr.tot td{background:var(--surface-2); font-weight:700; border-top:1px solid var(--line-strong);}
 </style>
 
 <script>
@@ -2851,7 +2872,7 @@ html[data-locked="1"]{overflow:hidden;}
 (function(){
   var $ = function(i){ return document.getElementById(i); };
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  var D = null, loaded = false, rangeY = 0, logScale = false, cMain = null, cDD = null, tradeLimit = 200;
+  var D = null, PID = 'stocks', CACHE = {}, CUR = 'INR', SYM = '₹', NOUN = 'Stock', loaded = false, rangeY = 0, logScale = false, valueMode = false, cMain = null, cDD = null, cInv = null, tradeLimit = 200;
   function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
   function rgba(hex, a){ var m = /^#?([0-9a-f]{6})$/i.exec(hex||''); if(!m) return hex; var n = parseInt(m[1],16); return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
   function ok(v){ return v!=null && isFinite(v); }
@@ -2860,7 +2881,15 @@ html[data-locked="1"]{overflow:hidden;}
   function pl(v,d){ return ok(v) ? Math.abs(v).toFixed(d==null?2:d)+'%' : '—'; }
   function n2(v,d){ return ok(v) ? v.toFixed(d==null?2:d) : '—'; }
   function cls(v){ return !ok(v)?'':v>0?'up':v<0?'down':''; }
-  function inr(v){ return Number(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function inr(v){ return Number(v).toLocaleString(CUR==='USD'?'en-US':'en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function cr(v, signed){            // money in the portfolio's currency: crore / lakh for rupees, K / M / B for dollars
+    if(!ok(v)) return '—';
+    var a = Math.abs(v), t;
+    if(CUR === 'USD') t = a >= 1e9 ? (a/1e9).toFixed(2)+' B' : a >= 1e6 ? (a/1e6).toFixed(2)+' M' : a >= 1e3 ? (a/1e3).toFixed(1)+' K' : Math.round(a).toLocaleString('en-US');
+    else t = a >= 1e7 ? (a/1e7).toFixed(2)+' Cr' : a >= 1e5 ? (a/1e5).toFixed(2)+' L' : Math.round(a).toLocaleString('en-IN');
+    return (signed ? (v>0?'+':v<0?'−':'') : (v<0?'−':'')) + SYM + t;
+  }
+  function rs0(v){ if(!ok(v)) return '—'; return (v>0?'+':v<0?'−':'') + SYM + Math.abs(Math.round(v)).toLocaleString(CUR==='USD'?'en-US':'en-IN'); }
   function dshort(d){ return new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}); }
 
   // ---- header, KPIs ----
@@ -2873,11 +2902,18 @@ html[data-locked="1"]{overflow:hidden;}
       'Strategy: COT buy + relative strength, weekly COT sell',
       'Benchmark: ' + (c.benchmark || 'Nifty 500'),
       'Universe: ' + c.universe,
-      'Equal weight · max ' + c.max_positions + ' positions',
+      (c.position_pct ? 'Each buy = ' + c.position_pct + '% of portfolio value, paid from cash' + (c.max_positions ? ', max ' + c.max_positions + ' ' + NOUN.toLowerCase() + 's' : ', no cap on the number of ' + NOUN.toLowerCase() + 's') : 'Equal weight · max ' + c.max_positions + ' positions'),
+      (c.min_mcap_cr ? 'Market cap above ₹' + Math.round(c.min_mcap_cr).toLocaleString('en-IN') + ' Cr' : ''),
+      (c.stop_pct ? c.stop_pct + '% stop-loss ' + (c.stop_only_under_weekly_sell ? 'when bought under a weekly sell' : 'on every buy') : ''),
+      (c.half_positions ? 'Half positions: spare cash of 2.5% to 5% buys a half position, topped up later' : ''),
+      (c.swap ? 'Swap: no cash for a new signal sells the weakest holding if the new one leads by ' + c.swap_margin + '+ points' : ''),
+      (c.rs_exit ? 'Relative strength exit: sold at the next open when it lags the benchmark since both its swing high and swing low' + (c.rs_exit_edge ? ' (by more than ' + Math.abs(c.rs_exit_edge) + ' points)' : '') + (c.rs_exit_days > 1 ? ' for ' + c.rs_exit_days + ' closes in a row' : '') + ', even without a weekly COT sell' : ''),
+      (c.one_per_theme ? 'One holding per theme' : ''),
       'Costs ' + c.cost_pct + '% per side',
       'Risk-free rate ' + c.rf_pct + '%',
+      (c.capital ? 'Notional capital ' + cr(c.capital) : ''),
       'Price returns, no dividends'
-    ].map(function(t){ return '<span class="mp-pill">'+esc(t)+'</span>'; }).join('');
+    ].filter(Boolean).map(function(t){ return '<span class="mp-pill">'+esc(t)+'</span>'; }).join('');
     function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">'+k+'</div><div class="v '+(vc||'')+'">'+v+'</div><div class="d">'+sub+'</div></div>'; }
     $('mp-kpis').innerHTML =
       tile('CAGR', pc(P.cagr), (c.benchmark||'Nifty 500')+' '+pc(B.cagr), cls(P.cagr-B.cagr)) +
@@ -2887,7 +2923,21 @@ html[data-locked="1"]{overflow:hidden;}
       tile('Sortino', n2(P.sortino), (c.benchmark||'Nifty 500')+' '+n2(B.sortino), cls(P.sortino-B.sortino)) +
       tile('Win rate', pl(T.win_rate,1), T.trades+' trades · avg hold '+Math.round(T.avg_hold_days)+' days', '') +
       tile('Profit factor', n2(T.profit_factor), 'payoff ratio '+n2(T.payoff_ratio), '') +
-      tile('Beta / Alpha', n2(R.beta)+' / '+pc(R.alpha,1), 'vs '+(c.benchmark||'Nifty 500'), cls(R.alpha));
+      tile('Beta / Alpha', n2(R.beta)+' / '+pc(R.alpha,1), 'vs '+(c.benchmark||'Nifty 500'), cls(R.alpha)) +
+      tile('Churn ratio', ok(T.churn_ratio) ? Math.round(T.churn_ratio)+'% a year' : '—', 'portfolio turnover: smaller of buys and sells ÷ average value', '') +
+      tile(NOUN+'s held', D.open.length+' now', 'average '+n2(T.avg_positions,1)+' · most '+(T.max_positions_held||'—')+' · '+(T.stop_loss_exits||0)+' stop-loss exits', '');
+  }
+
+  function renderPnl(){
+    var G = D.pnl, el = $('mp-pnl');
+    if(!G){ el.innerHTML = ''; $('mp-pnl-title').textContent = ''; return; }
+    $('mp-pnl-title').textContent = 'Profit and loss on a notional ' + cr(G.capital) + ' (realised = closed trades, unrealised = open positions at the latest close)';
+    function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">'+k+'</div><div class="v '+(vc||'')+'">'+v+'</div><div class="d">'+sub+'</div></div>'; }
+    el.innerHTML =
+      tile('Total gain / loss', cr(G.total,true), pc(G.total_pct,1)+' · portfolio worth '+cr(G.current_value), cls(G.total)) +
+      tile('Realised gain / loss', cr(G.realised,true), G.realised_trades+' closed trades · profits '+cr(G.gross_profit,true)+' · losses '+cr(G.gross_loss,true), cls(G.realised)) +
+      tile('Unrealised gain / loss', cr(G.unrealised,true), G.open_positions+' open positions · '+G.unrealised_winners+' up, '+G.unrealised_losers+' down · on '+cr(G.invested)+' invested', cls(G.unrealised)) +
+      tile('Invested / cash', cr(G.market_value), 'cash '+cr(G.cash)+' ('+pl(D.cash_pct,1)+')', '');
   }
 
   // ---- charts ----
@@ -2899,21 +2949,23 @@ html[data-locked="1"]{overflow:hidden;}
   }
   function drawCharts(){
     if(!D || !window.Chart) return;
-    var i0 = startIndex(), labels = D.dates.slice(i0), p0 = D.pf[i0], b0 = D.bm[i0];
+    var i0 = startIndex(), labels = D.dates.slice(i0), p0 = D.pf[i0], b0 = D.bm[i0], capK = (D.config.capital || 10000000) / 100;
     var P = D.pf.slice(i0).map(function(v){ return v/p0*100; }), B = D.bm.slice(i0).map(function(v){ return v/b0*100; });
+    var PV = D.pf.slice(i0).map(function(v){ return v*capK; }), BV = D.bm.slice(i0).map(function(v){ return v*capK; });
     var ink = css('--ink-soft'), mut = css('--muted'), line = css('--line'), sf = css('--saffron'), bad = css('--bad');
     var benchName = (D.config.benchmark || 'Nifty 500');
-    if(cMain) cMain.destroy(); if(cDD) cDD.destroy();
+    if(cMain) cMain.destroy(); if(cDD) cDD.destroy(); if(cInv) cInv.destroy();
+    var crAxis = function(v){ return CUR === 'USD' ? (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v) : (v >= 1e7 ? (v/1e7).toFixed(1)+' Cr' : v >= 1e5 ? (v/1e5).toFixed(0)+' L' : v); };
     var xTicks = { color: mut, maxTicksLimit: 8, autoSkip: true, callback: function(v){ var l = this.getLabelForValue(v); return l ? l.slice(0,7) : ''; } };
     var common = { responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index', intersect:false},
                    plugins:{ legend:{ labels:{ color: ink, boxWidth: 12 } } } };
     cMain = new Chart($('mp-chart'), { type:'line',
       data:{ labels: labels, datasets:[
-        { label:'Model portfolio', data:P, borderColor:sf, backgroundColor:sf, borderWidth:2, pointRadius:0, tension:0 },
-        { label:benchName, data:B, borderColor:mut, backgroundColor:mut, borderWidth:1.5, pointRadius:0, tension:0 } ] },
+        { label: valueMode ? 'Model portfolio value' : 'Model portfolio', data: valueMode ? PV : P, borderColor:sf, backgroundColor:sf, borderWidth:2, pointRadius:0, tension:0 },
+        { label: valueMode ? benchName + ' (same money, no trading)' : benchName, data: valueMode ? BV : B, borderColor:mut, backgroundColor:mut, borderWidth:1.5, pointRadius:0, tension:0 } ] },
       options: Object.assign({}, common, {
-        plugins:{ legend: common.plugins.legend, tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+c.parsed.y.toFixed(1); } } } },
-        scales:{ x:{ ticks:xTicks, grid:{ color: line } }, y:{ type: logScale ? 'logarithmic' : 'linear', ticks:{ color: mut }, grid:{ color: line } } } }) });
+        plugins:{ legend: common.plugins.legend, tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+(valueMode ? cr(c.parsed.y) : c.parsed.y.toFixed(1)); } } } },
+        scales:{ x:{ ticks:xTicks, grid:{ color: line } }, y:{ type: logScale ? 'logarithmic' : 'linear', ticks:{ color: mut, callback: valueMode ? function(v){ return SYM+crAxis(v); } : undefined }, grid:{ color: line } } } }) });
     function dd(arr){ var peak = -1e18; return arr.map(function(v){ peak = Math.max(peak, v); return (v/peak-1)*100; }); }
     cDD = new Chart($('mp-dd'), { type:'line',
       data:{ labels: labels, datasets:[
@@ -2922,6 +2974,15 @@ html[data-locked="1"]{overflow:hidden;}
       options: Object.assign({}, common, {
         plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+c.parsed.y.toFixed(1)+'%'; } } } },
         scales:{ x:{ ticks:xTicks, grid:{ color: line } }, y:{ max:0, ticks:{ color: mut, callback:function(v){ return v+'%'; } }, grid:{ color: line } } } }) });
+    // money invested in stocks versus cash, stacked, in rupees
+    var invV = PV.map(function(v,k){ return v * (D.invested[i0+k] || 0) / 100; }), cashV = PV.map(function(v,k){ return v - invV[k]; });
+    cInv = new Chart($('mp-inv'), { type:'line',
+      data:{ labels: labels, datasets:[
+        { label:'Invested in '+NOUN.toLowerCase()+'s', data:invV, borderColor:sf, backgroundColor:rgba(sf,0.35), borderWidth:1.2, pointRadius:0, fill:true, tension:0 },
+        { label:'Cash', data:cashV, borderColor:mut, backgroundColor:rgba(mut,0.25), borderWidth:1.2, pointRadius:0, fill:true, tension:0 } ] },
+      options: Object.assign({}, common, {
+        plugins:{ legend: common.plugins.legend, tooltip:{ callbacks:{ label:function(c){ var tot = PV[c.dataIndex]; return c.dataset.label+': '+cr(c.parsed.y)+' ('+(tot ? (c.parsed.y/tot*100).toFixed(0) : 0)+'%)'; } } } },
+        scales:{ x:{ ticks:xTicks, grid:{ color: line } }, y:{ stacked:true, beginAtZero:true, ticks:{ color: mut, callback:function(v){ return SYM+crAxis(v); } }, grid:{ color: line } } } }) });
   }
 
   // ---- ratios ----
@@ -2945,12 +3006,28 @@ html[data-locked="1"]{overflow:hidden;}
       ['Number of trades', T.trades, null, 'i'], ['Win rate', T.win_rate, null, 'l'], ['Average winner', T.avg_win, null, 'p'], ['Average loser', T.avg_loss, null, 'p'],
       ['Payoff ratio (avg win / avg loss)', T.payoff_ratio, null, 'n'], ['Profit factor', T.profit_factor, null, 'n'], ['Expectancy per trade', T.expectancy, null, 'p'],
       ['Best trade', T.best_trade, null, 'p'], ['Worst trade', T.worst_trade, null, 'p'], ['Average holding (days)', T.avg_hold_days, null, 'i'],
-      ['Median holding (days)', T.median_hold_days, null, 'i'], ['Longest losing streak (trades)', T.max_consecutive_losses, null, 'i'], ['Average money invested', T.avg_exposure, null, 'l0']
+      ['Median holding (days)', T.median_hold_days, null, 'i'], ['Longest losing streak (trades)', T.max_consecutive_losses, null, 'i'], ['Average money invested', T.avg_exposure, null, 'l0'],
+      ['Churn ratio (annual turnover)', T.churn_ratio, null, 'l0'], ['Money bought per year (% of average value)', T.bought_total_pct, null, 'l0'],
+      [NOUN+'s held: average', T.avg_positions, null, 'n1'], [NOUN+'s held: most at one time', T.max_positions_held, null, 'i'], ['Exits by stop-loss', T.stop_loss_exits, null, 'i'],
+      ['Exits by relative strength (lagging on both sides)', T.rs_exits, null, 'i'], ['Exits by swapping out the weakest holding', T.swap_exits, null, 'i'], ['Half positions bought', T.partial_buys, null, 'i'], ['Top-ups of half positions', T.topups, null, 'i'],
+      ['Buy signals skipped: no cash left', T.cash_skips, null, 'i']
     ];
-    function f(v,k){ if(v==null) return '—'; if(k==='p') return '<span class="'+cls(v)+'">'+pc(v)+'</span>'; if(k==='l') return pl(v,1); if(k==='l0') return pl(v,0); if(k==='n') return n2(v); if(k==='i') return Math.round(v).toLocaleString('en-IN'); return esc(v); }
+    if(D.config.one_per_theme) rows.push(['Buy signals skipped: theme already held', T.theme_skips, null, 'i']);
+    function f(v,k){ if(v==null) return '—'; if(k==='p') return '<span class="'+cls(v)+'">'+pc(v)+'</span>'; if(k==='l') return pl(v,1); if(k==='l0') return pl(v,0); if(k==='n') return n2(v); if(k==='n1') return n2(v,1); if(k==='i') return Math.round(v).toLocaleString('en-IN'); return esc(v); }
     var html = '<thead><tr><th class="l">Metric</th><th>Model portfolio</th><th>'+esc(name)+'</th></tr></thead><tbody>';
     rows.forEach(function(r){ html += r.length===1 ? '<tr class="grp"><td colspan="3">'+r[0]+'</td></tr>' : '<tr><td class="l">'+r[0]+'</td><td>'+f(r[1],r[3])+'</td><td>'+f(r[2],r[3])+'</td></tr>'; });
     $('mp-ratios').innerHTML = html + '</tbody>';
+  }
+
+  function renderVariants(){
+    var V = D.variants || [], card = $('mp-variants-card');
+    if(!V.length){ card.style.display = 'none'; return; }
+    card.style.display = '';
+    var html = '<thead><tr><th class="l">Rules</th><th>CAGR</th><th>Max drawdown</th><th>Sharpe</th><th>Churn ratio</th><th>Trades</th><th>Relative strength exits</th><th>Swaps</th><th>Half positions</th><th>Average cash</th></tr></thead><tbody>';
+    V.forEach(function(v){
+      html += '<tr'+(v.current?' class="tot"':'')+'><td class="l">'+esc(v.label)+(v.current?' <span class="mp-pill" style="margin-left:6px">used above</span>':'')+'</td><td class="'+cls(v.cagr)+'">'+pc(v.cagr)+'</td><td>'+pc(v.max_drawdown,1)+'</td><td>'+n2(v.sharpe)+'</td><td>'+pl(v.churn,0)+'</td><td>'+v.trades+'</td><td>'+(v.rs_exit ? v.rs_exits : '—')+'</td><td>'+v.swaps+'</td><td>'+v.partial_buys+' bought, '+v.topups+' topped up</td><td>'+pl(v.avg_cash,1)+'</td></tr>';
+    });
+    $('mp-variants').innerHTML = html + '</tbody>';
   }
 
   // ---- calendar years and months ----
@@ -2964,11 +3041,15 @@ html[data-locked="1"]{overflow:hidden;}
     return {out:out, order:order};
   }
   function renderYears(){
-    var r = periodReturns(function(d){ return d.slice(0,4); }), html = '<thead><tr><th class="l">Year</th><th>Model portfolio</th><th>'+esc(D.config.benchmark||'Nifty 500')+'</th><th>Difference</th></tr></thead><tbody>';
+    var r = periodReturns(function(d){ return d.slice(0,4); }), html = '<thead><tr><th class="l">Year</th><th>Model portfolio</th><th>'+esc(D.config.benchmark||'Nifty 500')+'</th><th>Difference</th>'+(D.pnl?'<th>Realised gain / loss</th>':'')+(D.metrics.churn_by_year?'<th>Churn ratio</th>':'')+'</tr></thead><tbody>';
+    var cy = D.metrics.churn_by_year || null;
+    var ry = D.pnl ? D.pnl.realised_by_year : null, rsum = 0;
     r.order.slice().reverse().forEach(function(y,idx){
       var o = r.out[y], a = (o.endPf/o.startPf-1)*100, b = (o.endBm/o.startBm-1)*100, last = (y===r.order[r.order.length-1]);
-      html += '<tr><td class="l">'+y+(last?' (so far)':'')+'</td><td class="'+cls(a)+'">'+pc(a)+'</td><td class="'+cls(b)+'">'+pc(b)+'</td><td class="'+cls(a-b)+'">'+pc(a-b)+'</td></tr>';
+      html += '<tr><td class="l">'+y+(last?' (so far)':'')+'</td><td class="'+cls(a)+'">'+pc(a)+'</td><td class="'+cls(b)+'">'+pc(b)+'</td><td class="'+cls(a-b)+'">'+pc(a-b)+'</td>'+(ry?'<td class="'+cls(ry[y]||0)+'">'+cr(ry[y]||0,true)+'</td>':'')+(cy?'<td>'+(cy[y]==null?'—':pl(cy[y],0))+'</td>':'')+'</tr>';
+      if(ry) rsum += (ry[y]||0);
     });
+    if(ry) html += '<tr class="tot"><td class="l">All years</td><td></td><td></td><td></td><td class="'+cls(rsum)+'">'+cr(rsum,true)+'</td>'+(cy?'<td>'+pl(D.metrics.trades.churn_ratio,0)+' a year</td>':'')+'</tr>';
     $('mp-years').innerHTML = html + '</tbody>';
   }
   function renderMonths(){
@@ -2992,21 +3073,33 @@ html[data-locked="1"]{overflow:hidden;}
 
   // ---- live portfolio ----
   function renderLive(){
-    var o = D.open, n = D.config.max_positions, avg = o.length ? o.reduce(function(a,b){ return a+b.r; },0)/o.length : 0;
+    var o = D.open, G = D.pnl, avg = o.length ? o.reduce(function(a,b){ return a+b.r; },0)/o.length : 0, capK = (D.config.capital || 1e7)/100;
+    var pctPos = D.config.position_pct, valueNow = D.pf[D.pf.length-1]*capK, oneBuy = pctPos ? valueNow*pctPos/100 : null;
+    var canFund = (oneBuy && G) ? Math.floor(G.cash/oneBuy + 1e-9) : null;
     $('mp-live-asof').textContent = 'close of ' + D.asof;
-    $('mp-live-sum').innerHTML = '<span>Positions <b>'+o.length+' of '+n+'</b></span><span>Cash <b>'+pl(D.cash_pct,1)+'</b></span><span>Average return since entry <b class="'+cls(avg)+'">'+pc(avg,1)+'</b></span>' +
+    $('mp-live-sum').innerHTML = '<span>'+NOUN+'s held <b>'+o.length+'</b></span><span>Invested value <b>'+(G?cr(G.invested):'—')+'</b></span><span>Current value of holdings <b>'+(G?cr(G.market_value):'—')+'</b></span>' +
+      '<span>Cash <b>'+(G?cr(G.cash):'—')+' ('+pl(D.cash_pct,1)+')</b></span><span>Average return since entry <b class="'+cls(avg)+'">'+pc(avg,1)+'</b></span>' +
       '<span>Selling at the next open <b>'+o.filter(function(x){ return x.exit_next; }).length+'</b></span>';
-    var html = '<thead><tr><th class="l">Stock</th><th>Bought</th><th>Buy price</th><th>CMP</th><th>Return</th><th>Weight</th><th>Days held</th><th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Weekly COT</th></tr></thead><tbody>';
+    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>CMP</th><th>Return</th><th>Invested value</th><th>Current value</th><th>Unrealised gain / loss</th><th>Weight</th><th>Stop-loss</th><th>Days held</th><th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Weekly COT</th></tr></thead><tbody>';
     o.forEach(function(x){
-      html += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.exit_next?'<span class="mp-badge">SELL NEXT OPEN</span>':'')+'<span class="nm">'+esc(x.n)+'</span></td><td>'+dshort(x.ed)+'</td><td>₹'+inr(x.ep)+'</td><td>₹'+inr(x.cmp)+'</td><td class="'+cls(x.r)+'">'+pc(x.r)+'</td><td>'+pl(x.w,1)+'</td><td>'+x.h+'</td><td>₹'+inr(x.lvl)+'</td><td class="'+cls(x.exH)+'">'+(x.exH==null?'—':sg(x.exH,1)+' pts')+'</td><td class="'+cls(x.exL)+'">'+(x.exL==null?'—':sg(x.exL,1)+' pts')+'</td><td class="'+(x.wk==='UP'?'up':x.wk==='DOWN'?'down':'')+'">'+x.wk+'</td></tr>';
+      html += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.exit_next?'<span class="mp-badge">'+(x.exit_why==='rs'?'RS EXIT':'SELL')+' NEXT OPEN</span>':'')+(x.half?'<span class="mp-pill" style="margin-left:6px">half position</span>':'')+'<span class="nm">'+esc(x.n)+(x.th?' · theme: '+esc(x.th):'')+'</span></td><td>'+dshort(x.ed)+'</td><td>'+SYM+inr(x.ep)+'</td><td>'+SYM+inr(x.cmp)+'</td><td class="'+cls(x.r)+'">'+pc(x.r)+'</td>' +
+        '<td>'+(x.cost!=null?cr(x.cost):'—')+'</td><td>'+(x.val!=null?cr(x.val):'—')+'</td><td class="'+cls(x.pnl)+'">'+rs0(x.pnl)+'</td><td>'+pl(x.w,1)+'</td>' +
+        '<td'+(x.uws?' title="Bought while the weekly COT was already bearish"':'')+'>'+(x.stop!=null?SYM+inr(x.stop):'—')+'</td><td>'+x.h+'</td><td>'+SYM+inr(x.lvl)+'</td><td class="'+cls(x.exH)+'">'+(x.exH==null?'—':sg(x.exH,1)+' pts')+'</td><td class="'+cls(x.exL)+'">'+(x.exL==null?'—':sg(x.exL,1)+' pts')+'</td><td class="'+(x.wk==='UP'?'up':x.wk==='DOWN'?'down':'')+'">'+x.wk+'</td></tr>';
     });
-    if(!o.length) html += '<tr><td colspan="11" class="l" style="color:var(--muted);">No open positions.</td></tr>';
+    if(!o.length) html += '<tr><td colspan="15" class="l" style="color:var(--muted);">No open positions.</td></tr>';
+    else if(o[0].cost != null){
+      var tc = o.reduce(function(a,b){ return a+b.cost; },0), tv = o.reduce(function(a,b){ return a+b.val; },0), tp = o.reduce(function(a,b){ return a+b.pnl; },0), tw = o.reduce(function(a,b){ return a+b.w; },0);
+      html += '<tr class="tot"><td class="l">Total</td><td></td><td></td><td></td><td class="'+cls(tp)+'">'+pc(tc ? tp/tc*100 : null)+'</td><td>'+cr(tc)+'</td><td>'+cr(tv)+'</td><td class="'+cls(tp)+'">'+rs0(tp)+'</td><td>'+pl(tw,1)+'</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+    }
     $('mp-open').innerHTML = html + '</tbody>';
-    var free = Math.max(0, n - o.length), sig = D.signals || [];
-    $('mp-sig-note').textContent = sig.length ? '· '+free+' free slot'+(free===1?'':'s')+', strongest relative strength first' : '';
-    var h2 = '<thead><tr><th class="l">Stock</th><th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th></tr></thead><tbody>';
-    sig.forEach(function(x,i){ h2 += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(i>=free?'<span class="mp-pill" style="margin-left:6px">no free slot</span>':'')+'<span class="nm">'+esc(x.n)+'</span></td><td>₹'+inr(x.lvl)+'</td><td class="up">'+sg(x.exH,1)+' pts</td><td class="up">'+sg(x.exL,1)+' pts</td></tr>'; });
-    if(!sig.length) h2 += '<tr><td colspan="4" class="l" style="color:var(--muted);">No new buy signals today.</td></tr>';
+    var sig = D.signals || [];
+    $('mp-sig-note').textContent = sig.length ? (canFund != null ? '· cash can fund ' + canFund + ' new buy' + (canFund===1?'':'s') + ' of ' + cr(oneBuy) + ' (' + pctPos + '% of portfolio value) each, strongest relative strength first' : '· strongest relative strength first') : '';
+    var showCap = sig.some(function(x){ return x.mcap != null; });
+    var h2 = '<thead><tr><th class="l">'+NOUN+'</th>'+(showCap?'<th>Market cap</th>':'')+'<th>COT buy level</th><th>vs index since swing high</th><th>vs index since swing low</th><th>Stop-loss</th></tr></thead><tbody>';
+    sig.forEach(function(x,i){
+      h2 += '<tr><td class="l"><span class="sym">'+esc(x.s)+'</span>'+(x.theme_held?'<span class="mp-pill" style="margin-left:6px">theme already held</span>':(canFund!=null && i>=canFund?'<span class="mp-pill" style="margin-left:6px">no cash left</span>':''))+'<span class="nm">'+esc(x.n)+(x.th?' · theme: '+esc(x.th):'')+'</span></td>'+(showCap?'<td>'+(x.mcap!=null?SYM+Math.round(x.mcap).toLocaleString('en-IN')+' Cr':'—')+'</td>':'')+'<td>'+SYM+inr(x.lvl)+'</td><td class="up">'+sg(x.exH,1)+' pts</td><td class="up">'+sg(x.exL,1)+' pts</td><td>'+(x.uws && D.config.stop_pct ? D.config.stop_pct+'% below the buy price (weekly COT is bearish)' : '—')+'</td></tr>';
+    });
+    if(!sig.length) h2 += '<tr><td colspan="'+(showCap?6:5)+'" class="l" style="color:var(--muted);">No new buy signals today.</td></tr>';
     $('mp-signals').innerHTML = h2 + '</tbody>';
   }
 
@@ -3022,14 +3115,15 @@ html[data-locked="1"]{overflow:hidden;}
   }
   function renderTrades(){
     var rows = filtered(), shown = rows.slice(0, tradeLimit);
-    var html = '<thead><tr><th class="l">Stock</th><th>Bought</th><th>Buy price</th><th>Sold</th><th>Sell price</th><th>Return</th><th>Days</th><th>Weight at entry</th><th>Exit</th></tr></thead><tbody>';
+    var html = '<thead><tr><th class="l">'+NOUN+'</th><th>Bought</th><th>Buy price</th><th>Sold</th><th>Sell price</th><th>Return</th><th>Realised gain / loss</th><th>Days</th><th>Weight at entry</th><th>Exit</th></tr></thead><tbody>';
     shown.forEach(function(t){
-      html += '<tr><td class="l"><span class="sym">'+esc(t.s)+'</span><span class="nm">'+esc(t.n)+'</span></td><td>'+dshort(t.ed)+'</td><td>₹'+inr(t.ep)+'</td><td>'+dshort(t.xd)+'</td><td>₹'+inr(t.xp)+'</td><td class="'+cls(t.r)+'">'+pc(t.r)+'</td><td>'+t.h+'</td><td>'+pl(t.w,1)+'</td><td>'+esc(t.why)+'</td></tr>';
+      html += '<tr><td class="l"><span class="sym">'+esc(t.s)+'</span><span class="nm">'+esc(t.n)+'</span></td><td>'+dshort(t.ed)+'</td><td>'+SYM+inr(t.ep)+'</td><td>'+dshort(t.xd)+'</td><td>'+SYM+inr(t.xp)+'</td><td class="'+cls(t.r)+'">'+pc(t.r)+'</td><td class="'+cls(t.pnl)+'">'+(t.pnl!=null?rs0(t.pnl):'—')+'</td><td>'+t.h+'</td><td>'+pl(t.w,1)+'</td><td>'+esc(t.why)+'</td></tr>';
     });
-    if(!shown.length) html += '<tr><td colspan="9" class="l" style="color:var(--muted);">No trades match.</td></tr>';
+    if(!shown.length) html += '<tr><td colspan="10" class="l" style="color:var(--muted);">No trades match.</td></tr>';
     $('mp-trades').innerHTML = html + '</tbody>';
     var w = rows.filter(function(t){ return t.r>0; }).length;
-    $('mp-trades-count').textContent = rows.length + ' trades' + (rows.length ? ' · ' + (w/rows.length*100).toFixed(0) + '% winners' : '');
+    var tot = rows.reduce(function(a,t){ return a + (t.pnl||0); }, 0);
+    $('mp-trades-count').textContent = rows.length + ' trades' + (rows.length ? ' · ' + (w/rows.length*100).toFixed(0) + '% winners' + (rows[0].pnl!=null ? ' · realised ' + cr(tot,true) : '') : '');
     $('mp-more').style.display = rows.length > tradeLimit ? '' : 'none';
     $('mp-more').textContent = 'Show 200 more (' + (rows.length - tradeLimit) + ' left)';
   }
@@ -3040,12 +3134,32 @@ html[data-locked="1"]{overflow:hidden;}
     el.value = ys[cur] ? cur : '';
   }
 
-  function renderAll(){ renderTop(); drawCharts(); renderRatios(); renderYears(); renderMonths(); renderLive(); fillYears(); renderTrades(); }
-  function load(){
-    fetch('data/model_portfolio.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
-      if(D && D.updated === j.updated) return; D = j; renderAll();
+  function renderAll(){ renderTop(); renderPnl(); drawCharts(); renderRatios(); renderVariants(); renderYears(); renderMonths(); renderLive(); fillYears(); renderTrades(); }
+  function useData(j){
+    D = j; CUR = (j.config.currency || 'INR'); SYM = CUR === 'USD' ? '$' : '₹'; NOUN = j.config.noun || 'Stock';
+    $('mp-mode-val').textContent = 'Portfolio value (' + SYM + ')';
+    renderAll();
+  }
+  function clearAll(msg){
+    D = null;
+    ['mp-kpis','mp-pnl','mp-ratios','mp-variants','mp-years','mp-months','mp-open','mp-signals','mp-trades','mp-config'].forEach(function(id){ $(id).innerHTML = ''; });
+    ['mp-pnl-title','mp-live-sum','mp-trades-count','mp-live-asof','mp-sig-note'].forEach(function(id){ $(id).textContent = ''; });
+    $('mp-variants-card').style.display = 'none';
+    if(cMain){ cMain.destroy(); cMain = null; } if(cDD){ cDD.destroy(); cDD = null; } if(cInv){ cInv.destroy(); cInv = null; }
+    $('mp-status').textContent = msg; $('mp-dot').className = 'tm-dot'; $('mp-asof').textContent = '';
+  }
+  function load(pid){
+    PID = pid || PID;
+    try{ localStorage.setItem('rh-mp', PID); }catch(e){}
+    document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.p === PID ? 'true' : 'false'); });
+    var want = PID;
+    if(CACHE[want]){ if(D !== CACHE[want]) useData(CACHE[want]); }
+    else clearAll('Loading…');
+    fetch('data/mp_' + want + '.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      var old = CACHE[want]; CACHE[want] = j;
+      if(PID === want && (!old || old.updated !== j.updated || D !== j)) useData(j);
     }).catch(function(){
-      if(!D){ $('mp-status').textContent = 'data/model_portfolio.json not found — run the "Update Model Portfolio" action in GitHub (Actions tab) once.'; $('mp-dot').className = 'tm-dot'; }
+      if(PID === want && !CACHE[want]) clearAll('data/mp_' + want + '.json not found — run the "Update Model Portfolios" action in GitHub (Actions tab) once.');
     });
   }
 
@@ -3056,13 +3170,16 @@ html[data-locked="1"]{overflow:hidden;}
       b.setAttribute('aria-pressed','true'); rangeY = +b.dataset.r; drawCharts();
     });
   });
+  function setMode(v){ valueMode = v; $('mp-mode-idx').setAttribute('aria-pressed', v ? 'false' : 'true'); $('mp-mode-val').setAttribute('aria-pressed', v ? 'true' : 'false'); drawCharts(); }
+  $('mp-mode-idx').addEventListener('click', function(){ setMode(false); });
+  $('mp-mode-val').addEventListener('click', function(){ setMode(true); });
   $('mp-log').addEventListener('click', function(){ logScale = !logScale; this.setAttribute('aria-pressed', logScale ? 'true' : 'false'); drawCharts(); });
   ['mp-search','mp-result','mp-year'].forEach(function(id){ $(id).addEventListener(id==='mp-search'?'input':'change', function(){ tradeLimit = 200; if(D) renderTrades(); }); });
   $('mp-more').addEventListener('click', function(){ tradeLimit += 200; renderTrades(); });
   $('mp-csv').addEventListener('click', function(){
     if(!D) return;
-    var rows = filtered(), lines = ['Symbol,Company,Bought,Buy price,Sold,Sell price,Return %,Days,Weight at entry %,Exit'];
-    rows.forEach(function(t){ lines.push([t.s,'"'+String(t.n).replace(/"/g,'""')+'"',t.ed,t.ep,t.xd,t.xp,t.r,t.h,t.w,'"'+t.why+'"'].join(',')); });
+    var rows = filtered(), lines = ['Symbol,Company,Bought,Buy price,Sold,Sell price,Return %,Realised gain/loss (Rs),Days,Weight at entry %,Exit'];
+    rows.forEach(function(t){ lines.push([t.s,'"'+String(t.n).replace(/"/g,'""')+'"',t.ed,t.ep,t.xd,t.xp,t.r,t.pnl,t.h,t.w,'"'+t.why+'"'].join(',')); });
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/csv'})); a.download = 'model-portfolio-trades.csv'; document.body.appendChild(a); a.click(); a.remove();
   });
   $('mp-wl').addEventListener('click', function(){
@@ -3074,7 +3191,11 @@ html[data-locked="1"]{overflow:hidden;}
   var prevRedraw = window.__rhRedrawThemed;
   window.__rhRedrawThemed = function(){ if(prevRedraw) prevRedraw(); if(D) drawCharts(); };
   // first load when the tab is opened; then re-check every 15 minutes while it is on screen
-  document.querySelectorAll('[data-panel="mp"],[data-goto="mp"]').forEach(function(b){ b.addEventListener('click', function(){ if(!loaded){ loaded = true; load(); } else if(D) setTimeout(drawCharts, 50); }); });
-  setInterval(function(){ if(loaded && !document.hidden && $('panel-mp').classList.contains('active')) load(); }, 15*60*1000);
+  var saved = 'stocks'; try{ saved = localStorage.getItem('rh-mp') || 'stocks'; }catch(e){}
+  if(!/^(stocks|global_etf|india_etf)$/.test(saved)) saved = 'stocks';
+  PID = saved;
+  document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.addEventListener('click', function(){ loaded = true; load(b.dataset.p); }); });
+  document.querySelectorAll('[data-panel="mp"],[data-goto="mp"]').forEach(function(b){ b.addEventListener('click', function(){ if(!loaded){ loaded = true; load(PID); } else if(D) setTimeout(drawCharts, 50); }); });
+  setInterval(function(){ if(loaded && !document.hidden && $('panel-mp').classList.contains('active')) load(PID); }, 15*60*1000);
 })();
 </script>
