@@ -1,44 +1,59 @@
-name: Update Model Portfolio
+name: Update Model Portfolios
 
 on:
   schedule:
-    - cron: "0 13 * * 1-5"       # 6:30 PM IST, Mon-Fri (after the NSE close)
+    - cron: "0 13 * * 1-5"       # 6:30 PM IST, Mon-Fri: Stocks and Indian ETFs (after the NSE close)
+    - cron: "0 22 * * 1-5"       # 3:30 AM IST the next morning: Global ETFs (after the US close)
   workflow_dispatch:             # lets you run it manually from the Actions tab
+    inputs:
+      which:
+        description: "What to build: all, or any of stocks, global_etf, india_etf (separated by spaces)"
+        default: "all"
 
 permissions:
   contents: write
 
 # only one run at a time; a newer one waits its turn
 concurrency:
-  group: model-portfolio
+  group: model-portfolios
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45          # a run that takes longer than this is stuck, so it is stopped instead of blocking the next ones
+    timeout-minutes: 60          # a run that takes longer than this is stuck, so it is stopped instead of blocking the next ones
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install yfinance pandas numpy
-      - run: python model_portfolio.py
+      - name: Build the portfolios
+        env:
+          WHICH: ${{ github.event.inputs.which }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ -n "$WHICH" ] && [ "$WHICH" != "all" ]; then LIST="$WHICH"
+          elif [ "$SCHEDULE" = "0 22 * * 1-5" ]; then LIST="global_etf"
+          elif [ -n "$SCHEDULE" ]; then LIST="stocks india_etf"
+          else LIST="stocks india_etf global_etf"; fi
+          echo "Building: $LIST"
+          python model_portfolio.py $LIST
       - name: Commit results
         run: |
           git config user.name  "github-actions"
           git config user.email "actions@github.com"
           mkdir -p /tmp/keep
-          cp -f data/model_portfolio.json /tmp/keep/
-          git add data/model_portfolio.json
-          git diff --staged --quiet || git commit -q -m "Update Model Portfolio"
+          cp -f data/mp_*.json /tmp/keep/
+          git add data/mp_*.json
+          git diff --staged --quiet || git commit -q -m "Update Model Portfolios"
           for attempt in 1 2 3 4 5; do
             git push && break
             echo "Push attempt $attempt failed - taking the latest main and re-applying the new data..."
             git fetch -q origin main
             git reset -q --hard origin/main
-            cp -f /tmp/keep/model_portfolio.json data/
-            git add data/model_portfolio.json
-            git diff --staged --quiet || git commit -q -m "Update Model Portfolio"
+            cp -f /tmp/keep/mp_*.json data/
+            git add data/mp_*.json
+            git diff --staged --quiet || git commit -q -m "Update Model Portfolios"
             sleep 5
           done
