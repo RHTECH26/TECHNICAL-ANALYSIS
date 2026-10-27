@@ -3,9 +3,9 @@
 Model portfolios on the Nifty 500 stocks, built with the COT + Relative Strength strategy and compared with the Nifty 500 index:
 
   long   Long term:  holds until the weekly COT turns bearish. No half positions, no swapping, no relative strength exit.
-  short  Short term: the same buys, but it also sells at the next open when a holding lags the Nifty 500 on BOTH sides (since the
-         benchmark's latest swing high AND swing low), uses spare cash for half positions, and swaps the weakest holding for a clearly
-         stronger new signal.
+  short  Short term: the same buys, but it also sells at the next open when a holding has lagged the Nifty 500 by more than 5 points on
+         BOTH sides (since the benchmark's latest swing high AND swing low) at 3 WEEKLY closes in a row, uses spare cash for half
+         positions, and swaps the weakest holding for a clearly stronger new signal.
 
 Rules shared by both (the same as the Pine Script strategy "COT + Relative Strength Backtest"):
   BUY   when the daily Dow Theory COT turns bullish (close above the last lower high) AND
@@ -17,7 +17,8 @@ Rules shared by both (the same as the Pine Script strategy "COT + Relative Stren
         -> filled at the open of the day after the first trading day of the new week (as the Pine strategy does)
   STOP  a stock bought while its WEEKLY COT is already bearish gets a 25% stop-loss from its buy price (the weekly sell cannot protect it)
 Short term only:
-  RS EXIT  lagging the benchmark on both sides at a close -> sold at the next open, even without a weekly COT sell
+  RS EXIT  lagging the benchmark by more than 5 points on both sides at 3 weekly closes in a row (checked only at the weekly close)
+           -> sold at the next open, even without a weekly COT sell
   HALF     spare cash of 2.5% to 5% of the portfolio value buys a half position, topped up to 5% later (never below its buy price or while
            its weekly COT is bearish)
   SWAP     no cash for a new signal: the weakest holding is sold if the new signal leads it by at least 10 points (holding at least 30 days
@@ -57,7 +58,8 @@ CFG = dict(
     one_per_theme=None,                                               # ETF portfolios: one holding per theme (None = decided per portfolio)
     rs_exit=os.environ.get("MP_RS_EXIT", "0") == "1",                 # OFF by default. When on: sell at the next open if the holding lags the benchmark on BOTH sides
     rs_exit_edge=float(os.environ.get("MP_RS_EXIT_EDGE", 0.0)),       # lagging = excess return below this many percentage points, since the swing high AND the swing low
-    rs_exit_days=int(os.environ.get("MP_RS_EXIT_DAYS", 1)),           # for this many closes in a row
+    rs_exit_days=int(os.environ.get("MP_RS_EXIT_DAYS", 1)),           # for this many closes in a row (weekly closes when rs_exit_weekly is on)
+    rs_exit_weekly=os.environ.get("MP_RS_EXIT_WEEKLY", "0") == "1",   # check relative strength only at the weekly close, not every day
     cost_pct=float(os.environ.get("MP_COST_PCT", 0.10)),    # per side: brokerage, taxes and slippage
     cot_swing=int(os.environ.get("MP_COT_SWING", 5)),
     wk_swing=int(os.environ.get("MP_WK_SWING", 5)),
@@ -243,6 +245,13 @@ def simulate(stocks, cal, cfg, bench_off=0, plan=False):
     Sc = np.full((ns, nd1), np.nan)              # relative strength score at each close
     Bc = np.zeros((ns, nd1), bool)               # lagging the benchmark on both sides at each close
     rs_exit_on, rs_exit_days = bool(cfg.get("rs_exit")), max(1, int(cfg.get("rs_exit_days", 1)))
+    rs_weekly = bool(cfg.get("rs_exit_weekly"))
+    week_end = np.zeros(nd, bool)                # the last trading day of each week (the weekly close)
+    for dd in range(nd):
+        if dd + 1 < nd:
+            week_end[dd] = cal[dd].isocalendar()[:2] != cal[dd + 1].isocalendar()[:2]
+        else:
+            week_end[dd] = cal[dd].weekday() == 4
     for i, s in enumerate(stocks):
         idx = np.searchsorted(cal.values, s.dates)
         ok = (idx < nd) & (cal.values[np.minimum(idx, nd - 1)] == s.dates)
@@ -438,7 +447,7 @@ def simulate(stocks, cal, cfg, bench_off=0, plan=False):
         if plan and d == nd:
             break                                  # the planning day ends here: nothing is marked or recorded
         # 5) relative strength exit: lagging the benchmark on both sides at this close -> sold at the next open
-        if rs_exit_on:
+        if rs_exit_on and (not rs_weekly or week_end[d]):           # every close, or only the weekly close
             for j, q in pos.items():
                 q["bad_run"] = q.get("bad_run", 0) + 1 if Bc[j, d] else 0
                 if q["bad_run"] >= rs_exit_days:
@@ -649,8 +658,8 @@ PORTFOLIOS = {
                  description="Long term: buys on a COT signal with relative strength, and holds until the weekly COT turns bearish",
                  rules=dict(half_positions=False, swap=False, rs_exit=False)),
     "short": dict(label="Short term", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], universe="nifty500", one_per_theme=False,
-                  description="Short term: also sells at the next open when the stock lags the Nifty 500 since both its swing high and swing low; spare cash buys half positions and the weakest holding is swapped for a clearly stronger signal",
-                  rules=dict(half_positions=True, swap=True, rs_exit=True)),
+                  description="Short term: also sells at the next open when, at 3 weekly closes in a row, the stock lags the Nifty 500 by more than 5 points since both its swing high and swing low; spare cash buys half positions and the weakest holding is swapped for a clearly stronger signal",
+                  rules=dict(half_positions=True, swap=True, rs_exit=True, rs_exit_edge=-5.0, rs_exit_days=3, rs_exit_weekly=True)),
 }
 BENCH_NAMES = {"^CRSLDX": "Nifty 500"}
 OUT_DIR = os.environ.get("MP_OUT_DIR", "data")
@@ -672,6 +681,12 @@ def cfg_for(pid):
         if env in os.environ:
             rules[key] = os.environ[env] == "1"
     c.update(rules)
+    if "MP_RS_EXIT_EDGE" in os.environ:
+        c["rs_exit_edge"] = float(os.environ["MP_RS_EXIT_EDGE"])
+    if "MP_RS_EXIT_DAYS" in os.environ:
+        c["rs_exit_days"] = int(os.environ["MP_RS_EXIT_DAYS"])
+    if "MP_RS_EXIT_WEEKLY" in os.environ:
+        c["rs_exit_weekly"] = os.environ["MP_RS_EXIT_WEEKLY"] == "1"
     return c
 
 
@@ -786,7 +801,7 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
                    "stop_pct": cfg["stop_pct"], "stop_only_under_weekly_sell": cfg["stop_only_under_weekly_sell"],
                    "half_positions": bool(cfg.get("half_positions")), "swap": bool(cfg.get("swap")), "swap_margin": cfg.get("swap_margin"), "swap_min_days": cfg.get("swap_min_days"),
                    "one_per_theme": bool(cfg.get("one_per_theme")),
-                   "rs_exit": bool(cfg.get("rs_exit")), "rs_exit_edge": cfg.get("rs_exit_edge"), "rs_exit_days": cfg.get("rs_exit_days"),
+                   "rs_exit": bool(cfg.get("rs_exit")), "rs_exit_edge": cfg.get("rs_exit_edge"), "rs_exit_days": cfg.get("rs_exit_days"), "rs_exit_weekly": bool(cfg.get("rs_exit_weekly")),
                    "cost_pct": cfg["cost_pct"], "rf_pct": cfg["rf_pct"], "capital": cfg["capital"],
                    "universe": meta.get("universe") or f"{len(stocks)} {meta['noun'].lower()}s checked", "cot_swing": cfg["cot_swing"], "wk_swing": cfg["wk_swing"],
                    "rs_swing": f"{cfg['rs_left']}/{cfg['rs_right']}"},
