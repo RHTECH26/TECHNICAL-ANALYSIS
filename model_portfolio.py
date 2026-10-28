@@ -526,8 +526,8 @@ BT_REMARKS = ["Weekly COT sell", "Underperformed index (since swing high)", "Und
 
 
 def build_backtest(stocks, bench, cfg, bname, status=None):
-    """Every buy signal since the start date as one trade (no cash limit; a repeat signal in a stock is its own trade), so the BUYS ARE THE
-    SAME under every exit rule and only the sell changes. Three exit rules:
+    """Every buy signal since the start date as one trade (no cash limit). A stock that is already in a buy position is NOT bought again: a
+    signal that comes while the stock is still held is ignored, so the number of trades depends on how soon the exit rule sells. Three exit rules:
          weekly  - sold when the weekly COT turns bearish
          rs      - sold when, at a close, the stock lags the benchmark on ANY side (since its swing high OR since its swing low)
          either  - whichever of the two comes first
@@ -539,6 +539,7 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
     cost = cfg["cost_pct"] / 100.0
     start = np.datetime64(cfg["start"])
     syms, rules = [], {"weekly": [], "rs": [], "either": []}
+    ignored, signals = {k: 0 for k in rules}, 0
     for s in stocks:
         if not s.entries:
             continue
@@ -552,10 +553,15 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
         bad = bad_h | bad_l
         flip_bars = np.array([x["bar"] for x in s.exits], int)
         si = None
+        signals += sum(1 for e in s.entries if e["exec_bar"] is not None and dates[e["exec_bar"]] >= start)          # buy signals in total (the same for every rule)
         for rule in rules:
+            free = 0
             for e in sorted(s.entries, key=lambda e: e["bar"]):
                 eb = e["exec_bar"]
                 if eb is None or dates[eb] < start:
+                    continue
+                if eb < free:                                                     # still in the position: a repeat signal is not a new buy
+                    ignored[rule] += 1
                     continue
                 ep = float(s.open[eb])
                 if not ep > 0:
@@ -577,10 +583,12 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
                     xp, xd_s, closed = float(s.open[xb]), str(pd.Timestamp(dates[xb]).date()), 1
                     remark = 0 if kind == "w" else (3 if (bad_h[dec] and bad_l[dec]) else 1 if bad_h[dec] else 2)
                     days = int((dates[xb] - dates[eb]) / np.timedelta64(1, "D"))
+                    free = xb
                 else:                                                             # still open (an exit signalled on the last bar is pending)
                     xp, xd_s, closed = float(s.close[-1]), None, 0
                     remark = -1 if dec is None else (4 if kind == "w" else 5)
                     days = int((dates[-1] - dates[eb]) / np.timedelta64(1, "D"))
+                    free = n + 1
                 ret = ((xp * (1 - cost)) / (ep * (1 + cost)) - 1) * 100
                 if si is None:
                     si = len(syms)
@@ -603,7 +611,7 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
         r.sort(key=lambda row: row[1], reverse=True)
     ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     return {"updated": ist.strftime("%d %b %Y, %H:%M IST"), "asof": str(bench.index[-1].date()), "start": cfg["start"], "benchmark": bname,
-            "cost_pct": cfg["cost_pct"], "remarks": BT_REMARKS, "syms": syms, "rules": rules,
+            "cost_pct": cfg["cost_pct"], "remarks": BT_REMARKS, "syms": syms, "rules": rules, "signals": signals, "ignored": ignored,
             "has_status": {"long": "long" in status, "short": "short" in status}}
 
 # ====================================================================== statistics

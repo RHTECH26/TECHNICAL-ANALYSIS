@@ -3375,11 +3375,12 @@ html[data-locked="1"]{overflow:hidden;}
     SYM = '₹'; CUR = 'INR';
     var bn = BT.benchmark;
     $('mp-bt-asof').textContent = 'as of ' + BT.asof + ' close · updated ' + BT.updated;
-    $('mp-bt-status').textContent = 'Every buy signal since ' + BT.start + ' is a trade, the same buys under every exit rule, only the sell changes · no cash limit · returns after ' + BT.cost_pct + '% costs each side';
+    $('mp-bt-status').textContent = 'Buy signals since ' + BT.start + ' · a stock already held is not bought again · no cash limit · returns after ' + BT.cost_pct + '% costs each side';
     $('mp-bt-dot').className = 'tm-dot live';
     $('mp-bt-rule-note').textContent = btRule === 'weekly' ? 'Held until the weekly COT turns bearish, then sold at the next open.'
       : btRule === 'rs' ? 'Sold at the next open when, at a close, the stock is behind the ' + bn + ' since its swing high or since its swing low.'
       : 'Sold at the next open on whichever comes first: the weekly COT turning bearish, or the stock falling behind the ' + bn + ' on either side.';
+    if(BT.signals != null && BT.ignored) $('mp-bt-rule-note').textContent += ' ' + BT.ignored[btRule].toLocaleString('en-US') + ' of the ' + BT.signals.toLocaleString('en-US') + ' buy signals came while the stock was already held, so they are not counted as new buys.';
     btTiles();
     var rows = btRows(), shown = rows.slice(0, btLimit);
     var cols = BT_COLS.filter(function(c){ return !((c[0] === 'lt' && !BT.has_status.long) || (c[0] === 'sh' && !BT.has_status.short)); });
