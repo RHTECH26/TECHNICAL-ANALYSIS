@@ -788,11 +788,12 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 
 <!-- ================= MODEL PORTFOLIO ================= -->
 <section class="panel" id="panel-mp">
-  <div class="card">
-    <h4>Model Portfolio — COT + Relative Strength<span class="asof" id="mp-asof"></span></h4>
+  <div class="card mp-first">
+    <h4>Model Portfolio<span class="asof" id="mp-asof"></span></h4>
     <div class="mp-seg" id="mp-switch" style="margin:10px 0 2px;">
       <button type="button" class="echip" data-p="long" aria-pressed="true">Long term</button>
       <button type="button" class="echip" data-p="short" aria-pressed="false">Short term</button>
+      <button type="button" class="echip" data-p="bt" aria-pressed="false">Back test</button>
     </div>
     <div class="tm-datarow"><span class="tm-dot" id="mp-dot"></span><span id="mp-status">Open this tab to load the portfolio…</span></div>
     <div class="mp-config" id="mp-config"></div>
@@ -869,6 +870,31 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     </div>
     <div class="gtm-scroll" style="max-height:620px;"><table class="mp-table" id="mp-trades"></table></div>
     <div style="margin-top:10px;"><button type="button" class="echip" id="mp-more" style="display:none;">Show 200 more</button></div>
+  </div>
+
+  <div class="card" id="mp-bt-card">
+    <h4>Back test: every trade<span class="asof" id="mp-bt-asof"></span></h4>
+    <div class="tm-datarow"><span class="tm-dot" id="mp-bt-dot"></span><span id="mp-bt-status">Loading the back test…</span></div>
+    <div class="mp-sub" style="margin-top:10px;">Exit rule</div>
+    <div class="mp-seg" id="mp-bt-rule" style="margin:4px 0 4px;">
+      <button type="button" class="echip" data-r="weekly" aria-pressed="true">Weekly COT sell</button>
+      <button type="button" class="echip" data-r="rs" aria-pressed="false">Underperforms the index on any side</button>
+      <button type="button" class="echip" data-r="either" aria-pressed="false">Either, whichever comes first</button>
+    </div>
+    <div class="mp-todo-empty" id="mp-bt-rule-note" style="padding:2px 0 14px;"></div>
+    <div class="tilerow" id="mp-bt-kpis"></div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:6px 0 10px;">
+      <span class="mp-seg" id="mp-bt-state">
+        <button type="button" class="echip" data-s="all" aria-pressed="true">All</button>
+        <button type="button" class="echip" data-s="open" aria-pressed="false">Open</button>
+        <button type="button" class="echip" data-s="closed" aria-pressed="false">Closed</button>
+      </span>
+      <input type="text" id="mp-bt-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="mp-bt-count" class="note" style="margin:0;"></span>
+      <button type="button" class="echip" id="mp-bt-csv" style="white-space:nowrap;">⬇ CSV</button>
+    </div>
+    <div class="gtm-scroll" style="max-height:640px;"><table class="mp-table" id="mp-bt-table"></table></div>
+    <div style="margin-top:10px;"><button type="button" class="echip" id="mp-bt-more" style="display:none;">Show more</button></div>
   </div>
 </section>
 
@@ -2729,6 +2755,15 @@ html[data-locked="1"]{overflow:hidden;}
 .mp-act.buy{background:var(--good);} .mp-act.sell{background:var(--bad);}
 .mp-new{display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.06em; padding:2px 7px; border-radius:99px; background:var(--saffron); color:#1a1200; margin-left:6px;}
 .mp-table tr.recent td{background:rgba(255,153,51,0.08);}
+#panel-mp #mp-bt-card{display:none;}
+#panel-mp.mp-bt-mode #mp-bt-card{display:block;}
+#panel-mp.mp-bt-mode > .card:not(.mp-first):not(#mp-bt-card){display:none;}
+#panel-mp.mp-bt-mode .mp-first > *:not(h4):not(#mp-switch){display:none;}
+.mp-st{display:inline-block; font-size:10px; font-weight:800; letter-spacing:.05em; padding:2px 8px; border-radius:99px;}
+.mp-st.open{background:var(--saffron); color:#1a1200;}
+.mp-st.closed{background:var(--surface-3); color:var(--ink-soft);}
+#mp-bt-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+#mp-bt-table td.rem{font-size:11.5px; color:var(--ink-soft); white-space:normal; min-width:190px;}
 </style>
 
 <script>
@@ -2983,6 +3018,8 @@ html[data-locked="1"]{overflow:hidden;}
       tile('Profit factor', n2(T.profit_factor), 'payoff ratio '+n2(T.payoff_ratio), '') +
       tile('Beta / Alpha', n2(R.beta)+' / '+pc(R.alpha,1), 'vs '+bn, cls(R.alpha)) +
       tile('Churn ratio', ok(T.churn_ratio) ? Math.round(T.churn_ratio)+'% a year' : '—', '', '') +
+      tile('Buy signals taken', String(D.trades.length + D.open.length), 'bought', '') +
+      tile('Missed trades', D.missed ? String(D.missed.count) : '—', D.missed ? 'no cash · ' + D.missed.pct.toFixed(0) + '% of buy signals' : '', D.missed && D.missed.count ? 'down' : '') +
       tile(NOUN+'s held', D.open.length+' now', 'average '+n2(T.avg_positions,1)+' · most '+(T.max_positions_held||'—'), '');
   }
 
@@ -3098,15 +3135,15 @@ html[data-locked="1"]{overflow:hidden;}
     return {out:out, order:order};
   }
   function renderYears(){
-    var r = periodReturns(function(d){ return d.slice(0,4); }), html = '<thead><tr><th class="l">Year</th><th>Model portfolio</th><th>'+esc(D.config.benchmark||'Nifty 500')+'</th><th>Difference</th>'+(D.pnl?'<th>Realised gain / loss</th>':'')+(D.metrics.churn_by_year?'<th>Churn ratio</th>':'')+'</tr></thead><tbody>';
-    var cy = D.metrics.churn_by_year || null;
+    var r = periodReturns(function(d){ return d.slice(0,4); }), html = '<thead><tr><th class="l">Year</th><th>Model portfolio</th><th>'+esc(D.config.benchmark||'Nifty 500')+'</th><th>Difference</th>'+(D.pnl?'<th>Realised gain / loss</th>':'')+(D.metrics.churn_by_year?'<th>Churn ratio</th>':'')+(D.missed?'<th>Missed trades (no cash)</th>':'')+'</tr></thead><tbody>';
+    var cy = D.metrics.churn_by_year || null, my = D.missed ? D.missed.by_year : null;
     var ry = D.pnl ? D.pnl.realised_by_year : null, rsum = 0;
     r.order.slice().reverse().forEach(function(y,idx){
       var o = r.out[y], a = (o.endPf/o.startPf-1)*100, b = (o.endBm/o.startBm-1)*100, last = (y===r.order[r.order.length-1]);
-      html += '<tr><td class="l">'+y+(last?' (so far)':'')+'</td><td class="'+cls(a)+'">'+pc(a)+'</td><td class="'+cls(b)+'">'+pc(b)+'</td><td class="'+cls(a-b)+'">'+pc(a-b)+'</td>'+(ry?'<td class="'+cls(ry[y]||0)+'">'+cr(ry[y]||0,true)+'</td>':'')+(cy?'<td>'+(cy[y]==null?'—':pl(cy[y],0))+'</td>':'')+'</tr>';
+      html += '<tr><td class="l">'+y+(last?' (so far)':'')+'</td><td class="'+cls(a)+'">'+pc(a)+'</td><td class="'+cls(b)+'">'+pc(b)+'</td><td class="'+cls(a-b)+'">'+pc(a-b)+'</td>'+(ry?'<td class="'+cls(ry[y]||0)+'">'+cr(ry[y]||0,true)+'</td>':'')+(cy?'<td>'+(cy[y]==null?'—':pl(cy[y],0))+'</td>':'')+(my?'<td>'+(my[y]||0)+'</td>':'')+'</tr>';
       if(ry) rsum += (ry[y]||0);
     });
-    if(ry) html += '<tr class="tot"><td class="l">All years</td><td></td><td></td><td></td><td class="'+cls(rsum)+'">'+cr(rsum,true)+'</td>'+(cy?'<td>'+pl(D.metrics.trades.churn_ratio,0)+' a year</td>':'')+'</tr>';
+    if(ry) html += '<tr class="tot"><td class="l">All years</td><td></td><td></td><td></td><td class="'+cls(rsum)+'">'+cr(rsum,true)+'</td>'+(cy?'<td>'+pl(D.metrics.trades.churn_ratio,0)+' a year</td>':'')+(my?'<td>'+D.missed.count+'</td>':'')+'</tr>';
     $('mp-years').innerHTML = html + '</tbody>';
   }
   function renderMonths(){
@@ -3282,6 +3319,129 @@ html[data-locked="1"]{overflow:hidden;}
     var list = D.open.map(function(o){ return 'NSE:' + String(o.s).replace(/[&-]/g,'_'); });
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'})); a.download = 'model-portfolio-holdings.txt'; document.body.appendChild(a); a.click(); a.remove();
   });
+
+  // ---- Back test: every buy signal as a trade, three exit rules ----
+  var BT = null, btRule = 'weekly', btState = 'all', btSortKey = 'ed', btAsc = false, btLimit = 200, btStarted = false;
+  var BT_COLS = [['stock','Stock','l'],['ed','Buy date','l'],['ep','Buy price',''],['xd','Sell date','l'],['xp','Sell price',''],['ret','% Gain / loss',''],['st','Open / Closed','l'],['rem','Exit remark','l'],['days','Days',''],['lt','Long term','l'],['sh','Short term','l']];
+  function btRows(){
+    if(!BT) return [];
+    var q = $('mp-bt-search').value.toLowerCase();
+    var rows = BT.rules[btRule].filter(function(r){
+      if(btState === 'open' && r[6] !== 0) return false;
+      if(btState === 'closed' && r[6] !== 1) return false;
+      if(q){ var sy = BT.syms[r[0]]; if((sy[0] + ' ' + sy[1]).toLowerCase().indexOf(q) < 0) return false; }
+      return true;
+    });
+    function key(r){
+      switch(btSortKey){
+        case 'stock': return BT.syms[r[0]][0]; case 'ed': return r[1]; case 'ep': return r[2]; case 'xd': return r[3]; case 'xp': return r[4];
+        case 'ret': return r[5]; case 'st': return r[6]; case 'rem': return r[7] < 0 ? null : BT.remarks[r[7]]; case 'days': return r[8]; case 'lt': return r[9]; case 'sh': return r[10];
+      }
+    }
+    rows = rows.slice().sort(function(a,b){
+      var x = key(a), y = key(b);
+      if(x == null && y == null) return 0; if(x == null) return 1; if(y == null) return -1;      // empty cells always last
+      var c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+      return btAsc ? c : -c;
+    });
+    return rows;
+  }
+  function btTiles(){
+    var rows = BT.rules[btRule], closed = rows.filter(function(r){ return r[6] === 1; }), open = rows.length - closed.length;
+    var wins = closed.filter(function(r){ return r[5] > 0; }), loss = closed.filter(function(r){ return r[5] <= 0; });
+    var avg = function(a, f){ return a.length ? a.reduce(function(t, r){ return t + f(r); }, 0) / a.length : null; };
+    var gW = avg(wins, function(r){ return r[5]; }), gL = avg(loss, function(r){ return r[5]; });
+    var sW = wins.reduce(function(t, r){ return t + r[5]; }, 0), sL = loss.reduce(function(t, r){ return t + r[5]; }, 0);
+    var best = closed.length ? closed.reduce(function(m, r){ return r[5] > m[5] ? r : m; }) : null, worst = closed.length ? closed.reduce(function(m, r){ return r[5] < m[5] ? r : m; }) : null;
+    function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">'+k+'</div><div class="v '+(vc||'')+'">'+v+'</div><div class="d">'+sub+'</div></div>'; }
+    var miss = function(i){ var has = i === 9 ? BT.has_status.long : BT.has_status.short; return has ? String(rows.filter(function(r){ return r[i] === 0; }).length) : '—'; };
+    $('mp-bt-kpis').innerHTML =
+      tile('Trades', String(rows.length), closed.length + ' closed · ' + open + ' open', '') +
+      tile('Win rate', closed.length ? pl(wins.length / closed.length * 100, 1) : '—', wins.length + ' wins · ' + loss.length + ' losses', '') +
+      tile('Average gain', gW == null ? '—' : pc(gW, 1), 'per winning trade', 'up') +
+      tile('Average loss', gL == null ? '—' : pc(gL, 1), 'per losing trade', 'down') +
+      tile('Payoff ratio', gW != null && gL ? n2(gW / Math.abs(gL)) : '—', 'average gain ÷ average loss', '') +
+      tile('Profit factor', sL ? n2(sW / Math.abs(sL)) : '—', 'total gains ÷ total losses', '') +
+      tile('Average per trade', closed.length ? pc(avg(closed, function(r){ return r[5]; }), 2) : '—', 'closed trades', cls(avg(closed, function(r){ return r[5]; }))) +
+      tile('Average days held', closed.length ? String(Math.round(avg(closed, function(r){ return r[8]; }))) : '—', 'closed trades', '') +
+      tile('Best trade', best ? pc(best[5], 0) : '—', best ? esc(BT.syms[best[0]][0]) : '', 'up') +
+      tile('Worst trade', worst ? pc(worst[5], 0) : '—', worst ? esc(BT.syms[worst[0]][0]) : '', 'down') +
+      tile('Missed by Long term', miss(9), 'of these trades · no cash', BT.has_status.long ? 'down' : '') +
+      tile('Missed by Short term', miss(10), 'of these trades · no cash', BT.has_status.short ? 'down' : '');
+  }
+  function btCell(v){ return v === 1 ? 'Bought' : v === 0 ? '<span class="down">Missed</span>' : '—'; }
+  function btRender(){
+    if(!BT) return;
+    SYM = '₹'; CUR = 'INR';
+    var bn = BT.benchmark;
+    $('mp-bt-asof').textContent = 'as of ' + BT.asof + ' close · updated ' + BT.updated;
+    $('mp-bt-status').textContent = 'Every buy signal since ' + BT.start + ' · one trade per stock at a time, no cash limit · returns after ' + BT.cost_pct + '% costs each side';
+    $('mp-bt-dot').className = 'tm-dot live';
+    $('mp-bt-rule-note').textContent = btRule === 'weekly' ? 'Held until the weekly COT turns bearish, then sold at the next open.'
+      : btRule === 'rs' ? 'Sold at the next open when, at a close, the stock is behind the ' + bn + ' since its swing high or since its swing low.'
+      : 'Sold at the next open on whichever comes first: the weekly COT turning bearish, or the stock falling behind the ' + bn + ' on either side.';
+    btTiles();
+    var rows = btRows(), shown = rows.slice(0, btLimit);
+    var cols = BT_COLS.filter(function(c){ return !((c[0] === 'lt' && !BT.has_status.long) || (c[0] === 'sh' && !BT.has_status.short)); });
+    var html = '<thead><tr>' + cols.map(function(c){
+      var arrow = btSortKey === c[0] ? (btAsc ? ' ▲' : ' ▼') : '';
+      return '<th class="sortable ' + c[2] + '" data-k="' + c[0] + '">' + c[1] + arrow + '</th>';
+    }).join('') + '</tr></thead><tbody>';
+    shown.forEach(function(r){
+      var sy = BT.syms[r[0]], open = r[6] === 0;
+      var rem = r[7] < 0 ? '—' : esc(BT.remarks[r[7]]);
+      html += '<tr><td class="l"><span class="sym">'+esc(sy[0])+'</span><span class="nm">'+esc(sy[1])+'</span></td><td class="l">'+dshort(r[1])+'</td><td>'+SYM+inr(r[2])+'</td>' +
+        '<td class="l">'+(r[3] ? dshort(r[3]) : '—')+'</td><td>'+(open ? '<span class="nm" style="display:inline;">now </span>' : '')+SYM+inr(r[4])+'</td>' +
+        '<td class="'+cls(r[5])+'">'+pc(r[5])+'</td><td class="l"><span class="mp-st '+(open?'open':'closed')+'">'+(open?'Open':'Closed')+'</span></td><td class="l rem">'+rem+'</td><td>'+r[8]+'</td>' +
+        (BT.has_status.long ? '<td class="l">'+btCell(r[9])+'</td>' : '') + (BT.has_status.short ? '<td class="l">'+btCell(r[10])+'</td>' : '') + '</tr>';
+    });
+    if(!shown.length) html += '<tr><td colspan="'+cols.length+'" class="l" style="color:var(--muted);">No trades match.</td></tr>';
+    $('mp-bt-table').innerHTML = html + '</tbody>';
+    $('mp-bt-count').textContent = rows.length.toLocaleString('en-US') + ' trades' + (rows.length > shown.length ? ' · showing ' + shown.length : '');
+    var more = $('mp-bt-more'); more.style.display = rows.length > shown.length ? '' : 'none';
+    more.textContent = 'Show ' + Math.min(200, rows.length - shown.length) + ' more';
+  }
+  function btLoad(){
+    fetch('data/mp_backtest.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      var changed = !BT || BT.updated !== j.updated; BT = j;
+      if($('panel-mp').classList.contains('mp-bt-mode') && changed) btRender();
+    }).catch(function(){
+      if(!BT){ $('mp-bt-status').textContent = 'data/mp_backtest.json not found yet — run the "Update Model Portfolios" action in GitHub (Actions tab) once.'; $('mp-bt-dot').className = 'tm-dot'; }
+    });
+  }
+  function btShow(){
+    $('panel-mp').classList.add('mp-bt-mode');
+    document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.p === 'bt' ? 'true' : 'false'); });
+    if(BT) btRender();
+    btLoad();
+  }
+  document.querySelectorAll('#mp-bt-rule .echip').forEach(function(b){ b.addEventListener('click', function(){
+    document.querySelectorAll('#mp-bt-rule .echip').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); }); b.setAttribute('aria-pressed', 'true');
+    btRule = b.dataset.r; btLimit = 200; btRender();
+  }); });
+  document.querySelectorAll('#mp-bt-state .echip').forEach(function(b){ b.addEventListener('click', function(){
+    document.querySelectorAll('#mp-bt-state .echip').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); }); b.setAttribute('aria-pressed', 'true');
+    btState = b.dataset.s; btLimit = 200; btRender();
+  }); });
+  $('mp-bt-search').addEventListener('input', function(){ btLimit = 200; btRender(); });
+  $('mp-bt-more').addEventListener('click', function(){ btLimit += 200; btRender(); });
+  $('mp-bt-table').addEventListener('click', function(ev){
+    var th = ev.target.closest('th.sortable'); if(!th) return;
+    btAsc = (btSortKey === th.dataset.k) ? !btAsc : (th.dataset.k === 'stock' || th.dataset.k === 'rem'); btSortKey = th.dataset.k; btLimit = 200; btRender();
+  });
+  $('mp-bt-csv').addEventListener('click', function(){
+    var rows = btRows(); if(!rows.length){ alert('No trades to export.'); return; }
+    var head = ['Symbol','Name','Buy date','Buy price','Sell date','Sell price (or latest price if open)','% gain/loss','Status','Exit remark','Days'];
+    if(BT.has_status.long) head.push('Long term'); if(BT.has_status.short) head.push('Short term');
+    var q = function(v){ return '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"'; };
+    var out = [head.join(',')].concat(rows.map(function(r){
+      var sy = BT.syms[r[0]], line = [q(sy[0]), q(sy[1]), r[1], r[2], r[3] || '', r[4], r[5], r[6] ? 'Closed' : 'Open', q(r[7] < 0 ? '' : BT.remarks[r[7]]), r[8]];
+      if(BT.has_status.long) line.push(r[9] === 1 ? 'Bought' : r[9] === 0 ? 'Missed' : ''); if(BT.has_status.short) line.push(r[10] === 1 ? 'Bought' : r[10] === 0 ? 'Missed' : '');
+      return line.join(',');
+    }));
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out.join('\n')], {type:'text/csv'})); a.download = 'back-test-' + btRule + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  });
+
   // colours of the charts follow the theme
   var prevRedraw = window.__rhRedrawThemed;
   window.__rhRedrawThemed = function(){ if(prevRedraw) prevRedraw(); if(D) drawCharts(); };
@@ -3289,9 +3449,16 @@ html[data-locked="1"]{overflow:hidden;}
   var saved = 'long'; try{ saved = localStorage.getItem('rh-mp') || 'long'; }catch(e){}
   if(!/^(long|short)$/.test(saved)) saved = 'long';
   PID = saved;
-  document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.addEventListener('click', function(){ loaded = true; load(b.dataset.p); }); });
+  document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.addEventListener('click', function(){
+    loaded = true;
+    if(b.dataset.p === 'bt'){ btShow(); return; }
+    $('panel-mp').classList.remove('mp-bt-mode'); load(b.dataset.p); setTimeout(function(){ if(D) drawCharts(); }, 50);
+  }); });
   document.querySelectorAll('[data-panel="mp"],[data-goto="mp"]').forEach(function(b){ b.addEventListener('click', function(){ if(!loaded){ loaded = true; load(PID); } else if(D) setTimeout(drawCharts, 50); }); });
-  setInterval(function(){ if(loaded && !document.hidden && $('panel-mp').classList.contains('active')) load(PID); }, 15*60*1000);
+  setInterval(function(){
+    if(!loaded || document.hidden || !$('panel-mp').classList.contains('active')) return;
+    if($('panel-mp').classList.contains('mp-bt-mode')) btLoad(); else load(PID);
+  }, 15*60*1000);
 })();
 </script>
 

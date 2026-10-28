@@ -147,7 +147,7 @@ def bench_anchors(bclose, L, R):
 
 # ====================================================================== per-stock signals
 class StockSignals:
-    __slots__ = ("sym", "name", "dates", "open", "low", "close", "entries", "exits", "last_state", "score_b", "dwk", "theme", "rs_bad")
+    __slots__ = ("sym", "name", "dates", "open", "low", "close", "entries", "exits", "last_state", "score_b", "dwk", "theme", "rs_bad", "exH_b", "exL_b")
 
 
 def stock_signals(sym, name, df, bench_dates, bclose, ph_anchor, pl_anchor, cfg, shares=None):
@@ -211,6 +211,7 @@ def stock_signals(sym, name, df, bench_dates, bclose, ph_anchor, pl_anchor, cfg,
     s = StockSignals()
     s.score_b = np.where(np.isnan(exH) | np.isnan(exL), np.nan, (exH + exL) / 2)      # relative strength score on the benchmark calendar
     s.dwk, s.theme = dwk, None
+    s.exH_b, s.exL_b = exH.astype(np.float32), exL.astype(np.float32)                 # excess return vs the benchmark since its swing high / swing low
     with np.errstate(invalid="ignore"):
         s.rs_bad = (exH < cfg["rs_exit_edge"]) & (exL < cfg["rs_exit_edge"])          # lagging the benchmark since the swing high AND since the swing low
     s.sym, s.name, s.dates, s.open, s.low, s.close = sym, name, dates, O, Lw, C
@@ -307,6 +308,7 @@ def simulate(stocks, cal, cfg, bench_off=0, plan=False):
     npos = np.zeros(nd1, int)
     trades = []
     plan_buys, plan_topups, plan_sells, plan_skipped = [], [], [], []
+    missed_log = []                              # (stock index, day) of every buy signal that could not be funded
     snapshot = None
     counters = {"swaps": 0, "partial_buys": 0, "topups": 0, "cash_skips": 0, "theme_skips": 0, "slot_skips": 0}
     last_swap = -10 ** 6
@@ -381,7 +383,10 @@ def simulate(stocks, cal, cfg, bench_off=0, plan=False):
                             best = (sc, jj)
                     j = best[1] if best else None
                 if j is None:
-                    counters["cash_skips"] += 1
+                    rem = [c for c in cands[ci:] if not (theme_on and stocks[c[0]].theme is not None and th_count.get(stocks[c[0]].theme, 0) > 0)]
+                    if not (plan and d == nd):
+                        counters["cash_skips"] += len(rem)               # this signal and every lower-ranked one today: no cash for them
+                        missed_log.extend((c[0], d) for c in rem)
                     break                                            # the cash is used up: lower-ranked signals cannot be funded either
                 sell(j, d, Oc[j, d], "Swapped for %s" % stocks[i].sym)
                 counters["swaps"] += 1
@@ -493,7 +498,7 @@ def simulate(stocks, cal, cfg, bench_off=0, plan=False):
             if sl["why"].startswith("Swapped for "):
                 swap_for[sl["i"]] = sl["why"][len("Swapped for "):]
         plan_out = {"buys": plan_buys, "topups": plan_topups, "sells": plan_sells, "skipped": plan_skipped, "swap_for": swap_for}
-    return eq, invested, trades, opens, nxt, float(cash), {"buy": buy_amt, "sell": sell_amt, "npos": npos, "counters": counters, "plan": plan_out}
+    return eq, invested, trades, opens, nxt, float(cash), {"buy": buy_amt, "sell": sell_amt, "npos": npos, "counters": counters, "plan": plan_out, "missed": missed_log}
 
 
 def theme_of(txt):
@@ -513,6 +518,87 @@ def _trade(s, p, d_exit, px, proceeds, why):
     return {"s": s.sym, "n": s.name, "ed": None, "ep": round(float(p["entry_px"]), 2), "xd": str(pd.Timestamp(d_exit).date()), "xp": round(float(px), 2),
             "r": round(float(ret), 2), "pnl": float(proceeds - p["cost_amt"]), "w": round(float(p["w"]), 2), "why": why, "_entry_d": int(p["entry_d"]), "_days_cal": None}
 
+
+
+# ====================================================================== back test: every buy signal as a trade
+BT_REMARKS = ["Weekly COT sell", "Underperformed index (since swing high)", "Underperformed index (since swing low)", "Underperformed index (both sides)",
+              "Weekly COT sell signalled: exit at next open", "Lagging the index: exit at next open"]
+
+
+def build_backtest(stocks, bench, cfg, bname, status=None):
+    """Every buy signal since the start date as one trade (one trade per stock at a time, no cash limit), under three exit rules:
+         weekly  - sold when the weekly COT turns bearish
+         rs      - sold when, at a close, the stock lags the benchmark on ANY side (since its swing high OR since its swing low)
+         either  - whichever of the two comes first
+    Entries and exits are at the next open, costs on both sides. Open trades are marked at the last close.
+    status: {"long": {"bought": set((sym, date)), "missed": set((sym, date))}, "short": {...}} to show what each portfolio did with the signal."""
+    status = status or {}
+    bdates = bench.index.values
+    cost = cfg["cost_pct"] / 100.0
+    start = np.datetime64(cfg["start"])
+    syms, rules = [], {"weekly": [], "rs": [], "either": []}
+    for s in stocks:
+        if not s.entries:
+            continue
+        n, dates = len(s.close), s.dates
+        bpos = np.searchsorted(bdates, dates, side="right") - 1
+        valid = bpos >= 0
+        pos_ = np.where(valid, bpos, 0)
+        with np.errstate(invalid="ignore"):
+            bad_h = valid & (s.exH_b[pos_] < 0)
+            bad_l = valid & (s.exL_b[pos_] < 0)
+        bad = bad_h | bad_l
+        flip_bars = np.array([x["bar"] for x in s.exits], int)
+        si = None
+        for rule in rules:
+            free = 0
+            for e in sorted(s.entries, key=lambda e: e["bar"]):
+                eb = e["exec_bar"]
+                if eb is None or eb < free or dates[eb] < start:
+                    continue
+                ep = float(s.open[eb])
+                if not ep > 0:
+                    continue
+                dw = dr = None
+                if rule in ("weekly", "either") and len(flip_bars):
+                    k = int(np.searchsorted(flip_bars, eb))
+                    if k < len(flip_bars):
+                        dw = int(flip_bars[k])
+                if rule in ("rs", "either"):
+                    hit = np.nonzero(bad[eb:])[0]
+                    if len(hit):
+                        dr = int(eb + hit[0])
+                choices = [(d, kind) for d, kind in ((dw, "w"), (dr, "r")) if d is not None]
+                dec, kind = min(choices, key=lambda t: (t[0], 0 if t[1] == "w" else 1)) if choices else (None, None)
+                ed_s = str(pd.Timestamp(dates[eb]).date())
+                if dec is not None and dec + 1 < n:                               # closed: sold at the next open
+                    xb = dec + 1
+                    xp, xd_s, closed = float(s.open[xb]), str(pd.Timestamp(dates[xb]).date()), 1
+                    remark = 0 if kind == "w" else (3 if (bad_h[dec] and bad_l[dec]) else 1 if bad_h[dec] else 2)
+                    days = int((dates[xb] - dates[eb]) / np.timedelta64(1, "D"))
+                    free = xb
+                else:                                                             # still open (an exit signalled on the last bar is pending)
+                    xp, xd_s, closed = float(s.close[-1]), None, 0
+                    remark = -1 if dec is None else (4 if kind == "w" else 5)
+                    days = int((dates[-1] - dates[eb]) / np.timedelta64(1, "D"))
+                    free = n + 1
+                ret = ((xp * (1 - cost)) / (ep * (1 + cost)) - 1) * 100
+                if si is None:
+                    si = len(syms)
+                    syms.append([s.sym, s.name])
+                key = (s.sym, ed_s)
+                def st(name):
+                    sts = status.get(name)
+                    if not sts:
+                        return None
+                    return 1 if key in sts["bought"] else 0 if key in sts["missed"] else None
+                rules[rule].append([si, ed_s, round(ep, 2), xd_s, round(xp, 2), round(ret, 2), closed, remark, days, st("long"), st("short")])
+    for r in rules.values():
+        r.sort(key=lambda row: row[1], reverse=True)
+    ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    return {"updated": ist.strftime("%d %b %Y, %H:%M IST"), "asof": str(bench.index[-1].date()), "start": cfg["start"], "benchmark": bname,
+            "cost_pct": cfg["cost_pct"], "remarks": BT_REMARKS, "syms": syms, "rules": rules,
+            "has_status": {"long": "long" in status, "short": "short" in status}}
 
 # ====================================================================== statistics
 def _monthly(eq, dates):
@@ -652,6 +738,7 @@ def download(tickers, start, chunk=100):
 
 
 FULL_TOL = 0.97                  # cash within 3% of the target size buys a full position
+_LAST = {}                       # the latest run's signals, for the back test file
 
 PORTFOLIOS = {
     "long": dict(label="Long term", noun="Stock", currency="INR", capital=1e7, bench=["^CRSLDX"], universe="nifty500", one_per_theme=False,
@@ -779,6 +866,16 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
         "skipped": [{"s": stocks[x["i"]].sym, "n": stocks[x["i"]].name} for x in sorted(pl.get("skipped", []), key=lambda x: -x["score"])][:20],
     }
 
+    # ---- buy signals that could not be bought for lack of cash ----
+    miss = flows.get("missed", [])
+    by_year = {}
+    for i_, d_ in miss:
+        y_ = str(pd.Timestamp(cal[d_]).year)
+        by_year[y_] = by_year.get(y_, 0) + 1
+    taken = len(trades) + len(opens)
+    missed_json = {"count": len(miss), "pct": round(len(miss) / max(1, len(miss) + taken) * 100, 1), "by_year": by_year}
+    _LAST["stocks"], _LAST["bench"], _LAST["missed_keys"] = stocks, bench_close, {(stocks[i_].sym, str(pd.Timestamp(cal[d_]).date())) for i_, d_ in miss}
+
     # ---- what the two cash-use rules change: the same strategy run with and without them ----
     var_out = []
     if variants:
@@ -810,7 +907,7 @@ def run(frames, names, bench_close, cfg=CFG, shares=None, themes=None, meta=None
         "metrics": {"portfolio": clean(ps), "benchmark": clean(bs), "relative": clean(rel), "trades": clean(ts), "churn_by_year": churn_year},
         "pnl": {k_: (round(v, 2) if isinstance(v, float) else v) for k_, v in pnl.items()},
         "variants": [{k_: (round(v, 3) if isinstance(v, float) else v) for k_, v in x.items()} for x in var_out],
-        "cash_pct": cash_pct, "open": opens, "signals": nxt[:30], "plan": plan_json, "trades": trades,
+        "cash_pct": cash_pct, "open": opens, "signals": nxt[:30], "plan": plan_json, "missed": missed_json, "trades": trades,
     }
 
 
@@ -902,6 +999,18 @@ def get_benchmark(tickers, cache):
     raise RuntimeError("could not download a benchmark index (%s)" % ", ".join(tickers))
 
 
+STATUS, BTDATA = {}, {}          # what each portfolio did with every signal; the data for the back test file
+
+
+def write_backtest():
+    bt = build_backtest(BTDATA["stocks"], BTDATA["bench"], BTDATA["cfg"], BTDATA["bname"], STATUS)
+    path = os.path.join(OUT_DIR, "mp_backtest.json")
+    os.makedirs(OUT_DIR, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(bt, f, separators=(",", ":"))
+    print("Back test:", {k: len(v) for k, v in bt["rules"].items()}, "trades under the three exit rules |", os.path.getsize(path) // 1024, "KB")
+
+
 def build_one(pid, bench_cache, frames_cache):
     meta, cfg = PORTFOLIOS[pid], cfg_for(pid)
     print(f"\n===== {meta['label']} =====", flush=True)
@@ -921,6 +1030,8 @@ def build_one(pid, bench_cache, frames_cache):
     shares = load_shares(list(frames)) if cfg["min_mcap_cr"] > 0 else {}
     universe_text = f"today's Nifty 500 members ({len(frames)} stocks checked), past index changes not reflected"
     payload = run(frames, names, bench, cfg, shares, None, dict(meta, universe=universe_text))
+    STATUS[pid] = {"bought": {(t["s"], t["ed"]) for t in payload["trades"]} | {(o["s"], o["ed"]) for o in payload["open"]}, "missed": _LAST["missed_keys"]}
+    BTDATA.update(stocks=_LAST["stocks"], bench=bench, cfg=cfg, bname=bname)
     payload["config"]["benchmark"] = bname
     payload["config"]["description"] = meta["description"]
     path = os.path.join(OUT_DIR, f"mp_{pid}.json")
@@ -946,6 +1057,11 @@ def main(argv=None):
             print(f"!! {PORTFOLIOS[pid]['label']} failed: {type(e).__name__}: {e}")
     if len(failed) == len(pids):
         raise SystemExit("no portfolio could be built")
+    if BTDATA:
+        try:
+            write_backtest()
+        except Exception as e:
+            print(f"!! back test failed: {type(e).__name__}: {e}")
     if failed:
         print("Built with problems, check the log above:", ", ".join(failed))
 
