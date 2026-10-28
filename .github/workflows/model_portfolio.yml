@@ -39,9 +39,10 @@ jobs:
           git config user.name  "github-actions"
           git config user.email "actions@github.com"
           mkdir -p /tmp/keep
-          cp -f data/mp_long.json data/mp_short.json /tmp/keep/ 2>/dev/null || true
+          cp -f data/mp_long.json data/mp_short.json data/mp_backtest.json /tmp/keep/ 2>/dev/null || true
           git add data/mp_long.json 2>/dev/null || true
           git add data/mp_short.json 2>/dev/null || true
+          git add data/mp_backtest.json 2>/dev/null || true
           git diff --staged --quiet || git commit -q -m "Update Model Portfolios"
           for attempt in 1 2 3 4 5; do
             git push && break
@@ -51,6 +52,7 @@ jobs:
             cp -f /tmp/keep/mp_*.json data/ 2>/dev/null || true
             git add data/mp_long.json 2>/dev/null || true
             git add data/mp_short.json 2>/dev/null || true
+            git add data/mp_backtest.json 2>/dev/null || true
             git diff --staged --quiet || git commit -q -m "Update Model Portfolios"
             sleep 5
           done
