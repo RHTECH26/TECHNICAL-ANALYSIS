@@ -1,0 +1,65 @@
+name: Update COTRS Scan
+
+on:
+  schedule:
+    - cron: "15 5,7,9 * * 1-5"   # 10:45 AM, 12:45 PM and 2:45 PM IST: Indian stocks and ETFs during the NSE session
+    - cron: "30 12 * * 1-5"      # 6:00 PM IST: Indian stocks and ETFs after the close
+    - cron: "30 16 * * 1-5"      # 10:00 PM IST: Global ETFs during the US session
+    - cron: "0 22 * * 1-5"       # 3:30 AM IST: Global ETFs after the US close
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+    inputs:
+      which:
+        description: "What to scan: all, or any of stocks, india_etf, global_etf (separated by spaces)"
+        default: "all"
+
+permissions:
+  contents: write
+
+# only one COTRS scan runs at a time; a newer one waits its turn
+concurrency:
+  group: cotrs-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90          # a scan that takes longer than this is stuck, so it is stopped instead of blocking the next ones
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl
+      - name: Scan
+        env:
+          WHICH: ${{ github.event.inputs.which }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ -n "$WHICH" ] && [ "$WHICH" != "all" ]; then LIST="$WHICH"
+          elif [ "$SCHEDULE" = "30 16 * * 1-5" ] || [ "$SCHEDULE" = "0 22 * * 1-5" ]; then LIST="global_etf"
+          elif [ -n "$SCHEDULE" ]; then LIST="stocks india_etf"
+          else LIST="stocks india_etf global_etf"; fi
+          echo "Scanning: $LIST"
+          python scan_cotrs.py $LIST
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          mkdir -p /tmp/keep
+          cp -f data/cotrs_*.json /tmp/keep/ 2>/dev/null || true
+          git add data/cotrs_stocks.json 2>/dev/null || true
+          git add data/cotrs_india_etf.json 2>/dev/null || true
+          git add data/cotrs_global_etf.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -q -m "Update COTRS scan"
+          for attempt in 1 2 3 4 5; do
+            git push && break
+            echo "Push attempt $attempt failed - taking the latest main and re-applying the new data..."
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            cp -f /tmp/keep/cotrs_*.json data/ 2>/dev/null || true
+            git add data/cotrs_stocks.json 2>/dev/null || true
+            git add data/cotrs_india_etf.json 2>/dev/null || true
+            git add data/cotrs_global_etf.json 2>/dev/null || true
+            git diff --staged --quiet || git commit -q -m "Update COTRS scan"
+            sleep 5
+          done
