@@ -361,10 +361,11 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   </div>
 </section>
 
-<!-- ================= SCANNER (COT, S&R, Breakout / Reversal) ================= -->
+<!-- ================= SCANNER (COT, COTRS, S&R, Breakout / Reversal) ================= -->
 <section class="panel" id="panel-scanner">
   <div class="subnav" role="tablist" aria-label="Scanners">
     <button type="button" class="echip" role="tab" aria-pressed="true" data-sub="cot" data-panel="cot">COT</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="cotrs" data-panel="cotrs">COTRS</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="sr" data-panel="sr">S&amp;R</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-sub="bo" data-panel="bo">Breakout / Reversal</button>
   </div>
@@ -459,6 +460,45 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       </table>
     </div>
     
+    </div>
+  </div>
+</section>
+
+<section class="subpanel" id="panel-cotrs">
+  <div class="card">
+    <h4>COTRS — COT buy above the previous buy, beating the index on both sides</h4>
+    <div style="display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; margin:10px 0 6px;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+        <select id="crs-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks" selected>Indian Stocks</option><option value="global_etf">Global ETFs</option><option value="india_etf">Indian ETFs</option></select></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Compared with
+        <span id="crs-bench" style="padding:8px 2px; font-size:13px; color:var(--ink); font-weight:700;">Nifty 500</span></label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Signal fired within (candles)
+        <input type="number" id="crs-days" value="10" min="0" max="60" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; width:100px;"></label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft); font-weight:600; padding-bottom:8px; cursor:pointer;">
+        <input type="checkbox" id="crs-now" checked> Still beating the index on both sides today</label>
+    </div>
+    <div class="tm-datarow">
+      <span class="tm-dot" id="crs-dot"></span>
+      <span id="crs-status">Loading scan…</span><span class="asof" id="crs-asof" style="margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted);"></span>
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0 10px;">
+      <input type="text" id="crs-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; margin-bottom:0;" />
+      <span id="crs-count" class="note" style="margin:0;"></span>
+      <button type="button" id="crs-export" title="Downloads the matching symbols as a TradingView watchlist file (.txt)" class="echip" style="white-space:nowrap;">⬇ TradingView watchlist (.txt)</button>
+    </div>
+    <div class="gtm-scroll">
+      <table>
+        <thead id="crs-head">
+          <tr>
+            <th class="sortable" data-key="symbol">Symbol</th><th class="sortable" data-key="name">Name</th><th class="sortable" data-key="mkt" id="crs-mkt-th" style="display:none">Market</th>
+            <th class="sortable" data-key="date">Signal Date</th><th class="num sortable" data-key="days_since">Candles Ago</th>
+            <th class="num sortable" data-key="cmp">CMP</th><th class="num sortable" data-key="level">Buy Level</th><th class="num sortable" data-key="prev_level">Previous Buy Level</th>
+            <th class="num sortable" data-key="up_pct">Above Previous</th><th class="num sortable" data-key="from_level_pct">CMP vs Buy Level</th>
+            <th class="num sortable" data-key="exH_now">vs Index since High</th><th class="num sortable" data-key="exL_now">vs Index since Low</th><th class="num sortable" data-key="stop">Stop Reference</th>
+          </tr>
+        </thead>
+        <tbody id="crs-body"></tbody>
+      </table>
     </div>
   </div>
 </section>
@@ -3252,5 +3292,96 @@ html[data-locked="1"]{overflow:hidden;}
   document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.addEventListener('click', function(){ loaded = true; load(b.dataset.p); }); });
   document.querySelectorAll('[data-panel="mp"],[data-goto="mp"]').forEach(function(b){ b.addEventListener('click', function(){ if(!loaded){ loaded = true; load(PID); } else if(D) setTimeout(drawCharts, 50); }); });
   setInterval(function(){ if(loaded && !document.hidden && $('panel-mp').classList.contains('active')) load(PID); }, 15*60*1000);
+})();
+</script>
+
+<script>
+(function(){
+  var $ = function(i){ return document.getElementById(i); };
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var CACHE = {}, uni = 'stocks', sortKey = 'days_since', asc = true, started = false;
+  var BENCH = {stocks:'Nifty 500', india_etf:'Nifty 500', global_etf:'Nasdaq Composite'};
+  var TVX = {TO:'TSX',KS:'KRX',NS:'NSE',DE:'XETR',AX:'ASX',T:'TSE',L:'LSE',SA:'BMFBOVESPA',HK:'HKEX',SW:'SIX',PA:'EURONEXT',NZ:'NZX',MX:'BMV',SI:'SGX',BK:'SET',CO:'OMXCOP',TW:'TWSE',MI:'MIL',WA:'GPW',MC:'BME'};
+  function tvSym(sym){
+    if(uni !== 'global_etf') return 'NSE:' + String(sym).replace(/[&-]/g,'_');
+    var i = sym.lastIndexOf('.'); if(i < 0) return sym;
+    var base = sym.slice(0,i), suf = sym.slice(i+1), ex = TVX[suf]; if(!ex) return base;
+    if(suf === 'HK') base = base.replace(/^0+/,'') || '0';
+    return ex + ':' + base;
+  }
+  function num(v, d){ return (v==null || !isFinite(v)) ? '—' : Number(v).toLocaleString(uni==='global_etf'?'en-US':'en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+  function sg(v, d){ return (v==null || !isFinite(v)) ? '—' : (v>0?'+':v<0?'−':'') + Math.abs(v).toFixed(d); }
+  function cls(v){ return v==null ? '' : v>0 ? 'up' : v<0 ? 'down' : ''; }
+
+  function rows(){
+    var j = CACHE[uni]; if(!j) return [];
+    var dy = +$('crs-days').value, q = $('crs-search').value.toLowerCase(), now = $('crs-now').checked;
+    var r = j.results.filter(function(x){
+      return x.days_since <= dy && (!now || x.beating_now) && (x.symbol + ' ' + x.name).toLowerCase().indexOf(q) > -1;
+    });
+    r.sort(function(a,b){
+      var va = a[sortKey], vb = b[sortKey];
+      if(va == null) return 1; if(vb == null) return -1;
+      var c = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+      return asc ? c : -c;
+    });
+    return r;
+  }
+  function render(){
+    var j = CACHE[uni], isG = uni === 'global_etf';
+    $('crs-mkt-th').style.display = isG ? '' : 'none';
+    if(!j){ $('crs-body').innerHTML = ''; $('crs-count').textContent = ''; return; }
+    var r = rows();
+    $('crs-count').textContent = r.length + (uni === 'stocks' ? ' stocks' : ' funds');
+    $('crs-body').innerHTML = r.map(function(x){
+      var tv = 'https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(tvSym(x.symbol));
+      var both = x.exH_now != null && x.exL_now != null;
+      return '<tr><td class="name"><a href="'+tv+'" target="_blank" rel="noopener">'+esc(x.symbol)+'</a></td><td>'+esc(x.name)+'</td>'+(isG?'<td>'+esc(x.mkt)+'</td>':'')+
+        '<td class="mono">'+esc(x.date)+'</td><td class="num mono">'+x.days_since+'</td><td class="num mono">'+num(x.cmp,2)+'</td><td class="num mono">'+num(x.level,2)+'</td><td class="num mono">'+num(x.prev_level,2)+'</td>'+
+        '<td class="num mono up">'+sg(x.up_pct,2)+'%</td><td class="num mono '+cls(x.from_level_pct)+'">'+sg(x.from_level_pct,2)+'%</td>'+
+        '<td class="num mono '+cls(x.exH_now)+'">'+sg(x.exH_now,1)+'</td><td class="num mono '+cls(x.exL_now)+'">'+sg(x.exL_now,1)+'</td><td class="num mono">'+num(x.stop,2)+'</td></tr>';
+    }).join('') || '<tr><td colspan="'+(isG?13:12)+'" style="color:var(--muted); padding:18px;">No stocks match. Try a longer signal window, or untick "Still beating the index".</td></tr>';
+  }
+  function header(){
+    var j = CACHE[uni];
+    if(!j){ return; }
+    $('crs-asof').textContent = 'updated ' + j.updated;
+    $('crs-status').textContent = 'Live scan — ' + j.scanned.toLocaleString('en-US') + ' ' + (uni === 'stocks' ? 'stocks' : 'funds') + ' scanned against ' + j.benchmark + (j.failed ? ' · ' + j.failed + ' skipped' : '') +
+      (j.market_open ? ' · LIVE price (market was open): signals are final only after the close' : '') + ' · ' + j.results.length + ' signals in the last ' + j.params.max_days + ' candles';
+    $('crs-dot').className = 'tm-dot live';
+  }
+  function load(){
+    var u = uni;
+    $('crs-bench').textContent = BENCH[u];
+    if(CACHE[u]){ header(); render(); }
+    else { $('crs-status').textContent = 'Loading scan…'; $('crs-dot').className = 'tm-dot'; $('crs-body').innerHTML = ''; $('crs-count').textContent = ''; $('crs-asof').textContent = ''; }
+    fetch('data/cotrs_' + u + '.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
+      if(uni === u && changed){ header(); render(); }
+    }).catch(function(){
+      if(uni === u && !CACHE[u]){
+        $('crs-status').textContent = 'data/cotrs_' + u + '.json not found yet — run the "Update COTRS Scan" action in GitHub (Actions tab) once.'; $('crs-dot').className = 'tm-dot'; render();
+      }
+    });
+  }
+  $('crs-uni').addEventListener('change', function(){ uni = this.value; load(); });
+  ['crs-days','crs-search','crs-now'].forEach(function(id){ $(id).addEventListener('input', render); $(id).addEventListener('change', render); });
+  $('crs-head').addEventListener('click', function(ev){
+    var th = ev.target.closest('th.sortable'); if(!th) return;
+    asc = (sortKey === th.dataset.key) ? !asc : true; sortKey = th.dataset.key; render();
+  });
+  $('crs-export').addEventListener('click', function(){
+    var r = rows();
+    if(!r.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen = {}, list = [];
+    r.forEach(function(x){ var t = tvSym(x.symbol); if(!seen[t]){ seen[t] = 1; list.push(t); } });
+    if(list.length > 1000){ list = list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'}));
+    a.download = 'cotrs-' + uni + '.txt'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  // first load when the COTRS sub-tab is opened; then re-check the scan file every 5 minutes while it is on screen
+  document.querySelectorAll('[data-panel="cotrs"],[data-goto="cotrs"]').forEach(function(b){ b.addEventListener('click', function(){ if(!started){ started = true; load(); } }); });
+  setInterval(function(){ if(started && !document.hidden && $('crs-body').offsetParent) load(); }, 5*60*1000);
 })();
 </script>
