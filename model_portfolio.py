@@ -526,12 +526,14 @@ BT_REMARKS = ["Weekly COT sell", "Underperformed index (since swing high)", "Und
 
 
 def build_backtest(stocks, bench, cfg, bname, status=None):
-    """Every buy signal since the start date as one trade (one trade per stock at a time, no cash limit), under three exit rules:
+    """Every buy signal since the start date as one trade (no cash limit; a repeat signal in a stock is its own trade), so the BUYS ARE THE
+    SAME under every exit rule and only the sell changes. Three exit rules:
          weekly  - sold when the weekly COT turns bearish
          rs      - sold when, at a close, the stock lags the benchmark on ANY side (since its swing high OR since its swing low)
          either  - whichever of the two comes first
     Entries and exits are at the next open, costs on both sides. Open trades are marked at the last close.
-    status: {"long": {"bought": set((sym, date)), "missed": set((sym, date))}, "short": {...}} to show what each portfolio did with the signal."""
+    status: {"long": {"bought": set((sym, date)), "missed": set((sym, date)), "held": {sym: [(buy date, sell date or None)]}}, "short": {...}}
+    to show what each portfolio did with the signal: 1 bought, 0 missed for lack of cash, 2 already held, None other."""
     status = status or {}
     bdates = bench.index.values
     cost = cfg["cost_pct"] / 100.0
@@ -551,10 +553,9 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
         flip_bars = np.array([x["bar"] for x in s.exits], int)
         si = None
         for rule in rules:
-            free = 0
             for e in sorted(s.entries, key=lambda e: e["bar"]):
                 eb = e["exec_bar"]
-                if eb is None or eb < free or dates[eb] < start:
+                if eb is None or dates[eb] < start:
                     continue
                 ep = float(s.open[eb])
                 if not ep > 0:
@@ -576,12 +577,10 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
                     xp, xd_s, closed = float(s.open[xb]), str(pd.Timestamp(dates[xb]).date()), 1
                     remark = 0 if kind == "w" else (3 if (bad_h[dec] and bad_l[dec]) else 1 if bad_h[dec] else 2)
                     days = int((dates[xb] - dates[eb]) / np.timedelta64(1, "D"))
-                    free = xb
                 else:                                                             # still open (an exit signalled on the last bar is pending)
                     xp, xd_s, closed = float(s.close[-1]), None, 0
                     remark = -1 if dec is None else (4 if kind == "w" else 5)
                     days = int((dates[-1] - dates[eb]) / np.timedelta64(1, "D"))
-                    free = n + 1
                 ret = ((xp * (1 - cost)) / (ep * (1 + cost)) - 1) * 100
                 if si is None:
                     si = len(syms)
@@ -591,7 +590,14 @@ def build_backtest(stocks, bench, cfg, bname, status=None):
                     sts = status.get(name)
                     if not sts:
                         return None
-                    return 1 if key in sts["bought"] else 0 if key in sts["missed"] else None
+                    if key in sts["bought"]:
+                        return 1
+                    if key in sts["missed"]:
+                        return 0
+                    for a_, b_ in sts.get("held", {}).get(s.sym, []):          # the portfolio already held the stock on that day
+                        if a_ < ed_s and (b_ is None or ed_s < b_):
+                            return 2
+                    return None
                 rules[rule].append([si, ed_s, round(ep, 2), xd_s, round(xp, 2), round(ret, 2), closed, remark, days, st("long"), st("short")])
     for r in rules.values():
         r.sort(key=lambda row: row[1], reverse=True)
@@ -1030,7 +1036,12 @@ def build_one(pid, bench_cache, frames_cache):
     shares = load_shares(list(frames)) if cfg["min_mcap_cr"] > 0 else {}
     universe_text = f"today's Nifty 500 members ({len(frames)} stocks checked), past index changes not reflected"
     payload = run(frames, names, bench, cfg, shares, None, dict(meta, universe=universe_text))
-    STATUS[pid] = {"bought": {(t["s"], t["ed"]) for t in payload["trades"]} | {(o["s"], o["ed"]) for o in payload["open"]}, "missed": _LAST["missed_keys"]}
+    held = {}
+    for t in payload["trades"]:
+        held.setdefault(t["s"], []).append((t["ed"], t["xd"]))
+    for o in payload["open"]:
+        held.setdefault(o["s"], []).append((o["ed"], None))
+    STATUS[pid] = {"bought": {(t["s"], t["ed"]) for t in payload["trades"]} | {(o["s"], o["ed"]) for o in payload["open"]}, "missed": _LAST["missed_keys"], "held": held}
     BTDATA.update(stocks=_LAST["stocks"], bench=bench, cfg=cfg, bname=bname)
     payload["config"]["benchmark"] = bname
     payload["config"]["description"] = meta["description"]
