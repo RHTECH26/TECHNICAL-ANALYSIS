@@ -83,11 +83,34 @@ def clean_index(ix):
     return (ix.tz_localize(None) if ix.tz is not None else ix).normalize()
 
 
+def close_of(data, ticker=None):
+    """The Close column of a Yahoo download, whichever way the columns are laid out (field first, ticker first, or plain)."""
+    cols = data.columns
+    if isinstance(cols, pd.MultiIndex):
+        lv0 = list(cols.get_level_values(0))
+        if ticker is not None and ticker in lv0:                  # (ticker, field)
+            return data[ticker]["Close"]
+        close = data["Close"]                                     # (field, ticker)
+        return close.iloc[:, 0] if hasattr(close, "columns") else close
+    return data["Close"]
+
+
 def benchmark():
-    d = download(BENCH)
-    if d is None:
+    d = None
+    for attempt in range(3):
+        try:
+            kw = dict(period=PERIOD, interval="1d", auto_adjust=False, progress=False)
+            if SESSION is not None:
+                kw["session"] = SESSION
+            d = yf.download(BENCH, **kw)
+            if d is not None and len(d):
+                break
+        except Exception as e:
+            print(f"  benchmark attempt {attempt + 1} failed: {type(e).__name__}")
+        time.sleep(5 * (attempt + 1))
+    if d is None or not len(d):
         raise RuntimeError("could not download the Nifty 500")
-    ser = d["Close"].iloc[:, 0] if hasattr(d["Close"], "columns") else d["Close"]
+    ser = close_of(d, BENCH)
     ser = pd.Series(ser.to_numpy(float), index=clean_index(ser.index)).dropna()
     ser = ser[~ser.index.duplicated(keep="last")]
     if len(ser) < 500:
@@ -127,10 +150,9 @@ def main():
         if data is None:
             print("   chunk gave no data")
             continue
-        multi = isinstance(data.columns, pd.MultiIndex)
         for ysym, sym in part:
             try:
-                close = ((data[ysym] if multi else data)["Close"]).dropna()
+                close = close_of(data, ysym).dropna()
                 rec = pack(close, cal)
             except Exception:
                 continue
