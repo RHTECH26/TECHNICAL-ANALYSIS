@@ -1,0 +1,39 @@
+name: Update Prices (My Portfolio)
+
+on:
+  schedule:
+    - cron: "*/30 3-10 * * 1-5"  # every 30 minutes during the NSE session (8:30 AM to 4:00 PM IST), Mon-Fri
+    - cron: "30 11 * * 1-5"      # 5:00 PM IST: the final closing prices
+  workflow_dispatch:             # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+# a new run waits for the previous one instead of running alongside it
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl curl_cffi
+      - run: python scan_prices.py
+      - name: Publish to the live-prices branch (one commit that is replaced every run)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          rm -rf .git
+          git init -q -b live-prices
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add prices.json
+          git commit -q -m "Prices $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" live-prices
