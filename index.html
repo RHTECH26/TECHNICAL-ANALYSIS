@@ -901,12 +901,14 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <div class="card" id="mp-my-card">
     <h4>My portfolio<span class="asof" id="my-asof"></span></h4>
     <div class="tm-datarow"><span class="tm-dot" id="my-dot"></span><span id="my-status">Loading prices…</span></div>
+    <div class="my-sync" id="my-bk-bar"></div>
     <div class="tilerow" id="my-kpis" style="margin-top:12px;"></div>
     <div class="my-actions">
       <button type="button" class="echip" id="my-add" aria-pressed="true">＋ Add trade</button>
+      <label class="my-cap" title="The money this portfolio started with. Returns, cash and CAGR are measured on it.">Capital ₹ <input type="text" id="my-cap" inputmode="decimal" value="2,00,00,000" autocomplete="off"></label>
       <span style="flex:1;"></span>
-      <button type="button" class="echip" id="my-exp-json" title="Saves all your trades in one file. Use it to keep a copy or to move to another browser.">⬇ Backup (JSON)</button>
-      <button type="button" class="echip" id="my-exp-csv">⬇ CSV</button>
+      <button type="button" class="echip" id="my-exp-json" title="One file with your current holdings and your historical trades. Use Import to restore it on any browser.">⬇ Download backup</button>
+      <button type="button" class="echip" id="my-exp-csv" title="Opens in Excel: current holdings and historical trades with their gains.">⬇ Excel (CSV)</button>
       <button type="button" class="echip" id="my-import">⬆ Import</button><input type="file" id="my-file" accept=".json,.csv,application/json,text/csv" hidden>
       <button type="button" class="echip" id="my-clear">Clear all</button>
     </div>
@@ -931,7 +933,15 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <div class="gtm-scroll" style="max-height:520px;"><table class="mp-table" id="my-open"></table></div>
 
     <div class="mp-sub" style="margin-top:24px;">Performance</div>
-    <div class="my-perf">
+    <div class="my-chart my-perfbox" id="my-perfbox">
+      <div class="my-perf-head"><div class="my-chart-t" style="margin:0;">My portfolio vs Nifty 500</div>
+        <span style="flex:1;"></span>
+        <span class="mp-seg" id="my-perf-mode"><button type="button" class="echip" data-m="idx" aria-pressed="true">Indexed to 100</button><button type="button" class="echip" data-m="val" aria-pressed="false">Value (₹)</button></span>
+        <span class="mp-seg" id="my-perf-range"><button type="button" class="echip" data-r="3" aria-pressed="false">3M</button><button type="button" class="echip" data-r="6" aria-pressed="false">6M</button><button type="button" class="echip" data-r="12" aria-pressed="false">1Y</button><button type="button" class="echip" data-r="36" aria-pressed="false">3Y</button><button type="button" class="echip" data-r="0" aria-pressed="true">All</button></span></div>
+      <div class="my-perf-stats" id="my-perf-stats"></div>
+      <div class="my-chart-b" style="height:320px;"><canvas id="my-c-perf"></canvas><div class="my-perf-msg" id="my-perf-msg"></div></div>
+    </div>
+    <div class="my-perf" style="margin-top:14px;">
       <div class="gtm-scroll my-ratios"><table class="mp-table" id="my-ratios"></table></div>
       <div class="my-charts">
         <div class="my-chart"><div class="my-chart-t">Cumulative realised gain / loss (₹)</div><div class="my-chart-b"><canvas id="my-c-cum"></canvas></div></div>
@@ -939,6 +949,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
         <div class="my-chart"><div class="my-chart-t">Realised gain / loss by month (₹)</div><div class="my-chart-b"><canvas id="my-c-month"></canvas></div></div>
         <div class="my-chart"><div class="my-chart-t">Current holdings by value</div><div class="my-chart-b"><canvas id="my-c-alloc"></canvas></div></div>
         <div class="my-chart my-wide"><div class="my-chart-t">Open holdings: unrealised return (%)</div><div class="my-chart-b"><canvas id="my-c-open"></canvas></div></div>
+        <div class="my-chart my-wide"><div class="my-chart-t">Number of stocks held over time</div><div class="my-chart-b"><canvas id="my-c-pos"></canvas></div></div>
       </div>
     </div>
 
@@ -2849,6 +2860,17 @@ html[data-locked="1"]{overflow:hidden;}
 .my-btn.sell{color:var(--saffron);}
 .my-btn.del:hover{color:var(--bad);}
 #my-open th.sortable,#my-closed th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+.my-cap{display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-left:8px;}
+.my-cap input{width:130px; padding:6px 9px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; font-weight:600; text-align:right;}
+.my-sync{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; margin:10px 0 4px; font-size:12.5px; color:var(--ink-soft);}
+.my-sync:empty{display:none;}
+.my-sync .warn{color:var(--bad); font-weight:700;}
+.my-sync.warnbar{border:1px solid var(--bad); background:rgba(214,69,69,0.08); border-radius:10px; padding:9px 12px;}
+.my-perfbox{margin-bottom:6px;}
+.my-perf-head{display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; margin-bottom:6px;}
+.my-perf-stats{display:flex; flex-wrap:wrap; gap:4px 18px; font-size:12.5px; color:var(--ink-soft); margin:2px 0 8px;}
+.my-perf-msg{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 24px; color:var(--muted); font-size:12.5px;}
+.my-perf-msg:empty{display:none;}
 </style>
 
 <script>
@@ -3646,11 +3668,12 @@ html[data-locked="1"]{overflow:hidden;}
   var PRICE_URL = 'https://raw.githubusercontent.com/rhtech26/TECHNICAL-ANALYSIS/live-prices/prices.json';
   var $ = function(i){ return document.getElementById(i); };
   function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  var T = [], P = null, editId = null, started = false, charts = {}, sortS = {open:{k:'val', asc:false}, closed:{k:'sd', asc:false}};
+  var DEFAULT_CAP = 20000000, K = DEFAULT_CAP, T = [], P = null, editId = null, started = false, charts = {}, sortS = {open:{k:'val', asc:false}, closed:{k:'sd', asc:false}};
+  var HB = 'https://raw.githubusercontent.com/rhtech26/TECHNICAL-ANALYSIS/live-history/', HIST = {cal:null, H:{}, req:{}, err:'', loadingCal:false}, PERF = null, perfMode = 'idx', perfRange = 0;
 
   // ================= storage =================
-  function load(){ try{ var j = JSON.parse(localStorage.getItem(KEY) || 'null'); T = (j && j.trades) ? j.trades : []; }catch(e){ T = []; } }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify({version:1, trades:T})); return true; }catch(e){ alert('Could not save in this browser (storage is blocked or full). Use Backup (JSON) to keep your data.'); return false; } }
+  function load(){ try{ var j = JSON.parse(localStorage.getItem(KEY) || 'null'); T = (j && j.trades) ? j.trades : []; K = (j && j.capital > 0) ? j.capital : DEFAULT_CAP; }catch(e){ T = []; K = DEFAULT_CAP; } }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify({version:2, capital:K, trades:T})); return true; }catch(e){ alert('Could not save in this browser (storage is blocked or full). Use Backup (JSON) to keep your data.'); return false; } }
   function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   // ================= helpers =================
@@ -3685,7 +3708,62 @@ html[data-locked="1"]{overflow:hidden;}
     }
     return (lo + hi) / 2 * 100;
   }
-  function compute(trades, PR){
+  function positionsInfo(trades){
+    var ev = {}, cnt = {}, series = [], max = 0, maxDate = null;
+    trades.forEach(function(t){ (ev[t.bd] = ev[t.bd] || []).push([t.sym, 1]); if(t.sd) (ev[t.sd] = ev[t.sd] || []).push([t.sym, -1]); });
+    Object.keys(ev).sort().forEach(function(d){
+      ev[d].forEach(function(e){ cnt[e[0]] = (cnt[e[0]] || 0) + e[1]; });
+      var n = Object.keys(cnt).filter(function(k){ return cnt[k] > 0; }).length;       // distinct stocks held at the end of that day
+      series.push([d, n]); if(n > max){ max = n; maxDate = d; }
+    });
+    var now = Object.keys(cnt).filter(function(k){ return cnt[k] > 0; }).length;
+    var avg = null;
+    if(series.length){ var tot = 0, span = 0; for(var i = 0; i < series.length; i++){ var d0 = dayNum(series[i][0]), d1 = i + 1 < series.length ? dayNum(series[i + 1][0]) : dayNum(todayISO()); tot += series[i][1] * Math.max(0, d1 - d0); span += Math.max(0, d1 - d0); } avg = span ? tot / span : null; }
+    return {now:now, max:max, maxDate:maxDate, series:series, avg:avg};
+  }
+  // portfolio value (holdings at the day's close + cash) on a fixed capital, against the Nifty 500 with the same capital from the same day
+  function buildPerf(trades, cap, cal, H){
+    var dates = cal.dates, bench = cal.bench, n = dates.length;
+    if(!n || !trades.length) return null;
+    function idxOf(iso){ var lo = 0, hi = n; while(lo < hi){ var m = (lo + hi) >> 1; if(dates[m] < iso) lo = m + 1; else hi = m; } return lo; }
+    var hold = new Array(n).fill(0), cash = new Array(n).fill(0), flowIn = new Array(n + 1).fill(0), missing = {}, first = n, cache = {};
+    function series(sym){
+      if(cache[sym] !== undefined) return cache[sym];
+      var h = H[sym]; if(!h || !h.c || !h.c.length){ cache[sym] = null; return null; }
+      var arr = new Array(n).fill(null), last = null;
+      for(var i = 0; i < n; i++){ var j = i - h.o; if(j >= 0){ var v = j < h.c.length ? h.c[j] : null; if(v != null) last = v; arr[i] = last; } }     // before the first data day: none; gaps and days after the last data day: the last known close
+      cache[sym] = arr; return arr;
+    }
+    trades.forEach(function(t){
+      var bi = idxOf(t.bd); if(bi >= n) return;
+      var si = t.sd ? idxOf(t.sd) : n; if(si < bi) si = bi;
+      first = Math.min(first, bi);
+      var arr = series(t.sym);
+      for(var i = bi; i < Math.min(si, n); i++){
+        var px = arr ? arr[i] : null;
+        if(px == null){ px = t.bp; missing[t.sym] = 1; }                  // no history for that day: valued at the buy price
+        hold[i] += px * t.qty;
+      }
+      flowIn[bi] -= t.bp * t.qty; if(si < n) flowIn[si] += t.sp * t.qty;
+    });
+    if(first >= n) return null;
+    var run = cap, minCash = cap, minCashDate = null, V = new Array(n);
+    for(var i = 0; i < n; i++){ run += flowIn[i]; cash[i] = run; V[i] = hold[i] + run; if(run < minCash){ minCash = run; minCashDate = dates[i]; } }
+    var s0 = Math.max(0, first - 1);
+    return {dates:dates, V:V, N:bench, hold:hold, cash:cash, s0:s0, minCash:minCash, minCashDate:minCashDate, missing:Object.keys(missing).sort(), cap:cap};
+  }
+  function perfMetrics(PF, from){
+    var s = from == null ? PF.s0 : from, n = PF.dates.length, V = PF.V, B = PF.N;
+    var days = dayNum(PF.dates[n - 1]) - dayNum(PF.dates[s]);
+    var pr = V[n - 1] / V[s] - 1, br = B[n - 1] / B[s] - 1;
+    function dd(arr){ var pk = -Infinity, m = 0; for(var i = s; i < n; i++){ if(arr[i] > pk) pk = arr[i]; var d = arr[i] / pk - 1; if(d < m) m = d; } return m * 100; }
+    var rets = []; for(var i = s + 1; i < n; i++) rets.push(V[i] / V[i - 1] - 1);
+    var mean = rets.reduce(function(a, b){ return a + b; }, 0) / (rets.length || 1), sd = Math.sqrt(rets.reduce(function(a, b){ return a + (b - mean) * (b - mean); }, 0) / (rets.length > 1 ? rets.length - 1 : 1));
+    var vol = sd * Math.sqrt(252) * 100, sharpe = sd ? (mean * 252 - 0.06) / (sd * Math.sqrt(252)) : null;
+    return {days:days, ret:pr * 100, bret:br * 100, cagr:days >= 90 ? (Math.pow(1 + pr, 365 / days) - 1) * 100 : null, bcagr:days >= 90 ? (Math.pow(1 + br, 365 / days) - 1) * 100 : null,
+            dd:dd(V), bdd:dd(B), vol:vol, sharpe:sharpe};
+  }
+  function compute(trades, PR, cap){
     var asof = PR ? PR.asof : null, pm = PR ? PR.p : {}, ref = asof || todayISO();
     var open = [], closed = [];
     trades.forEach(function(t){
@@ -3711,7 +3789,8 @@ html[data-locked="1"]{overflow:hidden;}
     var fl = [];
     trades.forEach(function(t){ fl.push([dayNum(t.bd), -t.bp * t.qty]); if(t.sd) fl.push([dayNum(t.sd), t.sp * t.qty]); });
     open.forEach(function(r){ fl.push([dayNum(ref), r.val]); });
-    var sum = {invested:invested, value:value, unreal:unreal, unrealPct:invested ? unreal / invested * 100 : null, realised:realised, total:realised + unreal,
+    var capital = cap || DEFAULT_CAP, cashNow = capital - invested + realised;
+    var sum = {capital:capital, cash:cashNow, pv:value + cashNow, totalPctCap:(realised + unreal) / capital * 100, pos:positionsInfo(trades), invested:invested, value:value, unreal:unreal, unrealPct:invested ? unreal / invested * 100 : null, realised:realised, total:realised + unreal,
                totalPct:deployed ? (realised + unreal) / deployed * 100 : null, deployed:deployed, day:day, dayBase:dayBase, dayPct:dayBase ? day / dayBase * 100 : null,
                xirr:xirr(fl), nOpen:open.length, nClosed:closed.length, noPrice:open.filter(function(r){ return !r.hasPrice; }).length};
     // ratios on the closed trades
@@ -3735,16 +3814,22 @@ html[data-locked="1"]{overflow:hidden;}
   var C = null;
   function tile(k, v, sub, vc){ return '<div class="mtile"><div class="k">' + k + '</div><div class="v ' + (vc || '') + '">' + v + '</div><div class="d">' + sub + '</div></div>'; }
   function renderTiles(){
-    var S = C.sum, R = C.ratios;
+    var S = C.sum, R = C.ratios, pm = PERF ? perfMetrics(PERF) : null, po = S.pos;
+    var posSub = po.max ? 'most at one time: ' + po.max + (po.maxDate ? ' (' + dshort(po.maxDate) + ')' : '') : 'no trades yet';
+    var hasTrades = S.nOpen || S.nClosed;
     $('my-kpis').innerHTML =
       tile("Today's gain / loss", S.dayPct == null && !S.dayBase ? '—' : smoney(S.day), S.dayPct == null ? (P ? 'no holdings priced today' : 'prices not loaded') : pc(S.dayPct) + ' on yesterday’s value', cls(S.day)) +
-      tile('Current value', S.nOpen ? money(S.value) : '—', S.nOpen + ' holding' + (S.nOpen === 1 ? '' : 's'), '') +
-      tile('Invested', S.nOpen ? money(S.invested) : '—', 'cost of current holdings', '') +
-      tile('Unrealised gain / loss', S.nOpen ? smoney(S.unreal) : '—', S.nOpen ? pc(S.unrealPct) : '', cls(S.unreal)) +
+      tile('Portfolio value', hasTrades ? money(S.pv) : money(S.capital), 'holdings + cash, on ' + money(S.capital) + ' capital', '') +
+      tile('Total gain / loss', hasTrades ? smoney(S.total) : '—', hasTrades ? pc(S.totalPctCap) + ' of capital' : '', cls(S.total)) +
+      tile('CAGR', pm && pm.cagr != null ? pc(pm.cagr, 1) : '—', pm ? (pm.cagr != null ? 'Nifty 500 ' + pc(pm.bcagr, 1) + ' over the same days' : 'needs 90+ days of history') : (HIST.err ? 'price history not loaded' : (hasTrades ? 'loading price history…' : 'add trades first')), pm && pm.cagr != null ? cls(pm.cagr - pm.bcagr) : '') +
+      tile('Holdings value', S.nOpen ? money(S.value) : '—', S.nOpen + ' lot' + (S.nOpen === 1 ? '' : 's') + ' · cost ' + money(S.invested), '') +
+      tile('Cash', money(S.cash), (S.cash / S.capital * 100).toFixed(1) + '% of capital' + (S.cash < 0 ? ' · buys exceed the capital' : ''), S.cash < 0 ? 'down' : '') +
+      tile('Positions', String(po.now) + ' now', posSub + (po.avg != null ? ' · average ' + po.avg.toFixed(1) : ''), '') +
+      tile('Max drawdown', pm ? pc(pm.dd, 1) : '—', pm ? 'Nifty 500 ' + pc(pm.bdd, 1) : '', pm ? cls(pm.dd - pm.bdd) : '') +
+      tile('Unrealised gain / loss', S.nOpen ? smoney(S.unreal) : '—', S.nOpen ? pc(S.unrealPct) + ' on cost' : '', cls(S.unreal)) +
       tile('Realised gain / loss', S.nClosed ? smoney(S.realised) : '—', S.nClosed + ' closed trade' + (S.nClosed === 1 ? '' : 's'), cls(S.realised)) +
-      tile('Total gain / loss', (S.nOpen || S.nClosed) ? smoney(S.total) : '—', S.totalPct == null ? '' : pc(S.totalPct) + ' on money deployed', cls(S.total)) +
-      tile('Return a year (XIRR)', S.xirr == null ? '—' : pc(S.xirr, 1), S.xirr == null ? 'needs 30+ days of history' : 'money-weighted, all trades', cls(S.xirr)) +
-      tile('Win rate', R.win == null ? '—' : R.win.toFixed(1) + '%', R.n ? R.wins + ' wins · ' + R.losses + ' losses' : 'no closed trades yet', '');
+      tile('Win rate', R.win == null ? '—' : R.win.toFixed(1) + '%', R.n ? R.wins + ' wins · ' + R.losses + ' losses' : 'no closed trades yet', '') +
+      tile('Return a year (XIRR)', S.xirr == null ? '—' : pc(S.xirr, 1), S.xirr == null ? 'needs 30+ days of history' : 'on the money deployed', cls(S.xirr));
   }
   function sortRows(rows, st, getter){
     return rows.slice().sort(function(a, b){
@@ -3793,6 +3878,18 @@ html[data-locked="1"]{overflow:hidden;}
     $('my-closed').innerHTML = html + '</tbody>';
     $('my-closed-count').textContent = C.closed.length ? C.closed.length + ' trade' + (C.closed.length === 1 ? '' : 's') : '';
   }
+  function perfRows(){
+    if(!PERF) return '<tr><td class="l" colspan="2" style="color:var(--muted); white-space:normal;">' + esc(HIST.err || (T.length ? 'Loading price history…' : 'Add trades to see CAGR, drawdown and the Nifty 500 comparison.')) + '</td></tr>';
+    var m = perfMetrics(PERF);
+    function row(k, v, sub){ return '<tr><td class="l">' + k + '</td><td>' + v + (sub ? '<span class="nm" style="display:block;">' + sub + '</span>' : '') + '</td></tr>'; }
+    return row('CAGR on capital', m.cagr == null ? '—' : '<span class="' + cls(m.cagr) + '">' + pc(m.cagr, 1) + '</span>', m.cagr == null ? 'needs 90+ days' : 'from ' + dshort(PERF.dates[PERF.s0])) +
+      row('Nifty 500 CAGR', m.bcagr == null ? '—' : pc(m.bcagr, 1), 'same capital, same days') +
+      row('Ahead of Nifty 500 by', m.cagr == null ? '—' : '<span class="' + cls(m.cagr - m.bcagr) + '">' + (m.cagr - m.bcagr > 0 ? '+' : '') + (m.cagr - m.bcagr).toFixed(1) + ' pts a year</span>', '') +
+      row('Total return', '<span class="' + cls(m.ret) + '">' + pc(m.ret, 1) + '</span>', 'Nifty 500 ' + pc(m.bret, 1)) +
+      row('Max drawdown', pc(m.dd, 1), 'Nifty 500 ' + pc(m.bdd, 1)) +
+      row('Volatility', m.vol.toFixed(1) + '%', 'a year') +
+      row('Sharpe ratio', m.sharpe == null ? '—' : m.sharpe.toFixed(2), 'risk-free rate 6%');
+  }
   function renderRatios(){
     var R = C.ratios, S = C.sum;
     function row(k, v, sub){ return '<tr><td class="l">' + k + '</td><td>' + v + (sub ? '<span class="nm" style="display:block;">' + sub + '</span>' : '') + '</td></tr>'; }
@@ -3811,6 +3908,9 @@ html[data-locked="1"]{overflow:hidden;}
       row('Longest winning run', n ? R.winStreak + ' trade' + (R.winStreak === 1 ? '' : 's') : '—') +
       row('Longest losing run', n ? R.loseStreak + ' trade' + (R.loseStreak === 1 ? '' : 's') : '—') +
       row('Return a year (XIRR)', S.xirr == null ? '—' : '<span class="' + cls(S.xirr) + '">' + pc(S.xirr, 1) + '</span>', 'money-weighted, all trades') +
+      perfRows() +
+      row('Most positions at one time', S.pos.max ? String(S.pos.max) : '—', S.pos.maxDate ? dshort(S.pos.maxDate) : '') +
+      row('Positions now', String(S.pos.now), S.pos.avg != null ? 'average ' + S.pos.avg.toFixed(1) + ' over the period' : '') +
       row('Largest holding', R.maxW == null ? '—' : R.maxW.toFixed(1) + '%', 'of current value') +
       row('Top 5 holdings', R.top5 == null ? '—' : R.top5.toFixed(1) + '%', 'of current value') +
       row('Average days held (open)', R.openDays == null ? '—' : String(Math.round(R.openDays)), 'current holdings') + '</tbody>';
@@ -3822,6 +3922,55 @@ html[data-locked="1"]{overflow:hidden;}
     box.setAttribute('data-empty', empty ? '1' : '0');
     if(empty || !window.Chart) return;
     charts[id] = new Chart(el, cfg);
+  }
+  // ----- price history (for the performance chart) -----
+  function fnOf(sym){ return String(sym).replace(/[^A-Za-z0-9]/g, '_'); }
+  function recomputePerf(){ PERF = (HIST.cal && T.length) ? buildPerf(T, K, HIST.cal, HIST.H) : null; }
+  function ensureHistory(){
+    if(!T.length) return;
+    var d = todayISO();
+    if(!HIST.cal){
+      if(HIST.loadingCal || HIST.calTried) return;
+      HIST.loadingCal = true; HIST.calTried = true;
+      fetch(HB + 'cal.json?d=' + d, {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ HIST.cal = j; HIST.err = ''; })
+        .catch(function(){ HIST.err = 'Price history is not available yet. Run “Update Price History (My Portfolio)” once in GitHub (Actions tab).'; })
+        .then(function(){ HIST.loadingCal = false; if(HIST.cal) ensureHistory(); render(); });
+      return;
+    }
+    var need = Object.keys(T.reduce(function(a, t){ a[t.sym] = 1; return a; }, {})).filter(function(s){ return !HIST.req[s]; });
+    if(!need.length) return;
+    Promise.all(need.map(function(s){
+      HIST.req[s] = 1;
+      return fetch(HB + 'h/' + fnOf(s) + '.json?d=' + d).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ HIST.H[s] = j; }).catch(function(){ HIST.H[s] = null; });
+    })).then(function(){ render(); });
+  }
+  function perfStart(){
+    var n = PERF.dates.length, s = PERF.s0;
+    if(perfRange > 0){ var d = new Date(PERF.dates[n - 1] + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() - perfRange); var iso = d.toISOString().slice(0, 10), i = 0; while(i < n && PERF.dates[i] < iso) i++; s = Math.max(s, i); }
+    return s;
+  }
+  function renderPerfChart(){
+    if(!$('panel-mp').classList.contains('mp-my-mode')) return;
+    var msg = $('my-perf-msg'), st = $('my-perf-stats');
+    if(charts.perf){ charts.perf.destroy(); charts.perf = null; }
+    if(!PERF){ msg.textContent = HIST.err || (T.length ? 'Loading price history…' : 'Add trades to see how the portfolio compares with the Nifty 500.'); st.innerHTML = ''; return; }
+    msg.textContent = '';
+    var s = perfStart(), n = PERF.dates.length, V0 = PERF.V[s], B0 = PERF.N[s], labels = PERF.dates.slice(s), pv = [], bv = [];
+    for(var i = s; i < n; i++){
+      if(perfMode === 'idx'){ pv.push(+(PERF.V[i] / V0 * 100).toFixed(2)); bv.push(+(PERF.N[i] / B0 * 100).toFixed(2)); }
+      else { pv.push(Math.round(PERF.V[i])); bv.push(Math.round(V0 * PERF.N[i] / B0)); }
+    }
+    var pr = (PERF.V[n - 1] / V0 - 1) * 100, br = (PERF.N[n - 1] / B0 - 1) * 100, diff = pr - br;
+    st.innerHTML = '<span>Portfolio <b class="' + cls(pr) + '">' + pc(pr, 1) + '</b></span><span>Nifty 500 <b class="' + cls(br) + '">' + pc(br, 1) + '</b></span><span>' + (diff >= 0 ? 'Ahead by ' : 'Behind by ') + '<b class="' + cls(diff) + '">' + Math.abs(diff).toFixed(1) + ' pts</b></span><span class="nm" style="display:inline;">' + dshort(PERF.dates[s]) + ' to ' + dshort(PERF.dates[n - 1]) + '</span>' +
+      (PERF.minCash < 0 ? '<span class="down">Buys exceeded the capital by ' + money(-PERF.minCash) + ' (' + dshort(PERF.minCashDate) + ')</span>' : '') +
+      (PERF.missing.length ? '<span class="nm" style="display:inline;">No price history for ' + esc(PERF.missing.join(', ')) + ': valued at the buy price</span>' : '');
+    var ink = css('--ink-soft'), mut = css('--muted'), line = css('--line'), sf = css('--saffron') || '#ff9933';
+    var lakh = function(v){ var a = Math.abs(v), sg = v < 0 ? '-' : ''; return sg + (a >= 1e7 ? (a / 1e7).toFixed(2) + ' Cr' : a >= 1e5 ? (a / 1e5).toFixed(1) + ' L' : a); };
+    charts.perf = new Chart($('my-c-perf'), {type:'line', data:{labels:labels, datasets:[
+      {label:'My portfolio', data:pv, borderColor:sf, backgroundColor:sf, borderWidth:2, pointRadius:0, tension:0},
+      {label:'Nifty 500' + (perfMode === 'val' ? ' (same capital)' : ''), data:bv, borderColor:mut, backgroundColor:mut, borderWidth:1.6, pointRadius:0, tension:0}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index', intersect:false}, plugins:{legend:{labels:{color:ink, boxWidth:12}}, tooltip:{callbacks:{label:function(c){ return ' ' + c.dataset.label + ': ' + (perfMode === 'idx' ? c.parsed.y.toFixed(1) : rs(c.parsed.y)); }}}},
+        scales:{x:{ticks:{color:mut, maxTicksLimit:8, autoSkip:true, callback:function(v){ var l = this.getLabelForValue(v); return l ? l.slice(0, 7) : ''; }}, grid:{display:false}}, y:{ticks:{color:mut, maxTicksLimit:7, callback:function(v){ return perfMode === 'idx' ? v : lakh(v); }}, grid:{color:line}}}}});
   }
   function renderCharts(){
     if(!$('panel-mp').classList.contains('mp-my-mode')) return;
@@ -3849,23 +3998,27 @@ html[data-locked="1"]{overflow:hidden;}
     mk('my-c-alloc', !arr.length, {type:'doughnut', data:{labels:labels, datasets:[{data:vals, backgroundColor:palette.slice(0, labels.length), borderWidth:0}]},
       options:Object.assign({}, common, {cutout:'58%', plugins:{legend:{display:true, position:'right', labels:{color:ink, boxWidth:12}}, tooltip:{callbacks:{label:function(c){ var t = vals.reduce(function(a, b){ return a + b; }, 0); return ' ' + c.label + ': ' + rs(c.parsed) + ' (' + (c.parsed / t * 100).toFixed(1) + '%)'; }}}}})});
     var ou = arr.map(function(r){ return {sym:r.sym, pct:(r.val / r.cost - 1) * 100}; }).sort(function(a, b){ return b.pct - a.pct; });
+    var ps = C.sum.pos.series.slice();
+    if(ps.length){ var lastD = (P && P.asof) || todayISO(); if(ps[ps.length - 1][0] < lastD) ps.push([lastD, C.sum.pos.now]); }
+    mk('my-c-pos', ps.length < 1, {type:'line', data:{labels:ps.map(function(p){ return p[0]; }), datasets:[{data:ps.map(function(p){ return p[1]; }), stepped:'before', borderColor:sf, backgroundColor:'rgba(255,153,51,0.15)', fill:true, borderWidth:2, pointRadius:ps.length < 60 ? 3 : 0}]},
+      options:Object.assign({}, common, {scales:{x:xAxis, y:{beginAtZero:true, ticks:{color:mut, precision:0, maxTicksLimit:8}, grid:{color:line}}}, plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){ return ' ' + c.parsed.y + ' stocks held'; }}}}})});
+    renderPerfChart();
     mk('my-c-open', !ou.length, {type:'bar', data:{labels:ou.map(function(r){ return r.sym; }), datasets:[{data:ou.map(function(r){ return +r.pct.toFixed(2); }), backgroundColor:ou.map(function(r){ return r.pct >= 0 ? good : bad; })}]},
       options:Object.assign({}, common, {scales:{x:{ticks:{color:mut, autoSkip:false, maxRotation:60}, grid:{display:false}}, y:axis(function(v){ return v + '%'; })}, plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){ return ' ' + pc(c.parsed.y); }}}}})});
   }
   function renderStatus(){
-    var note = ' · saved in this browser only: use Backup (JSON) to keep a copy';
     if(P){
       var msg = 'Prices as of ' + P.asof + ' · updated ' + P.updated_ist;
       if(C && C.sum.noPrice) msg += ' · ' + C.sum.noPrice + ' holding' + (C.sum.noPrice === 1 ? ' has' : 's have') + ' no price in the list and ' + (C.sum.noPrice === 1 ? 'is' : 'are') + ' shown at the buy price';
-      $('my-status').textContent = msg + note; $('my-dot').className = 'tm-dot live';
+      $('my-status').textContent = msg; $('my-dot').className = 'tm-dot live';
     } else {
-      $('my-status').textContent = 'Prices not available yet. Run “Update Prices (My Portfolio)” once in GitHub (Actions tab). Until then holdings show at the buy price and today’s gain / loss is not available' + note; $('my-dot').className = 'tm-dot';
+      $('my-status').textContent = 'Prices not available yet. Run “Update Prices (My Portfolio)” once in GitHub (Actions tab). Until then holdings show at the buy price and today’s gain / loss is not available.'; $('my-dot').className = 'tm-dot';
     }
     $('my-asof').textContent = P ? 'prices as of ' + P.asof : '';
   }
   function render(){
-    C = compute(T, P);
-    renderTiles(); renderOpen(); renderRatios(); renderClosed(); renderStatus(); renderCharts();
+    C = compute(T, P, K); recomputePerf();
+    renderTiles(); renderOpen(); renderRatios(); renderClosed(); renderStatus(); renderBackup(); renderCharts(); ensureHistory();
   }
 
   // ================= the form =================
@@ -3886,7 +4039,7 @@ html[data-locked="1"]{overflow:hidden;}
     $('my-sq-wrap').style.display = (t && !t.sd) || !t ? '' : 'none';
     $('my-save').textContent = t ? 'Save changes' : 'Save trade';
     $('my-form').hidden = false; nameHint();
-    setTimeout(function(){ (focusSell ? $('my-sp') : $('my-sym')).focus(); $('my-form').scrollIntoView({block:'nearest', behavior:'smooth'}); }, 30);
+    setTimeout(function(){ if(!$('my-form').contains(document.activeElement)) (focusSell ? $('my-sp') : $('my-sym')).focus(); $('my-form').scrollIntoView({block:'nearest', behavior:'smooth'}); }, 30);
   }
   function closeForm(){ $('my-form').hidden = true; editId = null; setErr(''); }
   function readForm(){
@@ -3931,11 +4084,36 @@ html[data-locked="1"]{overflow:hidden;}
   // ================= backup / import =================
   function download(name, text, type){ var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:type})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
   function csvq(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
-  function exportJSON(){ if(!T.length){ alert('Nothing to back up yet.'); return; } download('my-portfolio-' + todayISO() + '.json', JSON.stringify({version:1, exported:todayISO(), trades:T}, null, 1), 'application/json'); }
+  function lastBackup(){ try{ return localStorage.getItem('rh-my-lastbackup') || ''; }catch(e){ return ''; } }
+  function markBackup(){ try{ localStorage.setItem('rh-my-lastbackup', todayISO()); }catch(e){} renderBackup(); }
+  function renderBackup(){
+    var bar = $('my-bk-bar'); if(!bar) return;
+    if(!T.length){ bar.innerHTML = ''; bar.className = 'my-sync'; return; }
+    var lb = lastBackup(), age = lb ? Math.round(dayNum(todayISO()) - dayNum(lb)) : null, stale = age == null || age > 7;
+    bar.className = 'my-sync' + (stale ? ' warnbar' : '');
+    bar.innerHTML = (stale ? '<span class="warn">⚠ ' + (age == null ? 'No backup downloaded yet.' : 'Last backup was ' + age + ' days ago.') + '</span>' : '<span>💾 Last backup downloaded ' + dshort(lb) + '.</span>') +
+      '<span>Your trades are saved in this browser only, so download a backup now and then.</span><button type="button" class="echip" data-bk="json" aria-pressed="' + (stale ? 'true' : 'false') + '">⬇ Download backup</button>';
+  }
+  function fmtCap(v){ return Math.round(v).toLocaleString('en-IN'); }
+  function parseMoney(txt){
+    var m = String(txt).toLowerCase().replace(/[₹,\s]/g, '').match(/^([\d.]+)(cr|crore|crores|l|lac|lakh|lakhs)?$/); if(!m) return NaN;
+    var v = parseFloat(m[1]); if(m[2]) v *= (m[2][0] === 'c' ? 1e7 : 1e5); return v;
+  }
+  function exportJSON(){
+    if(!T.length){ alert('Nothing to back up yet.'); return; }
+    download('my-portfolio-backup-' + todayISO() + '.json', JSON.stringify({version:2, exported:todayISO(), capital:K, note:'Current holdings have no sell date; historical trades have one.', trades:T}, null, 1), 'application/json');
+    markBackup();
+  }
   function exportCSV(){
     if(!T.length){ alert('Nothing to export yet.'); return; }
-    var out = ['Symbol,Buy date,Buy price,Quantity,Sell date,Sell price,Remark'].concat(T.map(function(t){ return [csvq(t.sym), t.bd, t.bp, t.qty, t.sd || '', t.sp == null ? '' : t.sp, csvq(t.note || '')].join(','); }));
-    download('my-portfolio-' + todayISO() + '.csv', out.join('\n'), 'text/csv');
+    var byId = {}; C.open.forEach(function(r){ byId[r.id] = r; });
+    var ord = T.slice().sort(function(a, b){ return (a.sd ? 1 : 0) - (b.sd ? 1 : 0) || (a.sd ? (a.sd < b.sd ? 1 : -1) : (a.bd < b.bd ? -1 : 1)); });
+    var head = 'Status,Symbol,Buy date,Buy price,Quantity,Sell date,Sell price,Remark,Invested,Value (current or sale),Gain / loss,Gain / loss %,Days held,Current price';
+    var out = [head].concat(ord.map(function(t){
+      var o = byId[t.id], closed = !!t.sd, inv = t.bp * t.qty, val = closed ? t.sp * t.qty : (o ? o.val : inv), days = Math.round(dayNum(closed ? t.sd : ((P && P.asof) || todayISO())) - dayNum(t.bd));
+      return [closed ? 'Closed' : 'Open', csvq(t.sym), t.bd, t.bp, t.qty, t.sd || '', t.sp == null ? '' : t.sp, csvq(t.note || ''), +inv.toFixed(2), +val.toFixed(2), +(val - inv).toFixed(2), inv ? ((val / inv - 1) * 100).toFixed(2) : '0', days, o && o.hasPrice ? o.last : ''].join(',');
+    }));
+    download('my-portfolio-' + todayISO() + '.csv', out.join('\n'), 'text/csv'); markBackup();
   }
   function parseCSV(text){
     var rows = [], cur = [], f = '', q = false;
@@ -3965,10 +4143,10 @@ html[data-locked="1"]{overflow:hidden;}
     return t;
   }
   function importText(text, name){
-    var list = [], bad = 0;
+    var list = [], bad = 0, capImport = null;
     try{
       if(/\.json$/i.test(name) || /^\s*[\[{]/.test(text)){
-        var j = JSON.parse(text), arr = Array.isArray(j) ? j : (j.trades || []);
+        var j = JSON.parse(text), arr = Array.isArray(j) ? j : (j.trades || []); if(j && j.capital > 0) capImport = j.capital;
         arr.forEach(function(o){ var t = cleanTrade({sym:o.sym || o.symbol, bd:o.bd || o.buy_date, bp:o.bp != null ? o.bp : o.buy_price, qty:o.qty != null ? o.qty : o.quantity, sd:o.sd || o.sell_date, sp:o.sp != null ? o.sp : o.sell_price, note:o.note || o.remark}); if(t) list.push(t); else bad++; });
       } else {
         var rows = parseCSV(text); if(rows.length < 2) throw new Error('empty');
@@ -3981,7 +4159,7 @@ html[data-locked="1"]{overflow:hidden;}
     }catch(e){ alert('Could not read that file. Use a Backup (JSON) from this page, or a CSV with the columns: Symbol, Buy date, Buy price, Quantity, Sell date, Sell price, Remark.'); return; }
     if(!list.length){ alert('No valid trades were found in that file.' + (bad ? ' (' + bad + ' rows were skipped)' : '')); return; }
     var replace = !T.length || confirm(list.length + ' trades found' + (bad ? ' (' + bad + ' rows skipped)' : '') + '.\n\nOK = replace your current ' + T.length + ' trades with these.\nCancel = add them to your current trades.');
-    T = replace ? list : T.concat(list); save(); render();
+    T = replace ? list : T.concat(list); if(replace && capImport) K = capImport; save(); $('my-cap').value = fmtCap(K); render();
   }
 
   // ================= prices =================
@@ -3997,6 +4175,7 @@ html[data-locked="1"]{overflow:hidden;}
     $('panel-mp').classList.remove('mp-bt-mode'); $('panel-mp').classList.add('mp-my-mode');
     document.querySelectorAll('#mp-switch .echip').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.p === 'my' ? 'true' : 'false'); });
     if(!started){ started = true; load(); loadPrices(); }
+    $('my-cap').value = fmtCap(K); HIST.calTried = false;
     render(); setTimeout(renderCharts, 60);
   }
   $('my-add').addEventListener('click', function(){ openForm(null, false); });
@@ -4009,6 +4188,11 @@ html[data-locked="1"]{overflow:hidden;}
   $('my-file').addEventListener('change', function(){ var f = this.files[0]; if(!f) return; var rd = new FileReader(); rd.onload = function(){ importText(String(rd.result), f.name); }; rd.readAsText(f); this.value = ''; });
   $('my-clear').addEventListener('click', function(){ if(!T.length) return; if(confirm('Delete all ' + T.length + ' trades from this browser?\n\nTip: press Cancel and use Backup (JSON) first if you want a copy.')){ T = []; save(); closeForm(); render(); } });
   $('my-search').addEventListener('input', renderClosed);
+  $('my-cap').addEventListener('change', function(){ var v = parseMoney(this.value); if(!(v >= 1000)){ this.value = fmtCap(K); return; } K = v; save(); this.value = fmtCap(K); render(); });
+  $('my-cap').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); this.blur(); } });
+  $('my-bk-bar').addEventListener('click', function(ev){ if(ev.target.closest('button[data-bk]')) exportJSON(); });
+  document.querySelectorAll('#my-perf-mode .echip').forEach(function(b){ b.addEventListener('click', function(){ document.querySelectorAll('#my-perf-mode .echip').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); }); b.setAttribute('aria-pressed', 'true'); perfMode = b.dataset.m; renderPerfChart(); }); });
+  document.querySelectorAll('#my-perf-range .echip').forEach(function(b){ b.addEventListener('click', function(){ document.querySelectorAll('#my-perf-range .echip').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); }); b.setAttribute('aria-pressed', 'true'); perfRange = +b.dataset.r; renderPerfChart(); }); });
   ['my-open', 'my-closed'].forEach(function(id){
     $(id).addEventListener('click', function(ev){
       var b = ev.target.closest('button[data-a]'); if(b){ act(b.dataset.a, b.dataset.id); return; }
@@ -4018,7 +4202,8 @@ html[data-locked="1"]{overflow:hidden;}
       if(id === 'my-open') renderOpen(); else renderClosed();
     });
   });
-  setInterval(function(){ if(started && !document.hidden && $('panel-mp').classList.contains('mp-my-mode')) loadPrices(); }, 5 * 60 * 1000);
-  window.RHMY = {show:show, compute:compute, xirr:xirr, _state:function(){ return {T:T, P:P}; }};
+  setInterval(function(){ if(started && !document.hidden && $('panel-mp').classList.contains('mp-my-mode')){ loadPrices(); if(!HIST.cal){ HIST.calTried = false; ensureHistory(); } } }, 5 * 60 * 1000);
+  window.RHMY = {show:show, compute:compute, xirr:xirr, buildPerf:buildPerf, perfMetrics:perfMetrics, positionsInfo:positionsInfo, _state:function(){ return {T:T, P:P, K:K, PERF:PERF, HIST:HIST}; }};
 })();
+
 </script>
