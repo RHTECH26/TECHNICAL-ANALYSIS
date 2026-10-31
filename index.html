@@ -245,6 +245,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
   <button role="tab" aria-selected="false" data-panel="breadth">Market Breadth</button>
   <button role="tab" aria-selected="false" data-panel="scanner">Scanner</button>
   <button role="tab" aria-selected="false" data-panel="rs">Relative Strength</button>
+  <button role="tab" aria-selected="false" data-panel="growth">Growth &amp; Valuation</button>
   <button role="tab" aria-selected="false" data-panel="mp">Model Portfolio</button>
 </nav>
 
@@ -783,6 +784,93 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <tbody id="rs-body"></tbody>
     </table></div>
 
+  </div>
+</section>
+
+<!-- ================= GROWTH & VALUATION ================= -->
+<style>
+#panel-growth .gv-filters{display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:14px 18px; align-items:end; margin:10px 0 6px;}
+#panel-growth .gv-filters label{display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;}
+#panel-growth .gv-filters select,#panel-growth .gv-filters input{width:100%; padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; font-family:"IBM Plex Sans",sans-serif;}
+#panel-growth .gv-filters select{cursor:pointer;}
+#panel-growth .gv-filters input::placeholder{color:var(--muted);}
+#panel-growth .gv-checks{display:flex; gap:22px; flex-wrap:wrap; margin:12px 0 2px; font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+#panel-growth .gv-checks label{display:flex; align-items:center; gap:8px; cursor:pointer;}
+#panel-growth .gv-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 10px;}
+#panel-growth .gv-count{margin:0 0 0 auto;}
+#panel-growth .gv-scroll{max-height:72vh; overflow:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface);}
+#panel-growth .gv-scroll table{width:max-content; min-width:100%; border:none; font-size:12.5px;}
+#panel-growth .gv-scroll th,#panel-growth .gv-scroll td{padding:7px 11px; white-space:nowrap;}
+#panel-growth .gv-scroll thead th{position:sticky; z-index:2; background:var(--surface-2);}
+#panel-growth .gv-scroll thead tr.g th{top:0; height:28px; text-align:center; color:var(--saffron); font-size:10px; border-bottom:1px solid var(--line);}
+#panel-growth .gv-scroll thead tr.h th{top:28px; border-bottom:1px solid var(--line-strong); cursor:pointer; user-select:none;}
+#panel-growth .gv-scroll thead tr.h th:hover{color:var(--ink);}
+#panel-growth .gv-scroll thead th.gv-stick{left:0; z-index:4; text-align:left;}
+#panel-growth .gv-scroll td.gv-stick{position:sticky; left:0; z-index:1; background:var(--surface); border-right:1px solid var(--line);}
+#panel-growth .gv-scroll tbody tr:hover td{background:var(--surface-2);}
+#panel-growth .gv-scroll td.gv-tint{background:var(--surface-2);}
+#panel-growth .gv-scroll tbody tr:hover td.gv-tint{background:var(--surface-3);}
+#panel-growth .gv-scroll td.name a{text-decoration:none; color:var(--ink);}
+#panel-growth .gv-scroll td.name a:hover{color:var(--saffron);}
+#panel-growth .gv-nm{display:block; max-width:190px; overflow:hidden; text-overflow:ellipsis; font-size:10.5px; color:var(--muted); font-weight:400;}
+#panel-growth .gv-flag{background:rgba(230,88,79,.14); color:var(--bad); margin-left:4px; cursor:help;}
+#panel-growth .gv-peer{background:var(--surface-3); color:var(--ink-soft); margin-left:5px; cursor:help;}
+#panel-growth .gv-more{text-align:center; padding:12px 0 2px;}
+#panel-growth .gv-def{margin-top:14px;}
+#panel-growth .gv-def summary{cursor:pointer; font-size:12px; font-weight:700; color:var(--saffron);}
+#panel-growth .gv-def p{font-size:12.5px; color:var(--ink-soft); line-height:1.65; margin:8px 0 0;}
+#panel-growth .gv-def b{color:var(--ink);}
+#panel-growth .gv-def code{font-family:"JetBrains Mono",monospace; font-size:11.5px; background:var(--surface-3); padding:1px 6px; border-radius:5px; color:var(--ink);}
+</style>
+<section class="panel" id="panel-growth">
+  <div class="card">
+    <h4>Growth &amp; Valuation — forward EPS / revenue growth, Industry PE, fair value and targets<span class="asof" id="gv-asof"></span></h4>
+    <div class="tm-datarow"><span class="tm-dot" id="gv-dot"></span><span id="gv-status">Loading…</span></div>
+
+    <div class="gv-filters">
+      <label>Index<select id="gv-index"><option value="">All NSE stocks</option></select></label>
+      <label>Sector<select id="gv-sector"><option value="">All sectors</option></select></label>
+      <label>Industry<select id="gv-industry"><option value="">All industries</option></select></label>
+      <label>Min market cap<select id="gv-mcap"><option value="">Any</option><option value="500">₹500 Cr</option><option value="2000">₹2,000 Cr</option><option value="5000">₹5,000 Cr</option><option value="20000">₹20,000 Cr</option><option value="100000">₹1,00,000 Cr</option></select></label>
+      <label>EPS growth FY1E ≥ %<input id="gv-eg1" type="number" step="any" placeholder="e.g. 20"></label>
+      <label>EPS growth FY2E ≥ %<input id="gv-eg2" type="number" step="any" placeholder="e.g. 15"></label>
+      <label>Revenue growth FY1E ≥ %<input id="gv-rg1" type="number" step="any" placeholder="e.g. 15"></label>
+      <label>Revenue growth FY2E ≥ %<input id="gv-rg2" type="number" step="any" placeholder="e.g. 12"></label>
+      <label>FV vs CMP ≥ %<input id="gv-fvd" type="number" step="any" placeholder="e.g. 0"></label>
+      <label>TGT FY1E vs CMP ≥ %<input id="gv-t1d" type="number" step="any" placeholder="e.g. 10"></label>
+      <label>TGT FY2E vs CMP ≥ %<input id="gv-t2d" type="number" step="any" placeholder="e.g. 20"></label>
+    </div>
+    <div class="gv-checks">
+      <label><input type="checkbox" id="gv-needEst"> Only stocks with forward estimates</label>
+      <label><input type="checkbox" id="gv-hideFlag"> Hide data-quality flags (loss-making, turnaround, low base, source / unit issues)</label>
+    </div>
+
+    <div class="gv-actions">
+      <input type="text" id="gv-q" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; max-width:340px; margin-bottom:0;">
+      <button type="button" class="echip" id="gv-p1">EPS &gt; 20% &amp; Revenue &gt; 15%</button>
+      <button type="button" class="echip" id="gv-p2">Undervalued on FV and both targets</button>
+      <button type="button" class="echip" id="gv-reset">Reset</button>
+      <button type="button" class="echip" id="gv-export" title="Downloads the matching symbols as a TradingView watchlist file (.txt)" style="white-space:nowrap;">⬇ TradingView watchlist (.txt)</button>
+      <span class="note gv-count" id="gv-count"></span>
+    </div>
+
+    <div class="gv-scroll">
+      <table>
+        <thead id="gv-head"></thead>
+        <tbody id="gv-body"></tbody>
+      </table>
+    </div>
+    <div class="gv-more" id="gv-more"></div>
+
+    <details class="gv-def">
+      <summary>How the numbers are built</summary>
+      <p><b>FY1E / FY2E</b> are the first and second unreported fiscal years (for March year-end companies today, FY27 and FY28). FY1E comes from TradingView consensus, FY2E from Yahoo Finance consensus; FY2E shows a dash where Yahoo has no estimate.</p>
+      <p><b>EPS / Revenue growth</b>: FY1E against the last reported FY, and FY2E against FY1E. Growth is left blank when the base EPS is zero or negative.</p>
+      <p><b>Ind PE</b> = median PE of peers in the same industry (PE between 0 and 150, market cap ≥ ₹500 Cr, at least 5 peers). With fewer peers it falls back to the sector, then the whole market (shown as a small tag). It is always worked out across all NSE stocks, whichever filter is applied.</p>
+      <p><b>FV</b> = <code>Ind PE × EPS (TTM)</code> &nbsp;·&nbsp; <b>TGT FY1E</b> = <code>Ind PE × FY1E EPS</code> &nbsp;·&nbsp; <b>TGT FY2E</b> = <code>Ind PE × FY2E EPS</code>. Each is shown with its % difference to CMP: <code>value ÷ CMP − 1</code>.</p>
+      <p><b>Flags</b>: <b>loss</b> TTM EPS ≤ 0 (no FV) · <b>turnaround</b> last FY EPS was negative · <b>low base</b> FY1E growth above 300% · <b>src</b> TradingView and Yahoo FY1E EPS differ by over 25% · <b>unit</b> revenue estimate looked mis-scaled and was dropped.</p>
+      <p><b>Index / Sector / Industry</b> filters combine with each other and with every other filter. Index membership is the current NSE constituent list; Sector and Industry follow the TradingView classification. Estimates are analyst consensus and can be stale or thin for small caps. For research use only.</p>
+    </details>
   </div>
 </section>
 
@@ -4206,4 +4294,200 @@ html[data-locked="1"]{overflow:hidden;}
   window.RHMY = {show:show, compute:compute, xirr:xirr, buildPerf:buildPerf, perfMetrics:perfMetrics, positionsInfo:positionsInfo, _state:function(){ return {T:T, P:P, K:K, PERF:PERF, HIST:HIST}; }};
 })();
 
+</script>
+
+<script>
+(function(){
+  var $ = function(i){ return document.getElementById(i); };
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function num(v, d){ return (v==null || !isFinite(v)) ? '—' : Number(v).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+  function sg(v, d){ return (v==null || !isFinite(v)) ? '—' : (v>0?'+':v<0?'−':'') + Math.abs(v).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+  function cls(v){ return v==null ? '' : v>0 ? 'up' : v<0 ? 'down' : ''; }
+
+  // key, label, group, kind (txt | n0 | n1 | n2 | p), tint = highlighted "vs CMP" columns
+  var COLS = [
+    {k:'s',      l:'Stock',      g:'Stock',            t:'stock'},
+    {k:'sec',    l:'Sector',     g:'Stock',            t:'txt'},
+    {k:'cmp',    l:'CMP ₹',      g:'Price',            t:'n2'},
+    {k:'mc',     l:'M-Cap ₹Cr',  g:'Price',            t:'n0'},
+    {k:'eps_ttm',l:'EPS TTM',    g:'EPS',              t:'n2'},
+    {k:'eps1',   l:'FY1E EPS',   g:'EPS',              t:'n2'},
+    {k:'eps2',   l:'FY2E EPS',   g:'EPS',              t:'n2'},
+    {k:'eg1',    l:'FY1E',       g:'EPS growth %',     t:'p'},
+    {k:'eg2',    l:'FY2E',       g:'EPS growth %',     t:'p'},
+    {k:'rg1',    l:'FY1E',       g:'Revenue growth %', t:'p'},
+    {k:'rg2',    l:'FY2E',       g:'Revenue growth %', t:'p'},
+    {k:'pe',     l:'PE (TTM)',   g:'PE',               t:'n1'},
+    {k:'ipe',    l:'Ind PE',     g:'PE',               t:'ipe'},
+    {k:'fv',     l:'FV ₹',       g:'Fair value',       t:'n0'},
+    {k:'fvd',    l:'vs CMP',     g:'Fair value',       t:'p', tint:1},
+    {k:'t1',     l:'TGT ₹',      g:'Target FY1E',      t:'n0'},
+    {k:'t1d',    l:'vs CMP',     g:'Target FY1E',      t:'p', tint:1},
+    {k:'t2',     l:'TGT ₹',      g:'Target FY2E',      t:'n0'},
+    {k:'t2d',    l:'vs CMP',     g:'Target FY2E',      t:'p', tint:1},
+    {k:'na',     l:'Analysts',   g:'Info',             t:'n0'},
+    {k:'fl',     l:'Flags',      g:'Info',             t:'flags', nosort:1}
+  ];
+  var FLAGTXT = {
+    loss:['loss','TTM EPS is zero or negative - no fair value'],
+    turn:['turnaround','Last FY EPS was negative - EPS growth not meaningful'],
+    lowbase:['low base','FY1E EPS growth above 300% - check the absolute earnings'],
+    src:['src','TradingView and Yahoo FY1E EPS differ by more than 25%'],
+    unit:['unit','Revenue estimate looked mis-scaled and was dropped']
+  };
+  var BAD = ['loss','turn','lowbase','src','unit'];
+  var PAGE = 300;
+  var DATA = [], VIEW = [], J = null, sortK = 'mc', asc = false, shown = PAGE, started = false;
+
+  function headerHtml(){
+    var g = '', h = '', i = 0, j;
+    while(i < COLS.length){
+      j = i; while(j < COLS.length && COLS[j].g === COLS[i].g) j++;
+      g += '<th colspan="'+(j-i)+'" class="'+(i===0?'gv-stick':'')+'">'+esc(COLS[i].g)+'</th>';
+      i = j;
+    }
+    COLS.forEach(function(c){
+      var ar = sortK===c.k ? ' '+(asc?'▲':'▼') : '';
+      var left = (c.t==='stock'||c.t==='txt'||c.t==='flags');
+      h += '<th class="'+(left?'':'num ')+(c.t==='stock'?'gv-stick ':'')+'" data-k="'+c.k+'">'+esc(c.l)+ar+'</th>';
+    });
+    $('gv-head').innerHTML = '<tr class="g">'+g+'</tr><tr class="h">'+h+'</tr>';
+  }
+
+  function cell(c, r){
+    var v = r[c.k];
+    if(c.t==='stock'){
+      var tv = 'https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(r.t);
+      return '<td class="name gv-stick"><a href="'+tv+'" target="_blank" rel="noopener">'+esc(r.s)+'</a><span class="gv-nm" title="'+esc(r.n)+'">'+esc(r.n)+'</span></td>';
+    }
+    if(c.t==='txt') return '<td title="'+esc(r.ind)+'">'+esc(v)+'</td>';
+    if(c.t==='flags'){
+      var chips = (r.fl||[]).filter(function(x){ return FLAGTXT[x]; }).map(function(x){ return '<span class="tag gv-flag" title="'+esc(FLAGTXT[x][1])+'">'+FLAGTXT[x][0]+'</span>'; }).join('');
+      return '<td>'+chips+'</td>';
+    }
+    if(c.t==='p')  return '<td class="num mono '+cls(v)+(c.tint?' gv-tint':'')+'">'+(v==null?'—':sg(v,1)+'%')+'</td>';
+    if(c.t==='ipe'){
+      var tag = r.ipe_b==='industry' ? '' : '<span class="tag gv-peer" title="Fewer than the minimum peers in the industry - using the '+esc(r.ipe_b)+' median">'+esc(r.ipe_b)+'</span>';
+      return '<td class="num mono" title="'+(r.ipe_n||0)+' peers ('+esc(r.ipe_b)+' median)">'+num(v,1)+tag+'</td>';
+    }
+    var d = c.t==='n0'?0 : c.t==='n1'?1 : 2;
+    return '<td class="num mono">'+num(v,d)+'</td>';
+  }
+
+  function val(id){ var v = $(id).value.trim(); return v==='' ? null : Number(v); }
+
+  function filtered(){
+    var q = $('gv-q').value.trim().toLowerCase(), sec = $('gv-sector').value, ind = $('gv-industry').value, ix = $('gv-index').value, mc = val('gv-mcap');
+    var mins = {eg1:val('gv-eg1'), eg2:val('gv-eg2'), rg1:val('gv-rg1'), rg2:val('gv-rg2'), fvd:val('gv-fvd'), t1d:val('gv-t1d'), t2d:val('gv-t2d')};
+    var needEst = $('gv-needEst').checked, hideFlag = $('gv-hideFlag').checked;
+    return DATA.filter(function(r){
+      if(q && (r.s.toLowerCase().indexOf(q) < 0 && String(r.n||'').toLowerCase().indexOf(q) < 0)) return false;
+      if(sec && r.sec !== sec) return false;
+      if(ind && r.ind !== ind) return false;
+      if(ix && (r.ix||[]).indexOf(ix) < 0) return false;
+      if(mc !== null && !(r.mc != null && r.mc >= mc)) return false;
+      if(needEst && r.eps1 == null) return false;
+      if(hideFlag && (r.fl||[]).some(function(f){ return BAD.indexOf(f) > -1; })) return false;
+      for(var k in mins){ if(mins[k] !== null && !(r[k] != null && r[k] >= mins[k])) return false; }
+      return true;
+    });
+  }
+
+  function sortView(){
+    var k = sortK, text = (k==='s' || k==='sec');
+    VIEW.sort(function(a,b){
+      var x = a[k], y = b[k];
+      if(x == null) return 1; if(y == null) return -1;
+      var c = text ? String(x).localeCompare(String(y)) : x - y;
+      return asc ? c : -c;
+    });
+  }
+
+  function render(){
+    if(!DATA.length){ $('gv-body').innerHTML = ''; $('gv-more').innerHTML = ''; $('gv-count').textContent = ''; return; }
+    $('gv-body').innerHTML = VIEW.slice(0, shown).map(function(r){
+      return '<tr>' + COLS.map(function(c){ return cell(c, r); }).join('') + '</tr>';
+    }).join('') || '<tr><td colspan="'+COLS.length+'" style="color:var(--muted); padding:18px;">No stock matches these filters.</td></tr>';
+    $('gv-count').textContent = VIEW.length.toLocaleString('en-IN') + ' of ' + DATA.length.toLocaleString('en-IN') + ' stocks match';
+    $('gv-more').innerHTML = VIEW.length > shown ? '<button type="button" class="echip" id="gv-moreb">Show '+Math.min(PAGE, VIEW.length - shown)+' more</button>' : '';
+    var mb = $('gv-moreb'); if(mb) mb.onclick = function(){ shown += PAGE; render(); };
+  }
+
+  function apply(){ VIEW = filtered(); sortView(); shown = PAGE; render(); }
+
+  function fillIndustries(){
+    var sec = $('gv-sector').value, seen = {}, list = [];
+    DATA.forEach(function(r){ if((!sec || r.sec === sec) && r.ind && !seen[r.ind]){ seen[r.ind] = 1; list.push(r.ind); } });
+    list.sort();
+    $('gv-industry').innerHTML = '<option value="">All industries</option>' + list.map(function(i){ return '<option>'+esc(i)+'</option>'; }).join('');
+  }
+
+  function setFilters(o){
+    ['q','eg1','eg2','rg1','rg2','fvd','t1d','t2d'].forEach(function(k){ $('gv-'+k).value = o[k] != null ? o[k] : ''; });
+    $('gv-index').value = o.index || ''; $('gv-sector').value = o.sector || ''; fillIndustries();
+    $('gv-industry').value = o.industry || ''; $('gv-mcap').value = o.mcap != null ? o.mcap : '';
+    $('gv-needEst').checked = !!o.needEst; $('gv-hideFlag').checked = !!o.hideFlag;
+    apply();
+  }
+
+  function status(ok, msg){ $('gv-status').textContent = msg; $('gv-dot').className = ok ? 'tm-dot live' : 'tm-dot'; }
+
+  function fillControls(){
+    var seen = {}, secs = [];
+    DATA.forEach(function(r){ if(r.sec && !seen[r.sec]){ seen[r.sec] = 1; secs.push(r.sec); } });
+    secs.sort();
+    $('gv-sector').innerHTML = '<option value="">All sectors</option>' + secs.map(function(s){ return '<option>'+esc(s)+'</option>'; }).join('');
+    fillIndustries();
+    var ixs = (J && J.indices) || [];
+    function grp(g){ return ixs.filter(function(x){ return x.g === g; }).map(function(x){ return '<option value="'+esc(x.k)+'">'+esc(x.l)+' ('+x.n+')</option>'; }).join(''); }
+    $('gv-index').innerHTML = '<option value="">All NSE stocks</option>'
+      + (ixs.some(function(x){ return x.g==='Broad'; }) ? '<optgroup label="Broad indices">'+grp('Broad')+'</optgroup>' : '')
+      + (ixs.some(function(x){ return x.g==='Sectoral'; }) ? '<optgroup label="Sectoral indices">'+grp('Sectoral')+'</optgroup>' : '');
+  }
+
+  function load(){
+    fetch('data/growth.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      var changed = !J || J.updated !== j.updated;
+      J = j; DATA = j.rows || [];
+      $('gv-asof').textContent = j.updated ? 'updated ' + j.updated : '';
+      if(!DATA.length){ status(false, 'data/growth.json is empty — run the "Update growth data" action in GitHub (Actions tab) once.'); render(); return; }
+      status(true, 'Live scan — ' + (j.count||0).toLocaleString('en-IN') + ' NSE stocks · ' + (j.with_fy1||0).toLocaleString('en-IN') + ' with FY1E · ' + (j.with_fy2||0).toLocaleString('en-IN') + ' with FY2E');
+      if(changed){
+        var keep = {index:$('gv-index').value, sector:$('gv-sector').value, industry:$('gv-industry').value};
+        fillControls();
+        $('gv-index').value = keep.index; $('gv-sector').value = keep.sector; fillIndustries(); $('gv-industry').value = keep.industry;
+        apply();
+      }
+    }).catch(function(){
+      if(!J){ status(false, 'data/growth.json not found yet — run the "Update growth data" action in GitHub (Actions tab) once.'); render(); }
+    });
+  }
+
+  headerHtml();
+  $('gv-head').addEventListener('click', function(ev){
+    var th = ev.target.closest('tr.h th'); if(!th) return;
+    var k = th.dataset.k, c = COLS.filter(function(x){ return x.k === k; })[0];
+    if(!c || c.nosort) return;
+    asc = (sortK === k) ? !asc : (c.t==='stock' || c.t==='txt'); sortK = k;
+    headerHtml(); sortView(); render();
+  });
+  ['gv-index','gv-industry','gv-mcap','gv-needEst','gv-hideFlag'].forEach(function(id){ $(id).addEventListener('change', apply); });
+  $('gv-sector').addEventListener('change', function(){ fillIndustries(); apply(); });
+  ['gv-q','gv-eg1','gv-eg2','gv-rg1','gv-rg2','gv-fvd','gv-t1d','gv-t2d'].forEach(function(id){ $(id).addEventListener('input', apply); });
+  $('gv-p1').addEventListener('click', function(){ setFilters({eg1:20, rg1:15, needEst:true, hideFlag:true, mcap:500}); });
+  $('gv-p2').addEventListener('click', function(){ setFilters({fvd:0, t1d:0, t2d:0, needEst:true, hideFlag:true, mcap:500}); });
+  $('gv-reset').addEventListener('click', function(){ setFilters({}); });
+  $('gv-export').addEventListener('click', function(){
+    if(!VIEW.length){ alert('No matches to export - change the filters first.'); return; }
+    var seen = {}, list = [];
+    VIEW.forEach(function(x){ if(!seen[x.t]){ seen[x.t] = 1; list.push(x.t); } });
+    if(list.length > 1000){ list = list.slice(0,1000); alert('A TradingView watchlist holds up to 1,000 symbols, so the first 1,000 were exported. Tighten the filters to get the rest.'); }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([list.join(',')], {type:'text/plain'}));
+    a.download = 'growth-valuation.txt'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  // first load when the tab is opened; then re-check the file every 30 minutes while it is on screen
+  document.querySelectorAll('[data-panel="growth"],[data-goto="growth"]').forEach(function(b){ b.addEventListener('click', function(){ if(!started){ started = true; load(); } }); });
+  setInterval(function(){ if(started && !document.hidden && $('gv-body').offsetParent) load(); }, 30*60*1000);
+})();
 </script>
