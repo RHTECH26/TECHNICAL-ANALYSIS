@@ -48,7 +48,7 @@ LOW_BASE_GROWTH_PCT = 300     # growth above this is flagged "low base"
 SOURCE_MISMATCH = 0.25        # TradingView vs Yahoo FY1 EPS differing by more than 25% is flagged
 
 TV_COLS = [
-    "name", "description", "close", "market_cap_basic", "sector", "industry",
+    "name", "description", "type", "close", "market_cap_basic", "sector", "industry",
     "earnings_per_share_diluted_ttm",
     "earnings_per_share_diluted_fy",
     "earnings_per_share_forecast_next_fy",
@@ -118,38 +118,55 @@ def rnd(x, n=2):
 
 
 # ----------------------------------------------------- 1. TradingView universe --
+def _rows_from_raw(raw, columns):
+    """Turn a raw scanner reply into a DataFrame. TradingView sends data=null when a range is empty."""
+    data = raw.get("data") or []
+    return pd.DataFrame([[r["s"], *r["d"]] for r in data], columns=columns)
+
+
 def fetch_universe():
     from tradingview_screener import Query, Column
 
-    frames = []
-    page, offset = 1000, 0
-    while True:
-        q = (
-            Query()
-            .set_markets("india")
-            .select(*TV_COLS)
-            .where(
-                Column("exchange") == "NSE",
-                Column("type") == "stock",
-                Column("typespecs").has("common"),
+    columns = ["ticker", *TV_COLS]
+    # Try the strictest filter first; if TradingView returns nothing, fall back to simpler ones
+    # (and tidy up in pandas afterwards). The log says which one was used.
+    variants = [
+        ("exchange + stock + common", [Column("exchange") == "NSE", Column("type") == "stock", Column("typespecs").has("common")]),
+        ("exchange + stock",          [Column("exchange") == "NSE", Column("type") == "stock"]),
+        ("exchange only",             [Column("exchange") == "NSE"]),
+    ]
+    page = 1000
+    for label, filters in variants:
+        frames, offset = [], 0
+        while True:
+            q = (
+                Query()
+                .set_markets("india")
+                .select(*TV_COLS)
+                .where(*filters)
+                .order_by("market_cap_basic", ascending=False)
+                .offset(offset)
+                .limit(offset + page)   # NB: in this library limit() is the END of the row range, not a count
             )
-            .order_by("market_cap_basic", ascending=False)
-            .offset(offset)
-            .limit(page)
-        )
-        total, df = q.get_scanner_data()
-        if df is None or df.empty:
-            break
-        frames.append(df)
-        offset += page
-        if offset >= total:
-            break
-        time.sleep(0.5)
-    if not frames:
-        raise RuntimeError("TradingView returned no rows")
-    df = pd.concat(frames, ignore_index=True).drop_duplicates(subset="ticker")
-    print(f"TradingView: {len(df)} NSE stocks")
-    return df
+            raw = q.get_scanner_data_raw()
+            total = raw.get("totalCount") or 0
+            df = _rows_from_raw(raw, columns)
+            print(f"  [{label}] offset={offset}: {len(df)} rows (TradingView total {total})")
+            if df.empty:
+                break
+            frames.append(df)
+            offset += page
+            if offset >= total:
+                break
+            time.sleep(0.5)
+        if frames:
+            df = pd.concat(frames, ignore_index=True).drop_duplicates(subset="ticker")
+            if label == "exchange only":
+                df = df[df["type"] == "stock"]
+            print(f"TradingView: {len(df)} NSE stocks (filter used: {label})")
+            return df
+        print(f"  filter '{label}' returned nothing - trying a simpler one")
+    raise RuntimeError("TradingView returned no NSE stocks with any filter")
 
 
 def fetch_index_members():
@@ -159,8 +176,8 @@ def fetch_index_members():
     members, meta = {}, []
     for code, label, group in INDEXES:
         try:
-            total, df = Query().select("name").set_index(f"SYML:NSE;{code}").limit(1000).get_scanner_data()
-            tickers = set(df["ticker"]) if df is not None and not df.empty else set()
+            raw = Query().select("name").set_index(f"SYML:NSE;{code}").limit(1000).get_scanner_data_raw()
+            tickers = {r["s"] for r in (raw.get("data") or [])}
         except Exception as e:
             print(f"  index {code}: failed ({str(e)[:60]})")
             continue
