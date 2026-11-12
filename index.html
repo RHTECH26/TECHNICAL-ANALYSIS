@@ -939,7 +939,22 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
 #panel-growth .gv-def b{color:var(--ink);}
 #panel-growth .gv-def code{font-family:"JetBrains Mono",monospace; font-size:11.5px; background:var(--surface-3); padding:1px 6px; border-radius:5px; color:var(--ink);}
 </style>
+<style>
+.gv-subnav{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 20px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+.gv-subpanel{display:none;}
+.gv-subpanel.active{display:block; animation:fade .3s ease;}
+#panel-growth #etf-body tr{cursor:pointer;}
+#panel-growth #etf-body tr.etf-sel td{background:rgba(255,153,51,0.12);}
+#panel-growth .etf-dethead{margin-top:18px; font-size:13px; color:var(--ink-soft);}
+#panel-growth .etf-dethead b{color:var(--ink);}
+#panel-growth #etf-skip .gv-scroll td{white-space:normal; font-size:12px; padding:6px 11px;}
+</style>
 <section class="panel" id="panel-growth">
+  <div class="gv-subnav" role="tablist" aria-label="Growth and valuation views">
+    <button type="button" class="echip" role="tab" aria-pressed="true" data-gsub="stocks">Stocks</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-gsub="etf">ETFs</button>
+  </div>
+  <div class="gv-subpanel active" id="gv-sub-stocks">
   <div class="card">
     <h4>Growth &amp; Valuation — forward EPS / revenue growth, Industry PE, fair value and targets<span class="asof" id="gv-asof"></span></h4>
     <div class="tm-datarow"><span class="tm-dot" id="gv-dot"></span><span id="gv-status">Loading…</span></div>
@@ -988,6 +1003,51 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <p><b>Flags</b>: <b>loss</b> TTM EPS ≤ 0 (no FV) · <b>turnaround</b> last FY EPS was negative · <b>low base</b> FY1E growth above 300% · <b>src</b> TradingView and Yahoo FY1E EPS differ by over 25% · <b>unit</b> revenue estimate looked mis-scaled and was dropped.</p>
       <p><b>Index / Sector / Industry</b> filters combine with each other and with every other filter. Index membership is the current NSE constituent list; Sector and Industry follow the TradingView classification. Estimates are analyst consensus and can be stale or thin for small caps. For research use only.</p>
     </details>
+  </div>
+  </div>
+
+  <div class="gv-subpanel" id="gv-sub-etf">
+  <div class="card">
+    <h4>Growth &amp; Valuation of Indian ETFs — built from the stocks inside each ETF<span class="asof" id="etf-asof"></span></h4>
+    <div class="tm-datarow"><span class="tm-dot" id="etf-dot"></span><span id="etf-status">Loading…</span></div>
+
+    <div class="gv-filters">
+      <label>Category<select id="etf-cat"><option value="">All categories</option></select></label>
+      <label>EPS growth by<select id="etf-method"><option value="agg" selected>Earnings added up</option><option value="avg">Market-cap average</option></select></label>
+      <label>Min coverage<select id="etf-cov"><option value="">Any</option><option value="50">50% of the ETF</option><option value="70">70% of the ETF</option><option value="90">90% of the ETF</option></select></label>
+      <label>EPS growth FY1E ≥ %<input id="etf-eg1" type="number" step="any" placeholder="e.g. 15"></label>
+      <label>Revenue growth FY1E ≥ %<input id="etf-rg1" type="number" step="any" placeholder="e.g. 10"></label>
+      <label>FV vs CMP ≥ %<input id="etf-fvd" type="number" step="any" placeholder="e.g. 0"></label>
+      <label>TGT FY1E vs CMP ≥ %<input id="etf-t1d" type="number" step="any" placeholder="e.g. 10"></label>
+    </div>
+
+    <div class="gv-actions">
+      <input type="text" id="etf-q" class="gtm-search-input" placeholder="Search by ETF or index…" style="flex:1; min-width:200px; max-width:340px; margin-bottom:0;">
+      <button type="button" class="echip" id="etf-reset">Reset</button>
+      <button type="button" class="echip" id="etf-export" title="Downloads the matching ETFs as a TradingView watchlist file (.txt)" style="white-space:nowrap;">⬇ TradingView watchlist (.txt)</button>
+      <span class="note gv-count" id="etf-count"></span>
+    </div>
+
+    <div class="gv-scroll">
+      <table>
+        <thead id="etf-head"></thead>
+        <tbody id="etf-body"></tbody>
+      </table>
+    </div>
+    <div class="gv-more" id="etf-more"></div>
+    <div id="etf-detail"></div>
+    <div id="etf-skip"></div>
+
+    <details class="gv-def">
+      <summary>How the numbers are built</summary>
+      <p><b>The stocks behind each ETF</b> are the members of the NSE index it tracks (the index lists of the Relative Strength tab). Each stock is weighted by its <b>market cap ÷ the market cap of all the stocks in the basket</b>; equal-weight ETFs use equal weights and the multicap 50:25:25 ETF uses 50% / 25% / 25% across Nifty 100, Midcap 150 and Smallcap 250. Total market cap is used, not free-float, so the weights are close to, not identical to, the fund’s holdings.</p>
+      <p><b>EPS growth</b> (default): a stock’s earnings inside the ETF = <code>weight × EPS ÷ price</code>. Adding them up gives the ETF’s earnings, and growth is the change in that total: FY1E against the last reported FY, FY2E against FY1E. A big company counts for more than a small one, and a tiny earner with huge growth cannot distort the figure. The other choice, <b>market-cap weighted average</b>, averages each stock’s own growth rate (each limited to −100% … +300%).</p>
+      <p><b>Revenue growth</b> is the market-cap weighted average of each stock’s revenue growth (each limited to −50% … +150%), because revenue levels are not in the data.</p>
+      <p><b>PE</b> = the ETF’s value ÷ its earnings, for the stocks with positive EPS. <b>Coverage</b> = the share of the ETF held in stocks with a usable FY1E EPS. Stocks flagged <b>src</b> (TradingView and Yahoo EPS differ by over 25%) are left out of every earnings-based figure.</p>
+      <p><b>FV and TGT</b>: each stock’s FV, TGT FY1E and TGT FY2E (as on the Stocks view) are turned into a ratio to its price (limited to 0.2× … 5×). The ETF’s ratio is the weighted average of those, and <code>ETF FV = ETF CMP × ratio</code>, likewise for the targets. The % columns show <code>value ÷ CMP − 1</code>. ETF prices come from the same price file as My Portfolio.</p>
+      <p><b>Not covered</b>: ETFs on BSE indices, factor / strategy indices (momentum, quality, value …) and other indices whose stock list is not available. They are listed under the table with the reason. <b>Midcap 50</b> and <b>Smallcap 100</b> are taken as the largest 50 / 100 stocks of Midcap 150 / Smallcap 250 by market cap.</p>
+    </details>
+  </div>
   </div>
 </section>
 
@@ -5115,5 +5175,285 @@ html[data-locked="1"]{overflow:hidden;}
   });
   setInterval(function(){ if(started && !document.hidden && $('rs-sub-rrg').classList.contains('active') && $('panel-rs').classList.contains('active')) load(); }, 10 * 60 * 1000);
   window.RHRRG = {prep:prep, quadOf:quadOf, _state:function(){ return {st:st, uni:uni, c:compute()}; }};
+})();
+</script>
+<script>
+(function(){
+  var $ = function(i){ return document.getElementById(i); };
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function num(v, d){ return (v == null || !isFinite(v)) ? '—' : Number(v).toLocaleString('en-IN', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+  function sg(v, d){ return (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-IN', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+  function cls(v){ return v == null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : ''; }
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  var PRICE_URL = 'https://raw.githubusercontent.com/rhtech26/TECHNICAL-ANALYSIS/live-prices/prices.json';
+
+  // ---------- sub-tabs: Stocks | ETFs ----------
+  var started = false;
+  document.querySelectorAll('.gv-subnav button').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.gv-subnav button').forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      document.querySelectorAll('.gv-subpanel').forEach(function(p){ p.classList.toggle('active', p.id === 'gv-sub-' + b.dataset.gsub); });
+      if(b.dataset.gsub === 'etf' && !started){ started = true; loadAll(); }
+    });
+  });
+
+  // ---------- which stocks stand behind each ETF (the NSE index lists from data/rs_groups.json) ----------
+  var SECT = {'nifty bank':'bank', 'nifty private bank':'privatebank', 'nifty psu bank':'psubank', 'nifty financial services':'finservice', 'nifty capital market':'capmarkets',
+    'nifty it':'it', 'nifty auto':'auto', 'nifty fmcg':'fmcg', 'nifty pharma':'pharma', 'nifty healthcare':'healthcare', 'nifty metal':'metal', 'nifty realty':'realty',
+    'nifty energy':'energy', 'nifty oil & gas':'oilgas', 'nifty infrastructure':'infra', 'nifty commodities':'commodities', 'nifty india defence':'defence',
+    'nifty india manufacturing':'manufacturing', 'nifty india consumption':'consumption', 'nifty services sector':'services', 'nifty mnc':'mnc', 'nifty pse':'pse',
+    'nifty cpse':'cpse', 'nifty chemicals':'chemicals'};
+  var MAPS = {
+    'nifty 50':{g:'nifty50'}, 'nifty next 50':{g:'niftynext50'}, 'nifty 100':{g:'nifty100'}, 'nifty 200':{g:'nifty200'}, 'nifty 500':{g:'nifty500'},
+    'nifty midcap 150':{g:'midcap150'}, 'nifty smallcap 250':{g:'smallcap250'}, 'nifty largemidcap 250':{g:'largemidcap250'}, 'nifty total market':{g:'totalmarket'},
+    'nifty midcap 50':{g:'midcap150', top:50, note:'the 50 largest stocks of the Nifty Midcap 150 by market cap'},
+    'nifty smallcap100':{g:'smallcap250', top:100, note:'the 100 largest stocks of the Nifty Smallcap 250 by market cap'},
+    'nifty 50 equal weight':{g:'nifty50', eq:true}, 'nifty 100 equal weight':{g:'nifty100', eq:true},
+    'nifty 500 multicap 50:25:25':{parts:[['nifty100', 0.5], ['midcap150', 0.25], ['smallcap250', 0.25]], tag:'Blend 50:25:25', note:'50% Nifty 100, 25% Nifty Midcap 150, 25% Nifty Smallcap 250'}
+  };
+  Object.keys(SECT).forEach(function(k){ MAPS[k] = {g:SECT[k]}; });
+  function reasonFor(a){
+    var s = String(a.sub || '');
+    if(/^BSE|bharat 22|sensex/i.test(s)) return 'BSE index: its stock list is not in the data';
+    if(/msci/i.test(s)) return 'MSCI index: its stock list is not in the data';
+    if(/momentum|quality|value|alpha|low.?vol|dividend|equal weight|top \d+|shariah|esg|multicap momentum/i.test(s)) return 'Factor / strategy index: its holdings change with the factor scores';
+    return 'The index list is not among the NSE lists the site downloads';
+  }
+
+  // the ETF list (TREE) lives inside another script of the page, so it is read from that script's text
+  var TREE_CACHE = null;
+  function getTree(){
+    if(TREE_CACHE) return TREE_CACHE;
+    if(window.TREE && window.TREE.length) return (TREE_CACHE = window.TREE);
+    var sc = document.scripts, i, m;
+    for(i = 0; i < sc.length; i++){
+      var t = sc[i].textContent;
+      if(t && t.indexOf('var TREE') > -1){
+        m = /var\s+TREE\s*=\s*(\[[\s\S]*?\]);\s*\n/.exec(t);
+        if(m){ try{ return (TREE_CACHE = JSON.parse(m[1])); }catch(e){} }
+      }
+    }
+    return (TREE_CACHE = []);
+  }
+  var GJ = null, BY = {}, GR = null, SETS = {}, PR = null, ROWS = [], SKIP = [], sortK = 't1d', asc = false, shown = 200, SEL = null, detShown = 30;
+  function setOf(id){
+    if(!GR || !GR.groups) return null;
+    if(!(id in SETS)){ var g = GR.groups.filter(function(x){ return x.id === id; })[0]; SETS[id] = g ? new Set(g.symbols.map(function(x){ return String(x).toUpperCase(); })) : null; }
+    return SETS[id];
+  }
+
+  // ---------- one ETF: its stocks and their weights ----------
+  function basket(m){
+    var parts = m.parts || [[m.g, 1]], list = [], inIndex = 0, found = 0, missing = null;
+    parts.forEach(function(p){
+      var set = setOf(p[0]);
+      if(!set){ missing = p[0]; return; }
+      var items = [];
+      set.forEach(function(sym){ var r = BY[sym]; if(r && r.mc > 0 && r.cmp > 0) items.push(r); });
+      var total = set.size;
+      if(m.top){ items.sort(function(x, y){ return y.mc - x.mc; }); items = items.slice(0, m.top); total = Math.min(m.top, set.size); }
+      inIndex += total; found += items.length;
+      var tot = m.eq ? items.length : items.reduce(function(s, r){ return s + r.mc; }, 0);
+      items.forEach(function(r){ list.push({r:r, w:p[1] * (m.eq ? 1 / items.length : r.mc / tot)}); });
+    });
+    var sw = list.reduce(function(s, x){ return s + x.w; }, 0);
+    if(sw > 0) list.forEach(function(x){ x.w = x.w / sw; });
+    return {list:list, inIndex:inIndex, found:found, missing:missing};
+  }
+
+  // ---------- the numbers of one ETF, from its stocks ----------
+  // w = the share of the ETF held in a stock (sums to 1). A stock's earnings inside the ETF = w x EPS / price, so the sums below are the ETF's earnings.
+  function calc(list){
+    var s = {Wpe:0, Epe:0, Wpf:0, Epf:0, Wg1:0, E1a:0, E0a:0, Wg2:0, E1b:0, E2b:0, Ww1:0, Sw1:0, Ww2:0, Sw2:0, Wr1:0, Sr1:0, Wr2:0, Sr2:0, Wfv:0, Sfv:0, Wt1:0, St1:0, Wt2:0, St2:0, Wuse:0, W:0};
+    list.forEach(function(x){
+      var r = x.r, w = x.w, c = r.cmp; s.W += w;
+      var src = (r.fl || []).indexOf('src') > -1;                 // TradingView and Yahoo disagree on the EPS: left out of every earnings-based figure
+      if(!src){
+        if(r.eps_ttm > 0){ s.Wpe += w; s.Epe += w * r.eps_ttm / c; }
+        if(r.eps1 > 0){ s.Wpf += w; s.Epf += w * r.eps1 / c; s.Wuse += w; }
+        if(r.eps1 > 0 && r.eg1 != null && r.eg1 > -99.9){ var e1 = w * r.eps1 / c; s.Wg1 += w; s.E1a += e1; s.E0a += e1 / (1 + r.eg1 / 100); }
+        if(r.eps1 > 0 && r.eps2 != null && r.eg2 != null){ s.Wg2 += w; s.E1b += w * r.eps1 / c; s.E2b += w * r.eps2 / c; }
+        if(r.eg1 != null){ s.Ww1 += w; s.Sw1 += w * clamp(r.eg1, -100, 300); }
+        if(r.eg2 != null){ s.Ww2 += w; s.Sw2 += w * clamp(r.eg2, -100, 300); }
+        if(r.fv > 0){ s.Wfv += w; s.Sfv += w * clamp(r.fv / c, 0.2, 5); }
+        if(r.t1 > 0){ s.Wt1 += w; s.St1 += w * clamp(r.t1 / c, 0.2, 5); }
+        if(r.t2 > 0){ s.Wt2 += w; s.St2 += w * clamp(r.t2 / c, 0.2, 5); }
+      }
+      if(r.rg1 != null){ s.Wr1 += w; s.Sr1 += w * clamp(r.rg1, -50, 150); }
+      if(r.rg2 != null){ s.Wr2 += w; s.Sr2 += w * clamp(r.rg2, -50, 150); }
+    });
+    var d = function(a, b){ return b > 0 ? a / b : null; };
+    return {
+      cov: s.W > 0 ? s.Wuse / s.W * 100 : null,
+      pe: d(s.Wpe, s.Epe), pef: d(s.Wpf, s.Epf),
+      egA1: s.E0a > 0 ? (s.E1a / s.E0a - 1) * 100 : null, egA2: s.E1b > 0 ? (s.E2b / s.E1b - 1) * 100 : null,
+      egW1: d(s.Sw1, s.Ww1), egW2: d(s.Sw2, s.Ww2),
+      rg1: d(s.Sr1, s.Wr1), rg2: d(s.Sr2, s.Wr2),
+      fvR: d(s.Sfv, s.Wfv), t1R: d(s.St1, s.Wt1), t2R: d(s.St2, s.Wt2)
+    };
+  }
+
+  function buildAll(){
+    ROWS = []; SKIP = []; SETS = {}; BY = {};
+    (GJ.rows || []).forEach(function(r){ BY[String(r.s).toUpperCase()] = r; });
+    getTree().forEach(function(a){
+      var key = String(a.sub || '').trim().toLowerCase(), m = MAPS[key];
+      if(!m){ SKIP.push({a:a, why:reasonFor(a)}); return; }
+      var b = basket(m);
+      if(b.missing){ SKIP.push({a:a, why:'The list of stocks of this index (' + b.missing + ') is not in data/rs_groups.json'}); return; }
+      if(b.list.length < 3){ SKIP.push({a:a, why:'Fewer than 3 of its stocks are in the growth data'}); return; }
+      var c = calc(b.list), pr = PR && PR.p && PR.p[a.t] ? PR.p[a.t][1] : null;
+      ROWS.push({t:a.t, n:a.sub, cat:a.cat, wt:m.tag || (m.eq ? 'Equal' : 'Market cap'), note:m.note || '', list:b.list, nIn:b.inIndex, nFound:b.found, cov:c.cov, cmp:pr, pe:c.pe, pef:c.pef,
+                 c:c, rg1:c.rg1, rg2:c.rg2, fvR:c.fvR, t1R:c.t1R, t2R:c.t2R,
+                 fv:pr != null && c.fvR != null ? pr * c.fvR : null, fvd:c.fvR != null ? (c.fvR - 1) * 100 : null,
+                 t1:pr != null && c.t1R != null ? pr * c.t1R : null, t1d:c.t1R != null ? (c.t1R - 1) * 100 : null,
+                 t2:pr != null && c.t2R != null ? pr * c.t2R : null, t2d:c.t2R != null ? (c.t2R - 1) * 100 : null});
+    });
+  }
+  function method(){ return $('etf-method').value; }
+  function eg(r, k){ return method() === 'agg' ? r.c['egA' + k] : r.c['egW' + k]; }
+
+  // ---------- the table ----------
+  var COLS = [
+    {k:'t',   l:'ETF',      g:'ETF',              t:'etf'},
+    {k:'cat', l:'Category', g:'ETF',              t:'txt'},
+    {k:'wt',  l:'Weights',  g:'ETF',              t:'txt'},
+    {k:'nF',  l:'Stocks',   g:'Basket',           t:'stocks'},
+    {k:'cov', l:'Coverage', g:'Basket',           t:'cov'},
+    {k:'cmp', l:'CMP ₹',    g:'Price',            t:'n2'},
+    {k:'pe',  l:'PE (TTM)', g:'PE',               t:'n1'},
+    {k:'pef', l:'PE FY1E',  g:'PE',               t:'n1'},
+    {k:'eg1', l:'FY1E',     g:'EPS growth %',     t:'p'},
+    {k:'eg2', l:'FY2E',     g:'EPS growth %',     t:'p'},
+    {k:'rg1', l:'FY1E',     g:'Revenue growth %', t:'p'},
+    {k:'rg2', l:'FY2E',     g:'Revenue growth %', t:'p'},
+    {k:'fv',  l:'FV ₹',     g:'Fair value',       t:'n2'},
+    {k:'fvd', l:'vs CMP',   g:'Fair value',       t:'p', tint:1},
+    {k:'t1',  l:'TGT ₹',    g:'Target FY1E',      t:'n2'},
+    {k:'t1d', l:'vs CMP',   g:'Target FY1E',      t:'p', tint:1},
+    {k:'t2',  l:'TGT ₹',    g:'Target FY2E',      t:'n2'},
+    {k:'t2d', l:'vs CMP',   g:'Target FY2E',      t:'p', tint:1}
+  ];
+  function val(r, k){
+    if(k === 'eg1') return eg(r, 1);
+    if(k === 'eg2') return eg(r, 2);
+    if(k === 'nF') return r.nFound;
+    return r[k];
+  }
+  function headerHtml(){
+    var g = '', h = '', i = 0, j;
+    while(i < COLS.length){ j = i; while(j < COLS.length && COLS[j].g === COLS[i].g) j++; g += '<th colspan="' + (j - i) + '" class="' + (i === 0 ? 'gv-stick' : '') + '">' + esc(COLS[i].g) + '</th>'; i = j; }
+    COLS.forEach(function(c){
+      var ar = sortK === c.k ? ' ' + (asc ? '▲' : '▼') : '', left = (c.t === 'etf' || c.t === 'txt');
+      h += '<th class="' + (left ? '' : 'num ') + (c.t === 'etf' ? 'gv-stick ' : '') + '" data-k="' + c.k + '">' + esc(c.l) + ar + '</th>';
+    });
+    $('etf-head').innerHTML = '<tr class="g">' + g + '</tr><tr class="h">' + h + '</tr>';
+  }
+  function cell(c, r){
+    var v = val(r, c.k);
+    if(c.t === 'etf') return '<td class="name gv-stick"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent('NSE:' + r.t) + '" target="_blank" rel="noopener">' + esc(r.t) + '</a><span class="gv-nm" title="' + esc(r.n) + (r.note ? ' — ' + esc(r.note) : '') + '">' + esc(r.n) + '</span></td>';
+    if(c.t === 'txt') return '<td' + (c.k === 'wt' && r.note ? ' title="' + esc(r.note) + '"' : '') + '>' + esc(v) + '</td>';
+    if(c.t === 'stocks') return '<td class="num mono" title="' + r.nFound + ' of the ' + r.nIn + ' stocks of the index are in the growth data">' + r.nFound + ' / ' + r.nIn + '</td>';
+    if(c.t === 'cov') return '<td class="num mono ' + (v != null && v < 60 ? 'down' : '') + '" title="Share of the ETF whose stocks have a usable FY1E EPS estimate">' + (v == null ? '—' : num(v, 0) + '%') + '</td>';
+    if(c.t === 'p') return '<td class="num mono ' + cls(v) + (c.tint ? ' gv-tint' : '') + '">' + (v == null ? '—' : sg(v, 1) + '%') + '</td>';
+    var d = c.t === 'n1' ? 1 : 2;
+    return '<td class="num mono">' + num(v, d) + '</td>';
+  }
+  function filtered(){
+    var q = $('etf-q').value.trim().toLowerCase(), cat = $('etf-cat').value, mc = $('etf-cov').value;
+    var mins = {eg1:$('etf-eg1').value, rg1:$('etf-rg1').value, fvd:$('etf-fvd').value, t1d:$('etf-t1d').value};
+    return ROWS.filter(function(r){
+      if(q && (r.t.toLowerCase().indexOf(q) < 0 && r.n.toLowerCase().indexOf(q) < 0)) return false;
+      if(cat && r.cat !== cat) return false;
+      if(mc !== '' && !(r.cov != null && r.cov >= +mc)) return false;
+      for(var k in mins){ if(mins[k].trim() !== '' && !(val(r, k) != null && val(r, k) >= +mins[k])) return false; }
+      return true;
+    });
+  }
+  var VIEW = [];
+  function sortView(){
+    var k = sortK, text = (k === 't' || k === 'cat' || k === 'wt');
+    VIEW.sort(function(a, b){
+      var x = val(a, k), y = val(b, k);
+      if(x == null) return 1; if(y == null) return -1;
+      var c = text ? String(x).localeCompare(String(y)) : x - y; return asc ? c : -c;
+    });
+  }
+  function render(){
+    $('etf-body').innerHTML = VIEW.slice(0, shown).map(function(r){
+      return '<tr data-t="' + esc(r.t) + '"' + (SEL === r.t ? ' class="etf-sel"' : '') + '>' + COLS.map(function(c){ return cell(c, r); }).join('') + '</tr>';
+    }).join('') || '<tr><td colspan="' + COLS.length + '" style="color:var(--muted); padding:18px;">No ETF matches these filters.</td></tr>';
+    $('etf-count').textContent = VIEW.length.toLocaleString('en-IN') + ' of ' + ROWS.length.toLocaleString('en-IN') + ' ETFs match';
+    $('etf-more').innerHTML = VIEW.length > shown ? '<button type="button" class="echip" id="etf-moreb">Show ' + Math.min(200, VIEW.length - shown) + ' more</button>' : '';
+    var mb = $('etf-moreb'); if(mb) mb.onclick = function(){ shown += 200; render(); };
+    renderDetail();
+  }
+  function apply(){ VIEW = filtered(); sortView(); shown = 200; headerHtml(); render(); }
+
+  // ---------- the stocks behind one ETF ----------
+  function renderDetail(){
+    var box = $('etf-detail'), r = ROWS.filter(function(x){ return x.t === SEL; })[0];
+    if(!r){ box.innerHTML = '<div class="note" style="margin-top:12px;">Click an ETF to see the stocks behind it, with each stock’s weight and growth.</div>'; return; }
+    var L = r.list.slice().sort(function(a, b){ return b.w - a.w; }), part = L.slice(0, detShown);
+    var rows = part.map(function(x){
+      var s = x.r, flags = (s.fl || []).map(function(f){ return '<span class="tag gv-flag">' + esc(f) + '</span>'; }).join('');
+      return '<tr><td class="name"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(s.t || ('NSE:' + s.s)) + '" target="_blank" rel="noopener">' + esc(s.s) + '</a> <span style="color:var(--muted); font-size:11px;">' + esc(s.n || '') + '</span></td>' +
+        '<td class="num mono">' + num(x.w * 100, 2) + '%</td><td class="num mono">' + num(s.mc, 0) + '</td>' +
+        '<td class="num mono ' + cls(s.eg1) + '">' + (s.eg1 == null ? '—' : sg(s.eg1, 1) + '%') + '</td><td class="num mono ' + cls(s.eg2) + '">' + (s.eg2 == null ? '—' : sg(s.eg2, 1) + '%') + '</td>' +
+        '<td class="num mono ' + cls(s.rg1) + '">' + (s.rg1 == null ? '—' : sg(s.rg1, 1) + '%') + '</td><td class="num mono ' + cls(s.fvd) + '">' + (s.fvd == null ? '—' : sg(s.fvd, 1) + '%') + '</td>' +
+        '<td class="num mono ' + cls(s.t1d) + '">' + (s.t1d == null ? '—' : sg(s.t1d, 1) + '%') + '</td><td class="num mono ' + cls(s.t2d) + '">' + (s.t2d == null ? '—' : sg(s.t2d, 1) + '%') + '</td><td>' + flags + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<div class="etf-dethead"><b>' + esc(r.t) + '</b> · ' + esc(r.n) + ' · ' + r.list.length + ' stocks, weighted by ' + esc(r.wt.toLowerCase()) + (r.note ? ' (' + esc(r.note) + ')' : '') + '</div>' +
+      '<div class="gv-scroll" style="max-height:420px; margin-top:8px;"><table><thead><tr class="h"><th class="gv-stick" style="top:0;">Stock</th><th class="num" style="top:0;">Weight</th><th class="num" style="top:0;">M-Cap ₹Cr</th><th class="num" style="top:0;">EPS g FY1E</th><th class="num" style="top:0;">EPS g FY2E</th><th class="num" style="top:0;">Rev g FY1E</th><th class="num" style="top:0;">FV vs CMP</th><th class="num" style="top:0;">TGT FY1E</th><th class="num" style="top:0;">TGT FY2E</th><th style="top:0;">Flags</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (L.length > detShown ? '<div class="gv-more"><button type="button" class="echip" id="etf-detmore">Show all ' + L.length + ' stocks</button></div>' : '');
+    var mb = $('etf-detmore'); if(mb) mb.onclick = function(){ detShown = 1e9; renderDetail(); };
+  }
+
+  // ---------- loading ----------
+  function status(ok, msg){ $('etf-status').textContent = msg; $('etf-dot').className = ok ? 'tm-dot live' : 'tm-dot'; }
+  function getJ(url){ return fetch(url, {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }); }
+  function loadAll(){
+    status(false, 'Loading…');
+    var errs = {};
+    Promise.all([
+      getJ('data/growth.json').then(function(j){ GJ = j; }).catch(function(){ errs.g = 1; }),
+      getJ('data/rs_groups.json').then(function(j){ GR = j; }).catch(function(){ errs.r = 1; }),
+      getJ(PRICE_URL + '?t=' + Math.floor(Date.now() / 60000)).then(function(j){ PR = j; }).catch(function(){ errs.p = 1; })
+    ]).then(function(){
+      if(errs.g || !GJ || !(GJ.rows || []).length){ status(false, 'data/growth.json not found yet. The ETF view is built from it, like the Stocks view: run the “Update growth data” action in GitHub (Actions tab).'); return; }
+      if(errs.r || !GR){ status(false, 'data/rs_groups.json (the NSE index lists) not found yet. Run the “Update Relative Strength Data” action in GitHub once.'); return; }
+      buildAll();
+      var cats = {}; ROWS.forEach(function(r){ cats[r.cat] = 1; });
+      $('etf-cat').innerHTML = '<option value="">All categories</option>' + Object.keys(cats).sort().map(function(c){ return '<option>' + esc(c) + '</option>'; }).join('');
+      $('etf-asof').textContent = GJ.updated ? 'stocks data ' + GJ.updated : '';
+      status(true, ROWS.length + ' of ' + getTree().length + ' Indian ETFs built from their underlying stocks' + (PR && PR.asof ? ' · ETF prices as of ' + PR.asof : errs.p ? ' · ETF prices not available (₹ values left blank)' : ''));
+      var sk = SKIP.map(function(x){ return '<tr><td><b>' + esc(x.a.t) + '</b> <span style="color:var(--muted);">' + esc(x.a.sub) + '</span></td><td>' + esc(x.why) + '</td></tr>'; }).join('');
+      $('etf-skip').innerHTML = SKIP.length ? '<details class="gv-def"><summary>Not covered: ' + SKIP.length + ' ETFs (BSE, factor / strategy and other indices whose stock lists are not available)</summary><div class="gv-scroll" style="max-height:320px; margin-top:8px;"><table><tbody>' + sk + '</tbody></table></div></details>' : '';
+      apply();
+    });
+  }
+
+  // ---------- wiring ----------
+  headerHtml();
+  ['etf-cat', 'etf-cov', 'etf-method'].forEach(function(id){ $(id).addEventListener('change', apply); });
+  ['etf-q', 'etf-eg1', 'etf-rg1', 'etf-fvd', 'etf-t1d'].forEach(function(id){ $(id).addEventListener('input', apply); });
+  $('etf-reset').addEventListener('click', function(){ ['etf-q', 'etf-eg1', 'etf-rg1', 'etf-fvd', 'etf-t1d'].forEach(function(id){ $(id).value = ''; }); $('etf-cat').value = ''; $('etf-cov').value = ''; apply(); });
+  $('etf-head').addEventListener('click', function(ev){
+    var th = ev.target.closest('tr.h th'); if(!th) return;
+    var k = th.dataset.k, c = COLS.filter(function(x){ return x.k === k; })[0]; if(!c) return;
+    asc = (sortK === k) ? !asc : (c.t === 'etf' || c.t === 'txt'); sortK = k; headerHtml(); sortView(); render();
+  });
+  $('etf-body').addEventListener('click', function(ev){
+    if(ev.target.closest('a')) return;
+    var tr = ev.target.closest('tr[data-t]'); if(!tr) return;
+    SEL = (SEL === tr.dataset.t) ? null : tr.dataset.t; detShown = 30; render();
+    if(SEL){ var d = $('etf-detail'); if(d && d.scrollIntoView) d.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+  });
+  $('etf-export').addEventListener('click', function(){
+    if(!VIEW.length){ alert('No matches to export - change the filters first.'); return; }
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([VIEW.map(function(x){ return 'NSE:' + x.t; }).join(',')], {type:'text/plain'}));
+    a.download = 'etf-growth-valuation.txt'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  window.RHETF = {_rows:function(){ return ROWS; }, _skip:function(){ return SKIP; }};
 })();
 </script>
