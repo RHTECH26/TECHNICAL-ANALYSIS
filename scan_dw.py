@@ -11,14 +11,15 @@ outperforming A. A security's SCORE is the percentage of the other securities it
   global_etf  every ETF in index.html (GLOBAL_ETFS, many exchanges; local-currency prices)
 
 Writes data/dw_stocks.json, data/dw_india_etf.json, data/dw_global_etf.json:
-  {"updated", "asof", "universe", "n", "box_pct", "reversal", "rows": [[symbol, name, score %], ...]}   sorted from the highest score down.
+  {"updated", "asof", "universe", "n", "box_pct", "reversal", "rows": [[symbol, name, score %, market, category], ...]}   sorted from the highest score down.
+  (market and category come from the ETF lists in index.html; they are blank for stocks, which the page groups by NSE index and sector.)
 
 The same run also writes the DW QUANT rank (data/dwq_stocks.json, dwq_india_etf.json, dwq_global_etf.json), the method of the "DW RS" sheet:
   RS      = price / benchmark price              (benchmark: Nifty 500 for Indian stocks and ETFs, Nasdaq Composite for global ETFs)
   ROC n   = RS now / RS n months ago - 1            for n = 1, 3, 6, 12  (counted back from the latest day, so the dates move forward every day;
                                                     a weekend or holiday takes the NEXT trading day)
   SCORE % = 40% x 12M ROC + 30% x 6M ROC + 20% x 3M ROC + 10% x 1M ROC
-  {"updated", "asof", "universe", "benchmark", "n", "weights", "dates": {"1M": date used, ...}, "rows": [[symbol, name, score %, 1M ROC %, 3M ROC %, 6M ROC %, 12M ROC %], ...]}
+  {"updated", "asof", "universe", "benchmark", "n", "weights", "dates": {"1M": date used, ...}, "rows": [[symbol, name, score %, 1M ROC %, 3M ROC %, 6M ROC %, 12M ROC %, market, category], ...]}
 Usage:  python scan_dw.py            (all three)       python scan_dw.py stocks india_etf
 """
 import json, os, re, sys, time
@@ -47,6 +48,9 @@ CHUNK = int(os.environ.get("DW_CHUNK", 100))
 OUT_DIR = os.environ.get("DW_OUT_DIR", "data")
 INDEX_FILE = os.environ.get("INDEX_FILE", "index.html")
 UNIVERSES = {"stocks": "Indian Stocks", "india_etf": "Indian ETFs", "global_etf": "Global ETFs"}
+MARKETS = {"TO": "Canada", "KS": "Korea", "NS": "India", "DE": "Germany", "AX": "Australia", "T": "Japan", "L": "UK", "SA": "Brazil", "HK": "Hong Kong",
+           "SW": "Switzerland", "PA": "France", "NZ": "New Zealand", "MX": "Mexico", "SI": "Singapore", "BK": "Thailand", "CO": "Denmark",
+           "TW": "Taiwan", "MI": "Italy", "WA": "Poland", "MC": "Spain"}
 BENCH = {"stocks": ("^CRSLDX", "Nifty 500"), "india_etf": ("^CRSLDX", "Nifty 500"), "global_etf": ("^IXIC", "Nasdaq Composite")}
 PERIODS = [("1M", 1), ("3M", 3), ("6M", 6), ("12M", 12)]     # calendar months
 WEIGHTS = [float(x) for x in os.environ.get("DWQ_WEIGHTS", "10,20,30,40").split(",")]      # for 1M, 3M, 6M, 12M (percent)
@@ -128,8 +132,8 @@ def page_list(var_name):
 
 
 def build_universe(uid):
-    """[(yahoo ticker, display symbol, name)]"""
-    out = []
+    """([(yahoo ticker, display symbol, name)], {symbol: (market, category)}).  Stocks have no market / category here: the page groups them by NSE index and sector."""
+    out, meta = [], {}
     if uid == "stocks":
         from scan_dow_trend import load_symbols
         out = [(sym + ".NS", sym, name) for sym, name in load_symbols()]
@@ -138,17 +142,20 @@ def build_universe(uid):
             t = str(a.get("t", "")).strip().upper()
             if t:
                 out.append((t + ".NS", t, a.get("sub") or t))
+                meta[t] = ("India", a.get("cat") or "Other")
     elif uid == "global_etf":
         for a in page_list("GLOBAL_ETFS"):
             t = str(a.get("t", "")).strip()
             if t:
                 out.append((t, t, a.get("n", t)))
+                suf = t.rsplit(".", 1)[1] if "." in t else ""
+                meta[t] = (MARKETS.get(suf, "Other") if suf else "US", a.get("cat") or "Other")
     seen, res = set(), []
     for u in out:
         if u[0] not in seen:
             seen.add(u[0])
             res.append(u)
-    return res
+    return res, meta
 
 
 def close_of(data, ticker):
@@ -215,9 +222,10 @@ def quant_scores(roc, weights=WEIGHTS):
 
 def load_prices(uni):
     series = {}
+    t_start = time.time()
     for i in range(0, len(uni), CHUNK):
         part = uni[i:i + CHUNK]
-        print(f"  downloading {i + 1}-{i + len(part)} of {len(uni)}", flush=True)
+        print(f"  downloading {i + 1}-{i + len(part)} of {len(uni)}  ({(time.time() - t_start) / 60:.1f} min so far, {len(series)} usable so far)", flush=True)
         data = download([u[0] for u in part])
         if data is None:
             print("   chunk gave no data")
@@ -232,12 +240,13 @@ def load_prices(uni):
                 s = pd.Series(s.to_numpy(float), index=(ix.tz_localize(None) if ix.tz is not None else ix).normalize())
                 series[sym] = s[~s.index.duplicated(keep="last")]
         time.sleep(1.0)
+    print(f"  download finished in {(time.time() - t_start) / 60:.1f} min: {len(series)} of {len(uni)} securities have enough history", flush=True)
     return series
 
 
 def build_one(uid):
     print(f"\n===== Dorsey Wright: {UNIVERSES[uid]} =====", flush=True)
-    uni = build_universe(uid)
+    uni, meta = build_universe(uid)
     names = {u[1]: u[2] for u in uni}
     print("Universe:", len(uni))
     series = load_prices(uni)
@@ -253,7 +262,8 @@ def build_one(uid):
     t0 = time.time()
     score = dw_scores(L)
     print(f"  scored in {time.time() - t0:.0f}s", flush=True)
-    rows = sorted(([c, names.get(c, c), round(float(sc), 2)] for c, sc in zip(keep, score)), key=lambda r: (-r[2], r[0]))
+    mc = lambda c: list(meta.get(c, ("", "")))                      # [market, category] (blank for stocks)
+    rows = sorted(([c, names.get(c, c), round(float(sc), 2)] + mc(c) for c, sc in zip(keep, score)), key=lambda r: (-r[2], r[0]))
     ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     stamp = ist.strftime("%d %b %Y, %H:%M IST")
     payload = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "n": len(rows),
@@ -276,7 +286,7 @@ def build_one(uid):
         roc, rows = roc_table(df, bser)
         sc = quant_scores(roc)
         used = {p: (str(df.index[i].date()) if i is not None else None) for (p, _), i in zip(PERIODS, rows)}
-        q_rows = sorted(([c, names.get(c, c), round(float(sc[c]), 2)] + [round(float(roc.loc[c, p]), 2) for p, _ in PERIODS] for c in sc.index), key=lambda r: (-r[2], r[0]))
+        q_rows = sorted(([c, names.get(c, c), round(float(sc[c]), 2)] + [round(float(roc.loc[c, p]), 2) for p, _ in PERIODS] + mc(c) for c in sc.index), key=lambda r: (-r[2], r[0]))
         q = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "benchmark": bname, "n": len(q_rows), "periods": [p for p, _ in PERIODS],
              "weights": WEIGHTS, "dates": used, "rows": q_rows}
         qpath = os.path.join(OUT_DIR, f"dwq_{uid}.json")

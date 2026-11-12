@@ -798,6 +798,8 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
       <div style="display:flex; flex-wrap:wrap; gap:14px 22px; align-items:flex-end; margin:12px 0 10px;">
         <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
           <select id="dw-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks" selected>Indian Stocks</option><option value="global_etf">Global ETFs</option><option value="india_etf">Indian ETFs</option></select></label>
+        <label id="dw-mktw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="dw-mkt-l">Market</span><select id="dw-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:230px;"><option value="">All markets</option></select></label>
+        <label id="dw-catw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="dw-cat-l">Category</span><select id="dw-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:230px;"><option value="">All categories</option></select></label>
         <input type="text" id="dw-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; max-width:380px; margin-bottom:0;" />
         <span id="dw-count" class="note" style="margin:0;"></span>
       </div>
@@ -822,23 +824,17 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
           <select id="dwq-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer;"><option value="stocks">Indian Stocks</option><option value="global_etf">Global ETFs</option><option value="india_etf" selected>Indian ETFs</option></select></label>
         <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Compared with
           <span id="dwq-bench" style="padding:8px 2px; font-size:13px; color:var(--ink); font-weight:700;">Nifty 500</span></label>
-        <span class="mp-seg" id="dwq-view" style="display:inline-flex; gap:8px;">
-          <button type="button" class="echip" data-v="work" aria-pressed="true">With ROC working</button>
-          <button type="button" class="echip" data-v="score" aria-pressed="false">Score only</button></span>
+        <label id="dwq-mktw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="dwq-mkt-l">Market</span><select id="dwq-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:230px;"><option value="">All markets</option></select></label>
+        <label id="dwq-catw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="dwq-cat-l">Category</span><select id="dwq-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:230px;"><option value="">All categories</option></select></label>
         <input type="text" id="dwq-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:200px; max-width:340px; margin-bottom:0;" />
         <span id="dwq-count" class="note" style="margin:0;"></span>
       </div>
-      <div class="dwq-formula" id="dwq-formula"></div>
       <div class="gtm-scroll" style="max-height:680px;">
         <table id="dwq-table" style="min-width:0;">
           <thead id="dwq-head"><tr>
             <th class="sortable" data-k="rank" style="width:80px;">Rank</th>
             <th class="sortable" data-k="sym">Security</th>
-            <th class="sortable roc rt" data-k="r0">1M ROC</th>
-            <th class="sortable roc rt" data-k="r1">3M ROC</th>
-            <th class="sortable roc rt" data-k="r2">6M ROC</th>
-            <th class="sortable roc rt" data-k="r3">12M ROC</th>
-            <th class="sortable rt" data-k="score" style="width:130px;">Score %</th>
+            <th class="sortable rt" data-k="score" id="dwq-score-th" style="width:150px;">Score %</th>
           </tr></thead>
           <tbody id="dwq-body"></tbody>
         </table>
@@ -4288,7 +4284,7 @@ html[data-locked="1"]{overflow:hidden;}
   var $ = function(i){ return document.getElementById(i); };
   function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   var uni = 'stocks', CACHE = {}, sortKey = 'rank', asc = true, started = false;
-  // ---- the two sub-tabs of Relative Strength (kept separate from the Scanner's sub-tabs) ----
+  // ---- the sub-tabs of Relative Strength (kept separate from the Scanner's sub-tabs) ----
   document.querySelectorAll('.rs-subnav button').forEach(function(b){
     b.addEventListener('click', function(){
       document.querySelectorAll('.rs-subnav button').forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
@@ -4296,17 +4292,50 @@ html[data-locked="1"]{overflow:hidden;}
       if(b.dataset.rsub === 'dw'){ started = true; load(); }
     });
   });
-  // rank 1 = the highest score; securities with the same score share a rank
+  // rank 1 = the highest score of the whole universe; securities with the same score share a rank
   function ranked(j){
     if(j._r) return j._r;
     var out = [], prev = null, rk = 0;
-    j.rows.forEach(function(r, i){ if(r[2] !== prev){ rk = i + 1; prev = r[2]; } out.push({rank:rk, sym:r[0], name:r[1], score:r[2]}); });
+    j.rows.forEach(function(r, i){ if(r[2] !== prev){ rk = i + 1; prev = r[2]; } out.push({rank:rk, sym:r[0], name:r[1], score:r[2], mkt:r[3] || '', cat:r[4] || ''}); });
     return (j._r = out);
   }
+
+  var GROUPS = null, gsets = {};
+  function loadGroups(){
+    if(GROUPS !== null) return Promise.resolve(GROUPS);
+    return fetch('data/rs_groups.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ GROUPS = j; return j; }).catch(function(){ GROUPS = false; return false; });
+  }
+  function gset(id){
+    if(!id || !GROUPS || !GROUPS.groups) return null;
+    if(!gsets[id]){ var g = GROUPS.groups.filter(function(x){ return x.id === id; })[0]; gsets[id] = g ? new Set(g.symbols) : null; }
+    return gsets[id];
+  }
+  function opts(first, list){ return '<option value="">' + first + '</option>' + list.map(function(o){ return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join(''); }
+  // Indian stocks: NSE index and sector (data/rs_groups.json, the same file as the Momentum tab). ETFs: market and category.
+  function fillFilters(){
+    var j = CACHE[uni], m = $('dw-mkt'), c = $('dw-cat');
+    if(uni === 'stocks'){
+      $('dw-mkt-l').textContent = 'Index'; $('dw-cat-l').textContent = 'Sector'; $('dw-mktw').style.display = 'flex';
+      var gl = GROUPS && GROUPS.groups ? GROUPS.groups : [];
+      m.innerHTML = opts('All NSE stocks', gl.filter(function(x){ return x.kind === 'index'; }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+      c.innerHTML = opts('All sectors &amp; themes', gl.filter(function(x){ return x.kind === 'sector'; }).sort(function(a, b){ return a.label.localeCompare(b.label); }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+    } else {
+      var rs = j ? ranked(j) : [];
+      var cnt = function(k){ var o = {}; rs.forEach(function(x){ if(x[k]) o[x[k]] = (o[x[k]] || 0) + 1; }); return Object.keys(o).sort().map(function(v){ return [v, v + ' (' + o[v] + ')']; }); };
+      $('dw-mkt-l').textContent = 'Market'; $('dw-cat-l').textContent = 'Category'; $('dw-mktw').style.display = uni === 'global_etf' ? 'flex' : 'none';
+      m.innerHTML = opts('All markets', cnt('mkt')); c.innerHTML = opts('All categories', cnt('cat'));
+    }
+  }
+  function keep(x){
+    var mv = $('dw-mkt').value, cv = $('dw-cat').value;
+    if(uni === 'stocks'){ var ms = gset(mv), cs = gset(cv); return (!ms || ms.has(x.sym)) && (!cs || cs.has(x.sym)); }
+    return (!mv || x.mkt === mv) && (!cv || x.cat === cv);
+  }
+
   function rows(){
     var j = CACHE[uni]; if(!j) return [];
     var q = $('dw-search').value.trim().toLowerCase();
-    var r = ranked(j).filter(function(x){ return !q || (x.sym + ' ' + x.name).toLowerCase().indexOf(q) > -1; });
+    var r = ranked(j).filter(function(x){ return keep(x) && (!q || (x.sym + ' ' + x.name).toLowerCase().indexOf(q) > -1); });
     return r.slice().sort(function(a, b){
       var x = a[sortKey], y = b[sortKey];
       var c = typeof x === 'string' ? x.localeCompare(y) : x - y;
@@ -4332,18 +4361,19 @@ html[data-locked="1"]{overflow:hidden;}
     $('dw-dot').className = 'tm-dot live';
   }
   function load(){
-    var u = uni;
-    if(CACHE[u]){ header(); render(); }
-    else { $('dw-status').textContent = 'Loading…'; $('dw-dot').className = 'tm-dot'; $('dw-asof').textContent = ''; $('dw-body').innerHTML = ''; $('dw-count').textContent = ''; }
+    var u = uni, first = !CACHE[u];
+    if(CACHE[u]){ fillFilters(); header(); render(); }
+    else { $('dw-status').textContent = 'Loading…'; $('dw-dot').className = 'tm-dot'; $('dw-asof').textContent = ''; $('dw-body').innerHTML = ''; $('dw-count').textContent = ''; fillFilters(); }
+    loadGroups().then(function(){ if(uni === 'stocks' && !$('dw-mkt').options[1] && GROUPS) fillFilters(); });
     fetch('data/dw_' + u + '.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
       var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
-      if(uni === u && changed){ header(); render(); }
+      if(uni === u && changed){ if(first) fillFilters(); header(); render(); }
     }).catch(function(){
       if(uni === u && !CACHE[u]){ $('dw-status').textContent = 'data/dw_' + u + '.json not found yet. Run the “Update Dorsey Wright RS” action in GitHub (Actions tab) once.'; $('dw-dot').className = 'tm-dot'; render(); }
     });
   }
   $('dw-uni').addEventListener('change', function(){ uni = this.value; sortKey = 'rank'; asc = true; load(); });
-  $('dw-search').addEventListener('input', render);
+  $('dw-search').addEventListener('input', render); $('dw-mkt').addEventListener('change', render); $('dw-cat').addEventListener('change', render);
   $('dw-head').addEventListener('click', function(ev){
     var th = ev.target.closest('th.sortable'); if(!th) return;
     var k = th.dataset.k; asc = (sortKey === k) ? !asc : (k === 'sym' || k === 'rank'); sortKey = k; render();
@@ -4359,41 +4389,74 @@ html[data-locked="1"]{overflow:hidden;}
   var uni = 'india_etf', CACHE = {}, sortKey = 'rank', asc = true, started = false;
   var BENCH = {stocks:'Nifty 500', india_etf:'Nifty 500', global_etf:'Nasdaq Composite'};
   document.querySelectorAll('.rs-subnav button[data-rsub="dwq"]').forEach(function(b){ b.addEventListener('click', function(){ started = true; load(); }); });
-  // rank 1 = the highest score; securities with the same score share a rank
+  // rank 1 = the highest score of the whole universe; securities with the same score share a rank
   function ranked(j){
     if(j._r) return j._r;
     var out = [], prev = null, rk = 0;
-    j.rows.forEach(function(r, i){ if(r[2] !== prev){ rk = i + 1; prev = r[2]; } out.push({rank:rk, sym:r[0], name:r[1], score:r[2], r0:r[3], r1:r[4], r2:r[5], r3:r[6]}); });
+    j.rows.forEach(function(r, i){ if(r[2] !== prev){ rk = i + 1; prev = r[2]; } out.push({rank:rk, sym:r[0], name:r[1], score:r[2], mkt:r[7] || '', cat:r[8] || ''}); });
     return (j._r = out);
   }
+
+  var GROUPS = null, gsets = {};
+  function loadGroups(){
+    if(GROUPS !== null) return Promise.resolve(GROUPS);
+    return fetch('data/rs_groups.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ GROUPS = j; return j; }).catch(function(){ GROUPS = false; return false; });
+  }
+  function gset(id){
+    if(!id || !GROUPS || !GROUPS.groups) return null;
+    if(!gsets[id]){ var g = GROUPS.groups.filter(function(x){ return x.id === id; })[0]; gsets[id] = g ? new Set(g.symbols) : null; }
+    return gsets[id];
+  }
+  function opts(first, list){ return '<option value="">' + first + '</option>' + list.map(function(o){ return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join(''); }
+  // Indian stocks: NSE index and sector (data/rs_groups.json, the same file as the Momentum tab). ETFs: market and category.
+  function fillFilters(){
+    var j = CACHE[uni], m = $('dwq-mkt'), c = $('dwq-cat');
+    if(uni === 'stocks'){
+      $('dwq-mkt-l').textContent = 'Index'; $('dwq-cat-l').textContent = 'Sector'; $('dwq-mktw').style.display = 'flex';
+      var gl = GROUPS && GROUPS.groups ? GROUPS.groups : [];
+      m.innerHTML = opts('All NSE stocks', gl.filter(function(x){ return x.kind === 'index'; }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+      c.innerHTML = opts('All sectors &amp; themes', gl.filter(function(x){ return x.kind === 'sector'; }).sort(function(a, b){ return a.label.localeCompare(b.label); }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+    } else {
+      var rs = j ? ranked(j) : [];
+      var cnt = function(k){ var o = {}; rs.forEach(function(x){ if(x[k]) o[x[k]] = (o[x[k]] || 0) + 1; }); return Object.keys(o).sort().map(function(v){ return [v, v + ' (' + o[v] + ')']; }); };
+      $('dwq-mkt-l').textContent = 'Market'; $('dwq-cat-l').textContent = 'Category'; $('dwq-mktw').style.display = uni === 'global_etf' ? 'flex' : 'none';
+      m.innerHTML = opts('All markets', cnt('mkt')); c.innerHTML = opts('All categories', cnt('cat'));
+    }
+  }
+  function keep(x){
+    var mv = $('dwq-mkt').value, cv = $('dwq-cat').value;
+    if(uni === 'stocks'){ var ms = gset(mv), cs = gset(cv); return (!ms || ms.has(x.sym)) && (!cs || cs.has(x.sym)); }
+    return (!mv || x.mkt === mv) && (!cv || x.cat === cv);
+  }
+
   function rows(){
     var j = CACHE[uni]; if(!j) return [];
     var q = $('dwq-search').value.trim().toLowerCase();
-    var r = ranked(j).filter(function(x){ return !q || (x.sym + ' ' + x.name).toLowerCase().indexOf(q) > -1; });
+    var r = ranked(j).filter(function(x){ return keep(x) && (!q || (x.sym + ' ' + x.name).toLowerCase().indexOf(q) > -1); });
     return r.slice().sort(function(a, b){
       var x = a[sortKey], y = b[sortKey];
       var c = typeof x === 'string' ? x.localeCompare(y) : x - y;
       return (asc ? c : -c) || a.rank - b.rank;
     });
   }
-  function dmy(iso){ if(!iso) return '—'; var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], p = iso.split('-'); return +p[2] + ' ' + m[+p[1] - 1] + ' ' + p[0]; }
   function sg(v, d){ return v == null ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%'; }
   function cl(v){ return v > 0 ? 'up' : v < 0 ? 'down' : ''; }
+  function dmy(iso){ if(!iso) return '—'; var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], p = iso.split('-'); return +p[2] + ' ' + m[+p[1] - 1] + ' ' + p[0]; }
   function render(){
     var j = CACHE[uni];
     $('dwq-bench').textContent = (j && j.benchmark) || BENCH[uni];
-    if(!j){ $('dwq-body').innerHTML = ''; $('dwq-count').textContent = ''; $('dwq-formula').innerHTML = ''; return; }
+    if(!j){ $('dwq-body').innerHTML = ''; $('dwq-count').textContent = ''; return; }
     var r = rows(), w = j.weights || [10, 20, 30, 40];
     $('dwq-count').textContent = r.length.toLocaleString('en-US') + ' of ' + j.n.toLocaleString('en-US');
-    $('dwq-formula').innerHTML = '<b>Score %</b> = ' + w[3] + '% × 12M ROC + ' + w[2] + '% × 6M ROC + ' + w[1] + '% × 3M ROC + ' + w[0] + '% × 1M ROC &nbsp;·&nbsp; <b>ROC</b> = how much the ratio (security ÷ ' + esc(j.benchmark) + ') has changed since 1, 3, 6 and 12 months ago' +
-      (j.dates ? '<br>Dates used (counted back from ' + dmy(j.asof) + '; a holiday takes the next trading day): ' + ['1M', '3M', '6M', '12M'].map(function(p){ return '<b>' + p + '</b> ' + dmy(j.dates[p]); }).join(' &nbsp;·&nbsp; ') : '');
-    var labels = {rank:'Rank', sym:'Security', r0:'1M ROC', r1:'3M ROC', r2:'6M ROC', r3:'12M ROC', score:'Score %'};
-    Object.keys(labels).forEach(function(k){ var th = document.querySelector('#dwq-head th[data-k="' + k + '"]'); th.textContent = labels[k] + (sortKey === k ? (asc ? ' ▲' : ' ▼') : ''); });
+    var labels = {rank:'Rank', sym:'Security', score:'Score %'};
+    Object.keys(labels).forEach(function(k){ document.querySelector('#dwq-head th[data-k="' + k + '"]').textContent = labels[k] + (sortKey === k ? (asc ? ' ▲' : ' ▼') : ''); });
+    // the formula and the dates it used are in the tooltip of the Score % heading
+    $('dwq-score-th').title = 'Score % = ' + w[3] + '% × 12M ROC + ' + w[2] + '% × 6M ROC + ' + w[1] + '% × 3M ROC + ' + w[0] + '% × 1M ROC, where ROC is the change in the ratio (security ÷ ' + j.benchmark + ')' +
+      (j.dates ? '. Dates used, counted back from ' + dmy(j.asof) + ' (a holiday takes the next trading day): 1M ' + dmy(j.dates['1M']) + ', 3M ' + dmy(j.dates['3M']) + ', 6M ' + dmy(j.dates['6M']) + ', 12M ' + dmy(j.dates['12M']) : '');
     $('dwq-body').innerHTML = r.map(function(x){
       return '<tr><td class="mono">' + x.rank + '</td><td class="name"><span style="font-weight:700; color:var(--ink);">' + esc(x.sym) + '</span> <span style="color:var(--muted); font-size:12px;">' + esc(x.name) + '</span></td>' +
-        ['r0', 'r1', 'r2', 'r3'].map(function(k){ return '<td class="rt roc ' + cl(x[k]) + '">' + sg(x[k], 1) + '</td>'; }).join('') +
         '<td class="rt sc ' + cl(x.score) + '">' + sg(x.score, 1) + '</td></tr>';
-    }).join('') || '<tr><td colspan="7" style="color:var(--muted); padding:18px;">No securities match.</td></tr>';
+    }).join('') || '<tr><td colspan="3" style="color:var(--muted); padding:18px;">No securities match.</td></tr>';
   }
   function header(){
     var j = CACHE[uni]; if(!j) return;
@@ -4402,22 +4465,19 @@ html[data-locked="1"]{overflow:hidden;}
     $('dwq-dot').className = 'tm-dot live';
   }
   function load(){
-    var u = uni; $('dwq-bench').textContent = BENCH[u];
-    if(CACHE[u]){ header(); render(); }
-    else { $('dwq-status').textContent = 'Loading…'; $('dwq-dot').className = 'tm-dot'; $('dwq-asof').textContent = ''; $('dwq-body').innerHTML = ''; $('dwq-count').textContent = ''; $('dwq-formula').innerHTML = ''; }
+    var u = uni, first = !CACHE[u]; $('dwq-bench').textContent = BENCH[u];
+    if(CACHE[u]){ fillFilters(); header(); render(); }
+    else { $('dwq-status').textContent = 'Loading…'; $('dwq-dot').className = 'tm-dot'; $('dwq-asof').textContent = ''; $('dwq-body').innerHTML = ''; $('dwq-count').textContent = ''; fillFilters(); }
+    loadGroups().then(function(){ if(uni === 'stocks' && !$('dwq-mkt').options[1] && GROUPS) fillFilters(); });
     fetch('data/dwq_' + u + '.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
       var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
-      if(uni === u && changed){ header(); render(); }
+      if(uni === u && changed){ if(first) fillFilters(); header(); render(); }
     }).catch(function(){
       if(uni === u && !CACHE[u]){ $('dwq-status').textContent = 'data/dwq_' + u + '.json not found yet. Run the “Update Dorsey Wright RS” action in GitHub (Actions tab) once.'; $('dwq-dot').className = 'tm-dot'; render(); }
     });
   }
   $('dwq-uni').addEventListener('change', function(){ uni = this.value; sortKey = 'rank'; asc = true; load(); });
-  $('dwq-search').addEventListener('input', render);
-  document.querySelectorAll('#dwq-view .echip').forEach(function(b){ b.addEventListener('click', function(){
-    document.querySelectorAll('#dwq-view .echip').forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-    $('dwq-table').classList.toggle('score-only', b.dataset.v === 'score');
-  }); });
+  $('dwq-search').addEventListener('input', render); $('dwq-mkt').addEventListener('change', render); $('dwq-cat').addEventListener('change', render);
   $('dwq-head').addEventListener('click', function(ev){
     var th = ev.target.closest('th.sortable'); if(!th) return;
     var k = th.dataset.k; asc = (sortKey === k) ? !asc : (k === 'sym' || k === 'rank'); sortKey = k; render();
