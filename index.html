@@ -728,6 +728,7 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
     <button type="button" class="echip" role="tab" aria-pressed="true" data-rsub="mom">Momentum</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-rsub="dw">DW Point &amp; Figure</button>
     <button type="button" class="echip" role="tab" aria-pressed="false" data-rsub="dwq">DW Quant</button>
+    <button type="button" class="echip" role="tab" aria-pressed="false" data-rsub="rrg">RRG</button>
   </div>
   <div class="rs-subpanel active" id="rs-sub-mom">
   <div class="card">
@@ -839,6 +840,63 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--line); font
           <tbody id="dwq-body"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+  <div class="rs-subpanel" id="rs-sub-rrg">
+    <div class="card">
+      <h4>Relative Rotation Graph (RRG)<span class="asof" id="rrg-asof"></span></h4>
+      <div class="tm-datarow"><span class="tm-dot" id="rrg-dot"></span><span id="rrg-status">Loading…</span></div>
+      <div class="rrg-controls">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Universe
+          <select id="rrg-uni" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="stocks">Indian Stocks</option><option value="global_etf">Global ETFs</option><option value="india_etf" selected>Indian ETFs</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Compared with
+          <span id="rrg-bench" style="padding:8px 2px; font-size:13px; color:var(--ink); font-weight:700;">Nifty 500</span></label>
+        <label id="rrg-mktw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="rrg-mkt-l">Market</span><select id="rrg-mkt" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="">All markets</option></select></label>
+        <label id="rrg-catw" style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;"><span id="rrg-cat-l">Category</span><select id="rrg-cat" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="">All categories</option></select></label>
+        <input type="text" id="rrg-search" class="gtm-search-input" placeholder="Search by symbol or name…" style="flex:1; min-width:190px; max-width:300px; margin-bottom:0;" />
+      </div>
+      <div class="rrg-controls" style="margin-top:10px;">
+        <div class="rrg-quads" id="rrg-quads">
+          <button type="button" class="echip" data-q="all" aria-pressed="true">All</button>
+          <button type="button" class="echip rq-lead" data-q="Leading" aria-pressed="false">Leading</button>
+          <button type="button" class="echip rq-weak" data-q="Weakening" aria-pressed="false">Weakening</button>
+          <button type="button" class="echip rq-lag" data-q="Lagging" aria-pressed="false">Lagging</button>
+          <button type="button" class="echip rq-imp" data-q="Improving" aria-pressed="false">Improving</button>
+        </div>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Quadrant moves
+          <select id="rrg-move" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;">
+            <option value="any" selected>All securities</option>
+            <option value="turn">Turnarounds (Lagging → Improving)</option>
+            <option value="break">Breakouts (Improving → Leading)</option>
+            <option value="fade">Fading (Leading → Weakening)</option>
+            <option value="down">Breakdowns (Weakening → Lagging)</option>
+            <option value="chg">Any quadrant change</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">within the last
+          <select id="rrg-weeks" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="1">1 week</option><option value="2">2 weeks</option><option value="3">3 weeks</option><option value="4" selected>4 weeks</option><option value="6">6 weeks</option><option value="8">8 weeks</option><option value="12">12 weeks</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Show on the chart
+          <select id="rrg-top" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="15">15 strongest</option><option value="25" selected>25 strongest</option><option value="50">50 strongest</option><option value="100">100 strongest</option><option value="0">All</option></select></label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--ink-soft); font-weight:600;">Tail
+          <select id="rrg-tail" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:13px; cursor:pointer; max-width:240px;"><option value="0">None</option><option value="4">4 weeks</option><option value="8" selected>8 weeks</option><option value="12">12 weeks</option></select></label>
+        <button type="button" class="echip" id="rrg-clear" style="align-self:flex-end;">Clear pins</button>
+      </div>
+      <div class="rrg-pins" id="rrg-pins"></div>
+      <div class="rrg-chartbox"><canvas id="rrg-chart"></canvas><div class="rrg-msg" id="rrg-msg"></div></div>
+      <div class="rrg-hint" id="rrg-hint"></div>
+      <div class="mp-sub" style="margin-top:18px;">Table <span class="sm" id="rrg-count"></span></div>
+      <div class="gtm-scroll" style="max-height:560px;">
+        <table id="rrg-table" style="min-width:0;">
+          <thead id="rrg-head"><tr>
+            <th class="sortable" data-k="sym">Security</th>
+            <th class="sortable" data-k="cur">Quadrant</th>
+            <th class="sortable rt" data-k="r" title="Above 100: the relative trend is strong (security ÷ benchmark, 10-week average, normalised over 26 weeks)">RS-Ratio</th>
+            <th class="sortable rt" data-k="m" title="Above 100: the relative trend is speeding up (4-week change in RS-Ratio, normalised over 26 weeks)">RS-Momentum</th>
+            <th class="sortable rt" data-k="dist" title="Distance from the centre (100, 100): how far the security has rotated">Strength</th>
+            <th class="sortable" data-k="ago" title="The most recent change of quadrant in the last 12 weeks">Last move</th>
+          </tr></thead>
+          <tbody id="rrg-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;"><button type="button" class="echip" id="rrg-more" style="display:none;">Show more</button></div>
     </div>
   </div>
 </section>
@@ -2942,6 +3000,28 @@ html[data-locked="1"]{overflow:hidden;}
 #panel-rs #dwq-table td.sc{font-weight:700;}
 #dwq-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
 #dwq-table.score-only .roc{display:none;}
+.rrg-controls{display:flex; flex-wrap:wrap; gap:12px 18px; align-items:flex-end; margin:12px 0 4px;}
+.rrg-quads{display:flex; flex-wrap:wrap; gap:8px;}
+#rrg-move{min-width:290px; max-width:340px;}
+.rrg-quads .echip{white-space:nowrap;}
+.rrg-quads .echip[aria-pressed="true"].rq-lead{background:#2e9e5b; border-color:#2e9e5b; color:#fff;}
+.rrg-quads .echip[aria-pressed="true"].rq-weak{background:#e0b000; border-color:#e0b000; color:#1a1200;}
+.rrg-quads .echip[aria-pressed="true"].rq-lag{background:#d64545; border-color:#d64545; color:#fff;}
+.rrg-quads .echip[aria-pressed="true"].rq-imp{background:#3b82c4; border-color:#3b82c4; color:#fff;}
+.rrg-pins{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; min-height:0;}
+.rrg-pins .pin{display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:99px; background:var(--surface-3); color:var(--ink); font-size:12px; font-weight:700; cursor:pointer;}
+.rrg-chartbox{position:relative; height:580px; margin-top:12px; border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--surface);}
+.rrg-msg{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 24px; color:var(--muted); font-size:13px; pointer-events:none;}
+.rrg-msg:empty{display:none;}
+.rrg-hint{font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.5;}
+.rrg-q{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.04em; padding:2px 9px; border-radius:99px; color:#fff;}
+.rrg-q.Leading{background:#2e9e5b;} .rrg-q.Weakening{background:#e0b000; color:#1a1200;} .rrg-q.Lagging{background:#d64545;} .rrg-q.Improving{background:#3b82c4;}
+#panel-rs #rrg-table th, #panel-rs #rrg-table td{text-align:left;}
+#panel-rs #rrg-table th.rt, #panel-rs #rrg-table td.rt{text-align:right; padding-right:18px; font-variant-numeric:tabular-nums;}
+#rrg-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+#rrg-table tbody tr{cursor:pointer;}
+#rrg-table tbody tr.pinned td{background:rgba(255,153,51,0.10);}
+@media (max-width:760px){ .rrg-chartbox{height:460px;} }
 </style>
 
 <script>
@@ -4369,7 +4449,7 @@ html[data-locked="1"]{overflow:hidden;}
       var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
       if(uni === u && changed){ if(first) fillFilters(); header(); render(); }
     }).catch(function(){
-      if(uni === u && !CACHE[u]){ $('dw-status').textContent = 'data/dw_' + u + '.json not found yet. Run the “Update Dorsey Wright RS” action in GitHub (Actions tab) once.'; $('dw-dot').className = 'tm-dot'; render(); }
+      if(uni === u && !CACHE[u]){ $('dw-status').textContent = 'data/dw_' + u + '.json not found yet. Run the “Update RS Rankings and RRG” action in GitHub (Actions tab) once.'; $('dw-dot').className = 'tm-dot'; render(); }
     });
   }
   $('dw-uni').addEventListener('change', function(){ uni = this.value; sortKey = 'rank'; asc = true; load(); });
@@ -4473,7 +4553,7 @@ html[data-locked="1"]{overflow:hidden;}
       var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
       if(uni === u && changed){ if(first) fillFilters(); header(); render(); }
     }).catch(function(){
-      if(uni === u && !CACHE[u]){ $('dwq-status').textContent = 'data/dwq_' + u + '.json not found yet. Run the “Update Dorsey Wright RS” action in GitHub (Actions tab) once.'; $('dwq-dot').className = 'tm-dot'; render(); }
+      if(uni === u && !CACHE[u]){ $('dwq-status').textContent = 'data/dwq_' + u + '.json not found yet. Run the “Update RS Rankings and RRG” action in GitHub (Actions tab) once.'; $('dwq-dot').className = 'tm-dot'; render(); }
     });
   }
   $('dwq-uni').addEventListener('change', function(){ uni = this.value; sortKey = 'rank'; asc = true; load(); });
@@ -4483,5 +4563,254 @@ html[data-locked="1"]{overflow:hidden;}
     var k = th.dataset.k; asc = (sortKey === k) ? !asc : (k === 'sym' || k === 'rank'); sortKey = k; render();
   });
   setInterval(function(){ if(started && !document.hidden && $('rs-sub-dwq').classList.contains('active') && $('panel-rs').classList.contains('active')) load(); }, 10 * 60 * 1000);
+})();
+</script>
+<script>
+(function(){
+  var $ = function(i){ return document.getElementById(i); };
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var uni = 'india_etf', CACHE = {}, started = false, chart = null, PINS = {};
+  var st = {quad:'all', move:'any', weeks:4, top:25, tail:8, sortKey:'dist', asc:false, limit:200};
+  var BENCH = {stocks:'Nifty 500', india_etf:'Nifty 500', global_etf:'Nasdaq Composite'};
+  var QCOL = {Leading:'#2e9e5b', Weakening:'#e0b000', Lagging:'#d64545', Improving:'#3b82c4'};
+  var MOVES = {turn:['Lagging', 'Improving'], 'break':['Improving', 'Leading'], fade:['Leading', 'Weakening'], down:['Weakening', 'Lagging']};
+  document.querySelectorAll('.rs-subnav button[data-rsub="rrg"]').forEach(function(b){ b.addEventListener('click', function(){ started = true; load(); }); });
+
+  // ---------- data ----------
+  function quadOf(r, m){ if(r == null || m == null) return null; return r >= 100 ? (m >= 100 ? 'Leading' : 'Weakening') : (m >= 100 ? 'Improving' : 'Lagging'); }
+  function prep(j){
+    if(j._p) return j._p;
+    var n = j.weeks.length, last = n - 1;
+    j._p = j.rows.map(function(x){
+      var R = x[4], M = x[5], Q = R.map(function(v, i){ return quadOf(v, M[i]); }), ev = [];
+      for(var t = last; t >= 1; t--){ if(Q[t] && Q[t - 1] && Q[t] !== Q[t - 1]) ev.push({from:Q[t - 1], to:Q[t], ago:last - t}); }      // newest change first; ago 0 = this week
+      var r = R[last], m = M[last];
+      return {sym:x[0], name:x[1], mkt:x[2] || '', cat:x[3] || '', R:R, M:M, Q:Q, cur:Q[last], r:r, m:m, dist:Math.hypot(r - 100, m - 100), ev:ev, ago:ev.length ? ev[0].ago : 99};
+    });
+    return j._p;
+  }
+  var ranked = prep;
+
+  // ---------- the same filters as the Dorsey Wright tabs: market / category (ETFs), NSE index / sector (stocks) ----------
+  var GROUPS = null, gsets = {};
+  function loadGroups(){
+    if(GROUPS !== null) return Promise.resolve(GROUPS);
+    return fetch('data/rs_groups.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ GROUPS = j; return j; }).catch(function(){ GROUPS = false; return false; });
+  }
+  function gset(id){
+    if(!id || !GROUPS || !GROUPS.groups) return null;
+    if(!gsets[id]){ var g = GROUPS.groups.filter(function(x){ return x.id === id; })[0]; gsets[id] = g ? new Set(g.symbols) : null; }
+    return gsets[id];
+  }
+  function opts(first, list){ return '<option value="">' + first + '</option>' + list.map(function(o){ return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join(''); }
+  function fillFilters(){
+    var j = CACHE[uni], m = $('rrg-mkt'), c = $('rrg-cat');
+    if(uni === 'stocks'){
+      $('rrg-mkt-l').textContent = 'Index'; $('rrg-cat-l').textContent = 'Sector'; $('rrg-mktw').style.display = 'flex';
+      var gl = GROUPS && GROUPS.groups ? GROUPS.groups : [];
+      m.innerHTML = opts('All NSE stocks', gl.filter(function(x){ return x.kind === 'index'; }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+      c.innerHTML = opts('All sectors &amp; themes', gl.filter(function(x){ return x.kind === 'sector'; }).sort(function(a, b){ return a.label.localeCompare(b.label); }).map(function(x){ return [x.id, x.label + ' (' + x.n + ')']; }));
+    } else {
+      var rs = j ? ranked(j) : [];
+      var cnt = function(k){ var o = {}; rs.forEach(function(x){ if(x[k]) o[x[k]] = (o[x[k]] || 0) + 1; }); return Object.keys(o).sort().map(function(v){ return [v, v + ' (' + o[v] + ')']; }); };
+      $('rrg-mkt-l').textContent = 'Market'; $('rrg-cat-l').textContent = 'Category'; $('rrg-mktw').style.display = uni === 'global_etf' ? 'flex' : 'none';
+      m.innerHTML = opts('All markets', cnt('mkt')); c.innerHTML = opts('All categories', cnt('cat'));
+    }
+  }
+  function keep(x){
+    var mv = $('rrg-mkt').value, cv = $('rrg-cat').value;
+    if(uni === 'stocks'){ var ms = gset(mv), cs = gset(cv); return (!ms || ms.has(x.sym)) && (!cs || cs.has(x.sym)); }
+    return (!mv || x.mkt === mv) && (!cv || x.cat === cv);
+  }
+
+  // ---------- which securities are shown ----------
+  function matchMove(x){
+    if(st.move === 'any') return true;
+    if(st.move === 'chg') return x.ev.some(function(e){ return e.ago < st.weeks; });
+    var mv = MOVES[st.move];
+    return x.ev.some(function(e){ return e.ago < st.weeks && e.from === mv[0] && e.to === mv[1]; });
+  }
+  function pinSet(){ return PINS[uni] || (PINS[uni] = {}); }
+  function compute(){
+    var j = CACHE[uni]; if(!j) return null;
+    var q = $('rrg-search').value.trim().toLowerCase(), all = prep(j);
+    var base = all.filter(function(x){ return x.cur && keep(x) && matchMove(x) && (!q || (x.sym + ' ' + x.name).toLowerCase().indexOf(q) > -1); });
+    var counts = {Leading:0, Weakening:0, Lagging:0, Improving:0}; base.forEach(function(x){ counts[x.cur]++; });
+    var filtered = st.quad === 'all' ? base : base.filter(function(x){ return x.cur === st.quad; });
+    var byDist = filtered.slice().sort(function(a, b){ return b.dist - a.dist; });
+    var shown = st.top ? byDist.slice(0, st.top) : byDist, pins = pinSet();
+    var pinned = all.filter(function(x){ return pins[x.sym]; }), chartSet = shown.slice();
+    pinned.forEach(function(p){ if(chartSet.indexOf(p) < 0) chartSet.push(p); });
+    return {j:j, base:base, counts:counts, filtered:filtered, shown:shown, pinned:pinned, chartSet:chartSet};
+  }
+
+  // ---------- the chart ----------
+  function pct(arr, p){ var a = arr.slice().sort(function(x, y){ return x - y; }); return a.length ? a[Math.min(a.length - 1, Math.floor(p * a.length))] : 0; }
+  var quadPlugin = {id:'rrgQuads', beforeDatasetsDraw:function(ch){
+    var a = ch.chartArea, cx = ch.scales.x.getPixelForValue(100), cy = ch.scales.y.getPixelForValue(100), ctx = ch.ctx;
+    ctx.save();
+    function rect(x0, y0, x1, y1, col){ ctx.fillStyle = col; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+    rect(cx, a.top, a.right, cy, 'rgba(46,158,91,0.10)'); rect(cx, cy, a.right, a.bottom, 'rgba(224,176,0,0.10)');
+    rect(a.left, cy, cx, a.bottom, 'rgba(214,69,69,0.10)'); rect(a.left, a.top, cx, cy, 'rgba(59,130,196,0.10)');
+    ctx.strokeStyle = 'rgba(140,140,150,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cx, a.top); ctx.lineTo(cx, a.bottom); ctx.moveTo(a.left, cy); ctx.lineTo(a.right, cy); ctx.stroke();
+    ctx.font = '700 13px system-ui, sans-serif'; ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(46,158,91,0.85)'; ctx.textAlign = 'right'; ctx.fillText('LEADING', a.right - 10, a.top + 8);
+    ctx.fillStyle = 'rgba(59,130,196,0.9)'; ctx.textAlign = 'left'; ctx.fillText('IMPROVING', a.left + 10, a.top + 8);
+    ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(214,69,69,0.9)'; ctx.textAlign = 'left'; ctx.fillText('LAGGING', a.left + 10, a.bottom - 8);
+    ctx.fillStyle = 'rgba(224,176,0,0.95)'; ctx.textAlign = 'right'; ctx.fillText('WEAKENING', a.right - 10, a.bottom - 8);
+    ctx.restore();
+  }};
+  var labelPlugin = {id:'rrgLabels', afterDatasetsDraw:function(ch){
+    var ctx = ch.ctx, boxes = [], a = ch.chartArea;
+    ctx.save(); ctx.font = '700 11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+    ch.data.datasets.forEach(function(ds, i){
+      if(!ds._label) return;
+      var el = ch.getDatasetMeta(i).data[ds._label.idx]; if(!el) return;
+      var w = ctx.measureText(ds._label.text).width, x = el.x + 8, y = el.y - 9;
+      if(x + w > a.right) x = el.x - 8 - w;
+      var b = {x0:x - 2, y0:y - 7, x1:x + w + 2, y1:y + 7};
+      if(!ds._label.force && boxes.some(function(o){ return !(b.x1 < o.x0 || b.x0 > o.x1 || b.y1 < o.y0 || b.y0 > o.y1); })) return;      // skip a label that would sit on another one
+      boxes.push(b); ctx.fillStyle = css('--ink') || '#ddd'; ctx.textAlign = 'left'; ctx.fillText(ds._label.text, x, y);
+    });
+    ctx.restore();
+  }};
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function drawChart(c){
+    var msg = $('rrg-msg');
+    if(chart){ chart.destroy(); chart = null; }
+    if(!c || !c.chartSet.length){ msg.textContent = c ? 'No securities match these filters.' : ''; return; }
+    msg.textContent = '';
+    var j = c.j, n = j.weeks.length, last = n - 1, tail = Math.min(st.tail, last), many = c.shown.length > 60, pins = pinSet();
+    var labelled = c.pinned.slice();
+    (many ? c.shown.slice(0, 12) : c.shown.slice(0, 40)).forEach(function(x){ if(labelled.indexOf(x) < 0) labelled.push(x); });
+    var isLab = {}; labelled.forEach(function(x){ isLab[x.sym] = 1; });
+    // the size of the picture: wide enough for nearly every point, the odd outlier is held at the edge
+    var devs = [];
+    c.chartSet.forEach(function(x){
+      var from = isLab[x.sym] ? last - tail : last;
+      for(var t = from; t <= last; t++) if(x.R[t] != null && x.M[t] != null){ devs.push(Math.abs(x.R[t] - 100)); devs.push(Math.abs(x.M[t] - 100)); }
+    });
+    var ext = c.chartSet.length <= 40 ? Math.max.apply(null, devs) : pct(devs, 0.985);
+    ext = Math.max(2.5, Math.ceil(ext * 1.15 * 2) / 2);
+    var clamp = function(v){ return 100 + Math.max(-ext, Math.min(ext, v - 100)); };
+    var datasets = [];
+    var groups = {Leading:[], Weakening:[], Lagging:[], Improving:[]};
+    c.chartSet.forEach(function(x){
+      if(isLab[x.sym]) return;
+      groups[x.cur].push({x:clamp(x.r), y:clamp(x.m), rx:x.r, ry:x.m, sym:x.sym, name:x.name, q:x.cur});
+    });
+    Object.keys(groups).forEach(function(q){
+      if(groups[q].length) datasets.push({type:'scatter', data:groups[q], showLine:false, pointRadius:3.4, pointHoverRadius:6, backgroundColor:QCOL[q], borderColor:QCOL[q], order:3});
+    });
+    labelled.forEach(function(x, k){
+      var pts = [], rad = [];
+      for(var t = last - tail; t <= last; t++){
+        if(x.R[t] == null || x.M[t] == null) continue;
+        pts.push({x:clamp(x.R[t]), y:clamp(x.M[t]), rx:x.R[t], ry:x.M[t], sym:x.sym, name:x.name, q:x.Q[t], week:j.weeks[t]}); rad.push(t === last ? 6 : 2.2);
+      }
+      datasets.push({type:'line', data:pts, showLine:tail > 0, borderColor:QCOL[x.cur], backgroundColor:QCOL[x.cur], borderWidth:pins[x.sym] ? 2.6 : 1.6, tension:0, pointRadius:rad, pointHoverRadius:7,
+                     pointBorderColor:pins[x.sym] ? '#fff' : QCOL[x.cur], order:1, _label:{idx:pts.length - 1, text:x.sym, force:!!pins[x.sym]}, _sym:x.sym});
+    });
+    var mut = css('--muted') || '#888', line = css('--line') || '#333';
+    chart = new Chart($('rrg-chart'), {type:'scatter', data:{datasets:datasets}, plugins:[quadPlugin, labelPlugin],
+      options:{responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'nearest', intersect:true},
+        plugins:{legend:{display:false}, tooltip:{callbacks:{
+          title:function(it){ var r = it[0].raw; return r.sym + ' · ' + r.name; },
+          label:function(it){ var r = it.raw; return ['RS-Ratio ' + r.rx.toFixed(2) + ' · RS-Momentum ' + r.ry.toFixed(2), r.q + (r.week ? ' · week ending ' + r.week : '')]; }}}},
+        scales:{x:{min:100 - ext, max:100 + ext, title:{display:true, text:'RS-Ratio  (relative trend)  →', color:mut}, ticks:{color:mut, maxTicksLimit:9}, grid:{color:line}},
+                y:{min:100 - ext, max:100 + ext, title:{display:true, text:'RS-Momentum  (speed of the trend)  →', color:mut}, ticks:{color:mut, maxTicksLimit:9}, grid:{color:line}}},
+        onHover:function(ev, els){ ev.native && (ev.native.target.style.cursor = els.length ? 'pointer' : 'default'); },
+        onClick:function(ev, els, ch){
+          var e = ch.getElementsAtEventForMode(ev.native || ev, 'nearest', {intersect:true}, false); if(!e.length) return;
+          var raw = ch.data.datasets[e[0].datasetIndex].data[e[0].index], sym = raw.sym; setTimeout(function(){ togglePin(sym); }, 0);      // redraw after the click has finished
+        }}});
+  }
+
+  // ---------- the table, the pins and the text around the chart ----------
+  function lastMove(x){
+    if(!x.ev.length) return '<span style="color:var(--muted);">no change in 12 weeks</span>';
+    var e = x.ev[0];
+    return '<span class="rrg-q ' + e.from + '" style="opacity:.75;">' + e.from + '</span> → <span class="rrg-q ' + e.to + '">' + e.to + '</span> <span style="color:var(--muted); font-size:11.5px;">' + (e.ago === 0 ? 'this week' : e.ago + (e.ago === 1 ? ' week ago' : ' weeks ago')) + '</span>';
+  }
+  function renderTable(c){
+    var pins = pinSet(), list = c.filtered.slice();
+    c.pinned.forEach(function(p){ if(list.indexOf(p) < 0) list.unshift(p); });
+    var key = st.sortKey;
+    list.sort(function(a, b){
+      var pa = pins[a.sym] ? 1 : 0, pb = pins[b.sym] ? 1 : 0; if(pa !== pb) return pb - pa;                  // pinned first
+      var x = a[key], y = b[key], r = typeof x === 'string' ? x.localeCompare(y) : x - y;
+      return st.asc ? r : -r;
+    });
+    var labels = {sym:'Security', cur:'Quadrant', r:'RS-Ratio', m:'RS-Momentum', dist:'Strength', ago:'Last move'};
+    Object.keys(labels).forEach(function(k){ document.querySelector('#rrg-head th[data-k="' + k + '"]').textContent = labels[k] + (st.sortKey === k ? (st.asc ? ' ▲' : ' ▼') : ''); });
+    var shownRows = list.slice(0, st.limit);
+    $('rrg-body').innerHTML = shownRows.map(function(x){
+      return '<tr class="' + (pins[x.sym] ? 'pinned' : '') + '" data-sym="' + esc(x.sym) + '"><td class="name">' + (pins[x.sym] ? '★ ' : '') + '<span style="font-weight:700; color:var(--ink);">' + esc(x.sym) + '</span> <span style="color:var(--muted); font-size:12px;">' + esc(x.name) + '</span></td>' +
+        '<td><span class="rrg-q ' + x.cur + '">' + x.cur + '</span></td><td class="rt ' + (x.r >= 100 ? 'up' : 'down') + '">' + x.r.toFixed(2) + '</td><td class="rt ' + (x.m >= 100 ? 'up' : 'down') + '">' + x.m.toFixed(2) + '</td>' +
+        '<td class="rt">' + x.dist.toFixed(2) + '</td><td>' + lastMove(x) + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted); padding:18px;">No securities match these filters.</td></tr>';
+    $('rrg-count').textContent = list.length.toLocaleString('en-US') + ' matching' + (list.length > shownRows.length ? ' · showing ' + shownRows.length : '');
+    var more = $('rrg-more'); more.style.display = list.length > shownRows.length ? '' : 'none'; more.textContent = 'Show ' + Math.min(200, list.length - shownRows.length) + ' more';
+  }
+  function renderPins(c){
+    var pins = pinSet(), keys = Object.keys(pins);
+    $('rrg-pins').innerHTML = keys.map(function(k){ return '<span class="pin" data-sym="' + esc(k) + '" title="Click to remove">★ ' + esc(k) + ' ✕</span>'; }).join('');
+  }
+  function renderChips(c){
+    var tot = c.base.length;
+    document.querySelectorAll('#rrg-quads .echip').forEach(function(b){
+      var q = b.dataset.q, nm = q === 'all' ? 'All' : q;
+      b.textContent = nm + ' (' + (q === 'all' ? tot : c.counts[q]) + ')'; b.setAttribute('aria-pressed', st.quad === q ? 'true' : 'false');
+    });
+  }
+  function renderHint(c){
+    var many = c.shown.length > 60, hidden = c.filtered.length - c.shown.length;
+    $('rrg-hint').innerHTML = 'Chart shows <b>' + c.shown.length + '</b> of ' + c.filtered.length.toLocaleString('en-US') + ' matching' + (hidden > 0 ? ' (the ' + c.shown.length + ' that have rotated furthest from the centre; the rest are in the table)' : '') +
+      (many ? ' · only the 12 strongest and your pins are labelled' : '') + ' · click a dot or a table row to pin it and follow its tail' + (c.pinned.length ? ' · ★ = pinned' : '');
+  }
+  function togglePin(sym){ var p = pinSet(); if(p[sym]) delete p[sym]; else p[sym] = 1; update(); }
+  function update(){
+    var c = compute();
+    if(!c){ drawChart(null); $('rrg-body').innerHTML = ''; $('rrg-count').textContent = ''; $('rrg-hint').textContent = ''; return; }
+    renderChips(c); renderPins(c); drawChart(c); renderTable(c); renderHint(c);
+  }
+  function header(){
+    var j = CACHE[uni]; if(!j) return;
+    $('rrg-asof').textContent = 'week ending ' + j.weeks[j.weeks.length - 1] + ' · updated ' + j.updated;
+    $('rrg-status').textContent = j.universe + ' · ' + j.n.toLocaleString('en-US') + ' securities · weekly data';
+    $('rrg-dot').className = 'tm-dot live'; $('rrg-bench').textContent = j.benchmark || BENCH[uni];
+  }
+  function load(){
+    var u = uni, first = !CACHE[u]; $('rrg-bench').textContent = BENCH[u];
+    if(CACHE[u]){ fillFilters(); header(); update(); }
+    else { $('rrg-status').textContent = 'Loading…'; $('rrg-dot').className = 'tm-dot'; $('rrg-asof').textContent = ''; fillFilters(); update(); }
+    loadGroups().then(function(){ if(uni === 'stocks' && !$('rrg-mkt').options[1] && GROUPS) fillFilters(); });
+    fetch('data/rrg_' + u + '.json', {cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){
+      var changed = !CACHE[u] || CACHE[u].updated !== j.updated; CACHE[u] = j;
+      if(uni === u && changed){ if(first) fillFilters(); header(); update(); }
+    }).catch(function(){
+      if(uni === u && !CACHE[u]){ $('rrg-status').textContent = 'data/rrg_' + u + '.json not found yet. Run the “Update RS Rankings and RRG” action in GitHub (Actions tab) once.'; $('rrg-dot').className = 'tm-dot'; update(); }
+    });
+  }
+
+  // ---------- controls ----------
+  $('rrg-uni').addEventListener('change', function(){ uni = this.value; st.quad = 'all'; st.limit = 200; load(); });
+  ['rrg-mkt', 'rrg-cat'].forEach(function(id){ $(id).addEventListener('change', function(){ st.limit = 200; update(); }); });
+  $('rrg-search').addEventListener('input', function(){ st.limit = 200; update(); });
+  document.querySelectorAll('#rrg-quads .echip').forEach(function(b){ b.addEventListener('click', function(){ st.quad = b.dataset.q; st.limit = 200; update(); }); });
+  $('rrg-move').addEventListener('change', function(){ st.move = this.value; st.limit = 200; update(); });
+  $('rrg-weeks').addEventListener('change', function(){ st.weeks = +this.value; update(); });
+  $('rrg-top').addEventListener('change', function(){ st.top = +this.value; update(); });
+  $('rrg-tail').addEventListener('change', function(){ st.tail = +this.value; update(); });
+  $('rrg-clear').addEventListener('click', function(){ PINS[uni] = {}; update(); });
+  $('rrg-more').addEventListener('click', function(){ st.limit += 200; update(); });
+  $('rrg-pins').addEventListener('click', function(ev){ var p = ev.target.closest('.pin'); if(p) togglePin(p.dataset.sym); });
+  $('rrg-body').addEventListener('click', function(ev){ var tr = ev.target.closest('tr[data-sym]'); if(tr) togglePin(tr.dataset.sym); });
+  $('rrg-head').addEventListener('click', function(ev){
+    var th = ev.target.closest('th.sortable'); if(!th) return;
+    var k = th.dataset.k; st.asc = (st.sortKey === k) ? !st.asc : (k === 'sym' || k === 'cur' || k === 'ago'); st.sortKey = k; update();
+  });
+  setInterval(function(){ if(started && !document.hidden && $('rs-sub-rrg').classList.contains('active') && $('panel-rs').classList.contains('active')) load(); }, 10 * 60 * 1000);
+  window.RHRRG = {prep:prep, quadOf:quadOf, _state:function(){ return {st:st, uni:uni, c:compute()}; }};
 })();
 </script>

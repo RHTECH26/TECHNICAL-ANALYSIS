@@ -20,6 +20,13 @@ The same run also writes the DW QUANT rank (data/dwq_stocks.json, dwq_india_etf.
                                                     a weekend or holiday takes the NEXT trading day)
   SCORE % = 40% x 12M ROC + 30% x 6M ROC + 20% x 3M ROC + 10% x 1M ROC
   {"updated", "asof", "universe", "benchmark", "n", "weights", "dates": {"1M": date used, ...}, "rows": [[symbol, name, score %, 1M ROC %, 3M ROC %, 6M ROC %, 12M ROC %, market, category], ...]}
+The same run writes the RRG (relative rotation graph) data (data/rrg_stocks.json, rrg_india_etf.json, rrg_global_etf.json), on WEEKLY closes:
+  RS          = price / benchmark price
+  RS-Ratio    = 100 + z-score of the 10-week average of RS, over the last 26 weeks          (above 100: the relative trend is strong)
+  RS-Momentum = 100 + z-score of the 4-week change in RS-Ratio, over the last 26 weeks      (above 100: the relative trend is speeding up)
+  Quadrants: Leading (both above 100), Weakening (ratio above, momentum below), Lagging (both below), Improving (ratio below, momentum above).
+  {"updated", "asof", "universe", "benchmark", "weeks": [last 13 week-end dates], "rows": [[symbol, name, market, category, [13 RS-Ratios], [13 RS-Momentums]], ...]}
+  (The JdK RS-Ratio of the original RRG is a proprietary formula; this is the usual open approximation of it.)
 Usage:  python scan_dw.py            (all three)       python scan_dw.py stocks india_etf
 """
 import json, os, re, sys, time
@@ -54,6 +61,10 @@ MARKETS = {"TO": "Canada", "KS": "Korea", "NS": "India", "DE": "Germany", "AX": 
 BENCH = {"stocks": ("^CRSLDX", "Nifty 500"), "india_etf": ("^CRSLDX", "Nifty 500"), "global_etf": ("^IXIC", "Nasdaq Composite")}
 PERIODS = [("1M", 1), ("3M", 3), ("6M", 6), ("12M", 12)]     # calendar months
 WEIGHTS = [float(x) for x in os.environ.get("DWQ_WEIGHTS", "10,20,30,40").split(",")]      # for 1M, 3M, 6M, 12M (percent)
+RRG_SMOOTH = int(os.environ.get("RRG_SMOOTH", 10))      # weeks averaged in the RS line before it is normalised
+RRG_ZWIN = int(os.environ.get("RRG_ZWIN", 26))          # weeks of history used for the z-scores
+RRG_LAG = int(os.environ.get("RRG_LAG", 4))             # weeks over which the momentum (change in RS-Ratio) is measured
+RRG_TAIL = int(os.environ.get("RRG_TAIL", 12))          # weeks of tail kept (the file holds RRG_TAIL + 1 points per security)
 
 
 # ============================================================ the Dorsey Wright calculation
@@ -213,11 +224,42 @@ def roc_table(df, bench):
     return roc_rows(df, bser, rows), rows
 
 
+def _z(x, w):
+    return (x - x.rolling(w).mean()) / x.rolling(w).std()
+
+
+def rrg_values(wk, bench_wk, smooth=RRG_SMOOTH, zwin=RRG_ZWIN, lag=RRG_LAG):
+    """RS-Ratio and RS-Momentum on weekly closes. wk: weeks x securities; bench_wk: weeks. Returns two frames of the same shape."""
+    rs = wk.div(bench_wk, axis=0) * 100.0
+    ratio = 100.0 + _z(rs.rolling(smooth).mean(), zwin)
+    mom = 100.0 + _z(ratio - ratio.shift(lag), zwin)
+    return ratio, mom
+
+
+def weekly(df, bser):
+    """Weekly closes (the last close of each week) of df and the benchmark, and the date of the last trading day of each week."""
+    wk = df.resample("W-FRI").last()
+    bw = bser.reindex(df.index).ffill().resample("W-FRI").last()
+    last_day = df.index.to_series().resample("W-FRI").last()
+    keep = wk.index[wk.notna().any(axis=1)]
+    return wk.loc[keep], bw.loc[keep], last_day.loc[keep]
+
+
 def quant_scores(roc, weights=WEIGHTS):
     """Score % = the weighted sum of the four ROCs (weights for 1M, 3M, 6M, 12M); only securities with all four are scored."""
     ok = roc.dropna()
     w = np.array(weights[:ok.shape[1]], float) / 100.0
     return (ok * w).sum(axis=1)
+
+
+def bench_series(ticker):
+    data = download([ticker])
+    if data is None:
+        raise RuntimeError("could not download " + ticker)
+    ser = close_of(data, ticker).dropna()
+    ix = pd.DatetimeIndex(ser.index)
+    ser = pd.Series(ser.to_numpy(float), index=(ix.tz_localize(None) if ix.tz is not None else ix).normalize())
+    return ser[~ser.index.duplicated(keep="last")]
 
 
 def load_prices(uni):
@@ -273,16 +315,14 @@ def build_one(uid):
     with open(path, "w") as f:
         json.dump(payload, f, separators=(",", ":"))
     print(f"Done {UNIVERSES[uid]}: {len(rows)} ranked | top: {', '.join(r[0] + ' ' + str(r[2]) for r in rows[:3])} | {os.path.getsize(path) // 1024} KB")
+    bt, bname = BENCH[uid]
+    try:
+        bser = bench_series(bt)
+    except Exception as e:
+        print(f"!! the benchmark {bname} could not be downloaded, so the quant rank and the RRG are skipped: {type(e).__name__}: {e}")
+        return
     # ---- the DW quant rank (the "DW RS" sheet), from the same prices ----
     try:
-        bt, bname = BENCH[uid]
-        bdata = download([bt])
-        if bdata is None:
-            raise RuntimeError("could not download " + bname)
-        bser = close_of(bdata, bt).dropna()
-        bix = pd.DatetimeIndex(bser.index)
-        bser = pd.Series(bser.to_numpy(float), index=(bix.tz_localize(None) if bix.tz is not None else bix).normalize())
-        bser = bser[~bser.index.duplicated(keep="last")]
         roc, rows = roc_table(df, bser)
         sc = quant_scores(roc)
         used = {p: (str(df.index[i].date()) if i is not None else None) for (p, _), i in zip(PERIODS, rows)}
@@ -295,6 +335,23 @@ def build_one(uid):
         print(f"Done DW quant {UNIVERSES[uid]}: {len(q_rows)} ranked vs {bname} | top: {', '.join(r[0] + ' ' + str(r[2]) for r in q_rows[:3])} | {os.path.getsize(qpath) // 1024} KB")
     except Exception as e:
         print(f"!! DW quant for {UNIVERSES[uid]} failed: {type(e).__name__}: {e}")
+    # ---- the RRG (relative rotation graph), from the same prices ----
+    try:
+        wk, bw, last_day = weekly(df, bser)
+        ratio, mom = rrg_values(wk, bw)
+        n_pts = RRG_TAIL + 1
+        r_t, m_t = ratio.iloc[-n_pts:], mom.iloc[-n_pts:]
+        ok_cols = [c for c in wk.columns if np.isfinite(r_t[c].iloc[-1]) and np.isfinite(m_t[c].iloc[-1])]
+        fmt = lambda v: None if not np.isfinite(v) else round(float(v), 2)
+        g_rows = sorted(([c, names.get(c, c)] + mc(c) + [[fmt(v) for v in r_t[c]], [fmt(v) for v in m_t[c]]] for c in ok_cols), key=lambda r: r[0])
+        g = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "benchmark": bname, "n": len(g_rows),
+             "params": {"smooth": RRG_SMOOTH, "zwin": RRG_ZWIN, "lag": RRG_LAG}, "weeks": [str(d.date()) for d in last_day.iloc[-n_pts:]], "rows": g_rows}
+        gpath = os.path.join(OUT_DIR, f"rrg_{uid}.json")
+        with open(gpath, "w") as f:
+            json.dump(g, f, separators=(",", ":"))
+        print(f"Done RRG {UNIVERSES[uid]}: {len(g_rows)} securities, {len(g['weeks'])} weeks ({g['weeks'][0]} to {g['weeks'][-1]}) vs {bname} | {os.path.getsize(gpath) // 1024} KB")
+    except Exception as e:
+        print(f"!! RRG for {UNIVERSES[uid]} failed: {type(e).__name__}: {e}")
 
 
 def main(argv=None):
