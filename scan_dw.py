@@ -68,6 +68,44 @@ RRG_TAIL = int(os.environ.get("RRG_TAIL", 12))          # weeks of tail kept (th
 
 
 # ============================================================ the Dorsey Wright calculation
+PROBLEMS = []                                   # anything that went wrong; the run ends with an error code if this is not empty
+
+
+def problem(msg):
+    print("!! " + msg, flush=True)
+    PROBLEMS.append(msg)
+
+
+def _clean(o):
+    """Make a structure safe for strict JSON: NaN / infinity become null, numpy numbers become plain numbers, odd objects become text."""
+    if o is None or isinstance(o, (bool, str)):
+        return o
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (float, np.floating)):
+        f = float(o)
+        return f if np.isfinite(f) else None
+    if isinstance(o, int):
+        return o
+    if isinstance(o, dict):
+        return {str(k): _clean(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_clean(v) for v in o]
+    return str(o)
+
+
+def write_json(path, obj):
+    """Writes strict JSON (a browser rejects NaN) and reads it back to prove the file is valid."""
+    text = json.dumps(_clean(obj), separators=(",", ":"), allow_nan=False)
+    json.loads(text)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, path)
+    return os.path.getsize(path)
+
+
 def pair_blocks(n, block):
     """index arrays (I, J) of every pair i < j, in blocks of at most `block` pairs"""
     i = 0
@@ -252,14 +290,43 @@ def quant_scores(roc, weights=WEIGHTS):
     return (ok * w).sum(axis=1)
 
 
-def bench_series(ticker):
-    data = download([ticker])
-    if data is None:
-        raise RuntimeError("could not download " + ticker)
+def _bench_from(data, ticker):
     ser = close_of(data, ticker).dropna()
     ix = pd.DatetimeIndex(ser.index)
     ser = pd.Series(ser.to_numpy(float), index=(ix.tz_localize(None) if ix.tz is not None else ix).normalize())
     return ser[~ser.index.duplicated(keep="last")]
+
+
+def bench_series(ticker, newest=None, min_rows=300):
+    """The benchmark index, tried three ways (the plain call the COT scans use, the browser-like session, and Ticker.history).
+    Raises with every reason if none works, or if the data is too short or older than the prices it is compared with."""
+    reasons = []
+    for how in ("plain", "session", "history"):
+        if how == "session" and SESSION is None:
+            continue
+        for attempt in range(2):
+            try:
+                if how == "history":
+                    h = yf.Ticker(ticker, session=SESSION).history(period=PERIOD, interval="1d", auto_adjust=True) if SESSION is not None else yf.Ticker(ticker).history(period=PERIOD, interval="1d", auto_adjust=True)
+                    ser = _bench_from(h, ticker)
+                else:
+                    kw = dict(period=PERIOD, interval="1d", auto_adjust=True, progress=False)
+                    if how == "session":
+                        kw["session"] = SESSION
+                    data = yf.download(ticker, **kw)
+                    if data is None or not len(data):
+                        raise RuntimeError("Yahoo returned no rows")
+                    ser = _bench_from(data, ticker)
+                if len(ser) < min_rows:
+                    raise RuntimeError(f"only {len(ser)} daily rows")
+                if newest is not None and (newest - ser.index.max()).days > STALE_DAYS:
+                    raise RuntimeError(f"the data stops on {ser.index.max().date()}, but the prices go to {newest.date()}")
+                print(f"  benchmark {ticker}: {len(ser)} days to {ser.index.max().date()} (method: {how})", flush=True)
+                return ser
+            except Exception as e:
+                reasons.append(f"{how}: {type(e).__name__}: {e}")
+                time.sleep(3 * (attempt + 1))
+    raise RuntimeError("; ".join(reasons))
 
 
 def load_prices(uni):
@@ -287,9 +354,10 @@ def load_prices(uni):
 
 
 def build_one(uid):
-    print(f"\n===== Dorsey Wright: {UNIVERSES[uid]} =====", flush=True)
+    label = UNIVERSES[uid]
+    print(f"\n===== {label} =====", flush=True)
     uni, meta = build_universe(uid)
-    names = {u[1]: u[2] for u in uni}
+    names = {u[1]: str(u[2]) if u[2] is not None and u[2] == u[2] else u[1] for u in uni}
     print("Universe:", len(uni))
     series = load_prices(uni)
     if len(series) < 30:
@@ -300,75 +368,78 @@ def build_one(uid):
     keep = [c for c in df.columns if (newest - last_valid[c]).days <= STALE_DAYS and df[c].notna().sum() >= MIN_BARS]
     df = df[keep].ffill(limit=5)
     print("Ranked securities:", len(keep), "| days:", len(df), "|", df.index[0].date(), "to", df.index[-1].date(), flush=True)
-    L = np.log(df.to_numpy(float))
-    t0 = time.time()
-    score = dw_scores(L)
-    print(f"  scored in {time.time() - t0:.0f}s", flush=True)
     mc = lambda c: list(meta.get(c, ("", "")))                      # [market, category] (blank for stocks)
-    rows = sorted(([c, names.get(c, c), round(float(sc), 2)] + mc(c) for c, sc in zip(keep, score)), key=lambda r: (-r[2], r[0]))
     ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     stamp = ist.strftime("%d %b %Y, %H:%M IST")
-    payload = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "n": len(rows),
-               "box_pct": BOX_PCT, "reversal": REVERSAL, "rows": rows}
-    os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, f"dw_{uid}.json")
-    with open(path, "w") as f:
-        json.dump(payload, f, separators=(",", ":"))
-    print(f"Done {UNIVERSES[uid]}: {len(rows)} ranked | top: {', '.join(r[0] + ' ' + str(r[2]) for r in rows[:3])} | {os.path.getsize(path) // 1024} KB")
     bt, bname = BENCH[uid]
+    bser = None
     try:
-        bser = bench_series(bt)
+        bser = bench_series(bt, newest)
     except Exception as e:
-        print(f"!! the benchmark {bname} could not be downloaded, so the quant rank and the RRG are skipped: {type(e).__name__}: {e}")
-        return
-    # ---- the DW quant rank (the "DW RS" sheet), from the same prices ----
+        problem(f"{label}: the benchmark {bname} ({bt}) could not be used, so the DW quant rank and the RRG were NOT made. {e}")
+    if bser is not None:
+        # ---- the DW quant rank (the "DW RS" sheet) ----
+        try:
+            roc, rows = roc_table(df, bser)
+            sc = quant_scores(roc)
+            used = {p: (str(df.index[i].date()) if i is not None else None) for (p, _), i in zip(PERIODS, rows)}
+            q_rows = sorted(([c, names.get(c, c), round(float(sc[c]), 2)] + [round(float(roc.loc[c, p]), 2) for p, _ in PERIODS] + mc(c) for c in sc.index), key=lambda r: (-r[2], r[0]))
+            if len(q_rows) < 5:
+                raise RuntimeError(f"only {len(q_rows)} securities could be scored")
+            size = write_json(os.path.join(OUT_DIR, f"dwq_{uid}.json"), {"updated": stamp, "asof": str(newest.date()), "universe": label, "benchmark": bname, "n": len(q_rows),
+                              "periods": [p for p, _ in PERIODS], "weights": WEIGHTS, "dates": used, "rows": q_rows})
+            print(f"Done DW quant {label}: {len(q_rows)} ranked vs {bname} | top: {', '.join(r[0] + ' ' + str(r[2]) for r in q_rows[:3])} | {size // 1024} KB", flush=True)
+        except Exception as e:
+            problem(f"{label}: DW quant failed: {type(e).__name__}: {e}")
+        # ---- the RRG (relative rotation graph) ----
+        try:
+            wk, bw, last_day = weekly(df, bser)
+            ratio, mom = rrg_values(wk, bw)
+            n_pts = RRG_TAIL + 1
+            r_t, m_t = ratio.iloc[-n_pts:], mom.iloc[-n_pts:]
+            ok_cols = [c for c in wk.columns if np.isfinite(r_t[c].iloc[-1]) and np.isfinite(m_t[c].iloc[-1])]
+            if len(ok_cols) < 5:
+                raise RuntimeError(f"only {len(ok_cols)} securities have {RRG_SMOOTH + RRG_ZWIN + RRG_ZWIN + RRG_LAG}+ weeks of history ({len(wk)} weeks of data)")
+            fmt = lambda v: None if not np.isfinite(v) else round(float(v), 2)
+            g_rows = sorted(([c, names.get(c, c)] + mc(c) + [[fmt(v) for v in r_t[c]], [fmt(v) for v in m_t[c]]] for c in ok_cols), key=lambda r: r[0])
+            weeks = [str(d.date()) for d in last_day.iloc[-n_pts:]]
+            size = write_json(os.path.join(OUT_DIR, f"rrg_{uid}.json"), {"updated": stamp, "asof": str(newest.date()), "universe": label, "benchmark": bname, "n": len(g_rows),
+                              "params": {"smooth": RRG_SMOOTH, "zwin": RRG_ZWIN, "lag": RRG_LAG}, "weeks": weeks, "rows": g_rows})
+            print(f"Done RRG {label}: {len(g_rows)} securities, {len(weeks)} weeks ({weeks[0]} to {weeks[-1]}) vs {bname} | {size // 1024} KB", flush=True)
+        except Exception as e:
+            problem(f"{label}: RRG failed: {type(e).__name__}: {e}")
+    # ---- the Point & Figure matrix: the slowest part, so it comes last ----
     try:
-        roc, rows = roc_table(df, bser)
-        sc = quant_scores(roc)
-        used = {p: (str(df.index[i].date()) if i is not None else None) for (p, _), i in zip(PERIODS, rows)}
-        q_rows = sorted(([c, names.get(c, c), round(float(sc[c]), 2)] + [round(float(roc.loc[c, p]), 2) for p, _ in PERIODS] + mc(c) for c in sc.index), key=lambda r: (-r[2], r[0]))
-        q = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "benchmark": bname, "n": len(q_rows), "periods": [p for p, _ in PERIODS],
-             "weights": WEIGHTS, "dates": used, "rows": q_rows}
-        qpath = os.path.join(OUT_DIR, f"dwq_{uid}.json")
-        with open(qpath, "w") as f:
-            json.dump(q, f, separators=(",", ":"))
-        print(f"Done DW quant {UNIVERSES[uid]}: {len(q_rows)} ranked vs {bname} | top: {', '.join(r[0] + ' ' + str(r[2]) for r in q_rows[:3])} | {os.path.getsize(qpath) // 1024} KB")
+        L = np.log(df.to_numpy(float))
+        t0 = time.time()
+        score = dw_scores(L)
+        print(f"  Point & Figure scored in {time.time() - t0:.0f}s", flush=True)
+        rows = sorted(([c, names.get(c, c), round(float(sc_), 2)] + mc(c) for c, sc_ in zip(keep, score)), key=lambda r: (-r[2], r[0]))
+        size = write_json(os.path.join(OUT_DIR, f"dw_{uid}.json"), {"updated": stamp, "asof": str(newest.date()), "universe": label, "n": len(rows), "box_pct": BOX_PCT, "reversal": REVERSAL, "rows": rows})
+        print(f"Done Point & Figure {label}: {len(rows)} ranked | top: {', '.join(r[0] + ' ' + str(r[2]) for r in rows[:3])} | {size // 1024} KB", flush=True)
     except Exception as e:
-        print(f"!! DW quant for {UNIVERSES[uid]} failed: {type(e).__name__}: {e}")
-    # ---- the RRG (relative rotation graph), from the same prices ----
-    try:
-        wk, bw, last_day = weekly(df, bser)
-        ratio, mom = rrg_values(wk, bw)
-        n_pts = RRG_TAIL + 1
-        r_t, m_t = ratio.iloc[-n_pts:], mom.iloc[-n_pts:]
-        ok_cols = [c for c in wk.columns if np.isfinite(r_t[c].iloc[-1]) and np.isfinite(m_t[c].iloc[-1])]
-        fmt = lambda v: None if not np.isfinite(v) else round(float(v), 2)
-        g_rows = sorted(([c, names.get(c, c)] + mc(c) + [[fmt(v) for v in r_t[c]], [fmt(v) for v in m_t[c]]] for c in ok_cols), key=lambda r: r[0])
-        g = {"updated": stamp, "asof": str(newest.date()), "universe": UNIVERSES[uid], "benchmark": bname, "n": len(g_rows),
-             "params": {"smooth": RRG_SMOOTH, "zwin": RRG_ZWIN, "lag": RRG_LAG}, "weeks": [str(d.date()) for d in last_day.iloc[-n_pts:]], "rows": g_rows}
-        gpath = os.path.join(OUT_DIR, f"rrg_{uid}.json")
-        with open(gpath, "w") as f:
-            json.dump(g, f, separators=(",", ":"))
-        print(f"Done RRG {UNIVERSES[uid]}: {len(g_rows)} securities, {len(g['weeks'])} weeks ({g['weeks'][0]} to {g['weeks'][-1]}) vs {bname} | {os.path.getsize(gpath) // 1024} KB")
-    except Exception as e:
-        print(f"!! RRG for {UNIVERSES[uid]} failed: {type(e).__name__}: {e}")
+        problem(f"{label}: Point & Figure failed: {type(e).__name__}: {e}")
 
 
 def main(argv=None):
     if yf is None:
         raise SystemExit("yfinance is not installed")
     ids = [a for a in (argv if argv is not None else sys.argv[1:]) if a in UNIVERSES] or list(UNIVERSES)
-    bad = []
+    del PROBLEMS[:]
     for uid in ids:
         try:
             build_one(uid)
         except Exception as e:
-            bad.append(uid)
-            print(f"!! {UNIVERSES[uid]} failed: {type(e).__name__}: {e}")
-    if len(bad) == len(ids):
-        raise SystemExit("no universe could be scored")
-    if bad:
-        print("Finished with problems, check the log above:", ", ".join(bad))
+            problem(f"{UNIVERSES[uid]} failed completely: {type(e).__name__}: {e}")
+    print("\n===== Summary =====")
+    for uid in ids:
+        files = [f for f in (f"dw_{uid}.json", f"dwq_{uid}.json", f"rrg_{uid}.json") if os.path.exists(os.path.join(OUT_DIR, f))]
+        print(f"  {UNIVERSES[uid]:14s} files written now: {', '.join(files) or 'none'}")
+    if PROBLEMS:
+        print(f"\n{len(PROBLEMS)} problem(s):")
+        for m in PROBLEMS:
+            print("  -", m)
+        sys.exit(1)                                  # the job turns red, so a missing file is never hidden behind a green tick
 
 
 if __name__ == "__main__":
