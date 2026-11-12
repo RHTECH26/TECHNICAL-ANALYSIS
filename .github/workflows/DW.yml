@@ -13,15 +13,17 @@ on:
 permissions:
   contents: write
 
-# only one run at a time; a newer one waits its turn
+# a new run waits for the previous one instead of running alongside it
 concurrency:
   group: dorsey-wright
   cancel-in-progress: false
 
 jobs:
-  scan:
+  # ---------------------------------------------------------------- Indian stocks and Indian ETFs
+  indian:
+    if: ${{ github.event.schedule == '30 12 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.which == 'all' || github.event.inputs.which == '' || contains(github.event.inputs.which, 'stocks') || contains(github.event.inputs.which, 'india_etf'))) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 150         # a run that takes longer than this is stuck, so it is stopped instead of blocking the next ones
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,39 +33,62 @@ jobs:
       - name: Score
         env:
           WHICH: ${{ github.event.inputs.which }}
-          SCHEDULE: ${{ github.event.schedule }}
         run: |
-          if [ -n "$WHICH" ] && [ "$WHICH" != "all" ]; then LIST="$WHICH"
-          elif [ "$SCHEDULE" = "30 22 * * 1-5" ]; then LIST="global_etf"
-          elif [ -n "$SCHEDULE" ]; then LIST="stocks india_etf"
-          else LIST="stocks india_etf global_etf"; fi
+          LIST=""
+          if [ -z "$WHICH" ] || [ "$WHICH" = "all" ]; then LIST="stocks india_etf"
+          else for w in $WHICH; do case "$w" in stocks|india_etf) LIST="$LIST $w";; esac; done; fi
           echo "Scoring: $LIST"
+          echo "$LIST" > /tmp/dw_list.txt
           python scan_dw.py $LIST
       - name: Commit results
         run: |
           git config user.name  "github-actions"
           git config user.email "actions@github.com"
+          FILES=""
+          for u in $(cat /tmp/dw_list.txt); do FILES="$FILES data/dw_$u.json data/dwq_$u.json"; done
+          echo "Saving: $FILES"
           mkdir -p /tmp/keep
-          cp -f data/dw_*.json data/dwq_*.json /tmp/keep/ 2>/dev/null || true
-          git add data/dw_stocks.json 2>/dev/null || true
-          git add data/dw_india_etf.json 2>/dev/null || true
-          git add data/dw_global_etf.json 2>/dev/null || true
-          git add data/dwq_stocks.json 2>/dev/null || true
-          git add data/dwq_india_etf.json 2>/dev/null || true
-          git add data/dwq_global_etf.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS"
+          for f in $FILES; do cp -f "$f" /tmp/keep/ 2>/dev/null || true; git add "$f" 2>/dev/null || true; done
+          git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS (Indian)"
           for attempt in 1 2 3 4 5; do
             git push && break
-            echo "Push attempt $attempt failed - taking the latest main and re-applying the new data..."
+            echo "Push attempt $attempt failed - taking the latest main and re-applying this job's files..."
             git fetch -q origin main
             git reset -q --hard origin/main
-            cp -f /tmp/keep/dw*.json data/ 2>/dev/null || true
-            git add data/dw_stocks.json 2>/dev/null || true
-            git add data/dw_india_etf.json 2>/dev/null || true
-            git add data/dw_global_etf.json 2>/dev/null || true
-            git add data/dwq_stocks.json 2>/dev/null || true
-            git add data/dwq_india_etf.json 2>/dev/null || true
-            git add data/dwq_global_etf.json 2>/dev/null || true
-            git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS"
+            for f in $FILES; do cp -f "/tmp/keep/$(basename "$f")" "$f" 2>/dev/null || true; git add "$f" 2>/dev/null || true; done
+            git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS (Indian)"
+            sleep 5
+          done
+
+  # ---------------------------------------------------------------- Global ETFs (its own job, so it never waits behind the Indian ones)
+  global:
+    if: ${{ github.event.schedule == '30 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.which == 'all' || github.event.inputs.which == '' || contains(github.event.inputs.which, 'global_etf'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy openpyxl curl_cffi
+      - name: Score
+        run: |
+          echo "Scoring: global_etf"
+          python scan_dw.py global_etf
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          FILES="data/dw_global_etf.json data/dwq_global_etf.json"
+          mkdir -p /tmp/keep
+          for f in $FILES; do cp -f "$f" /tmp/keep/ 2>/dev/null || true; git add "$f" 2>/dev/null || true; done
+          git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS (Global ETFs)"
+          for attempt in 1 2 3 4 5; do
+            git push && break
+            echo "Push attempt $attempt failed - taking the latest main and re-applying this job's files..."
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            for f in $FILES; do cp -f "/tmp/keep/$(basename "$f")" "$f" 2>/dev/null || true; git add "$f" 2>/dev/null || true; done
+            git diff --staged --quiet || git commit -q -m "Update Dorsey Wright RS (Global ETFs)"
             sleep 5
           done
